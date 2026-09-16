@@ -1,0 +1,28 @@
+node_modules/
+.next/
+dist/
+build/
+out/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 密钥：只允许 .env.example 入库
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# 本地数据库与产物
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+data/
+
+# 编辑器
+.idea/
+.vscode/
+*.log
