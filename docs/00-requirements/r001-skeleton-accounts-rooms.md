@@ -22,7 +22,7 @@ updated: 2026-09-17
 - 数据层：`001_schema.sql`（7 张表，与模块页 §3 DDL 逐字一致：`schema_migrations`、`users`、`rooms`、`room_members`、`join_requests`、`invites`、`chat_messages`；其中 `invites` 本轮只建表不使用）+ `002_seed.sql`（3 个演示账号、3 个示例房间、6 条成员、3 条申请、12 条历史消息）+ `migrate.py`（`run_migrations`/`reset_schema`/`seed`/`table_counts`）+ `db_init.py`。
 - 账户：注册、登录、登出、当前用户；scrypt 口令哈希；签名 Cookie 会话。
 - 房间：创建（主题/标题/简介）、列表（状态/主题/我的筛选、分页）、详情（成员列表）；房间生命周期 `active → ended` 与本轮结束流程（房间置 ended + 活跃成员转 `inactive/room_ended` + 待批申请转 `cancelled`，同一事务）。
-- 加入申请：提交（五种拦截与提示）、列表（房主/协管可见）、批准、拒绝；容量校验（`ROOM_FULL`）。
+- 加入申请：提交（五种拦截与提示）、列表（房主/协管可见）、批准、拒绝、**撤回**（申请人本人，撤回后可立即再申请）；容量校验（`ROOM_FULL`）；待批申请数对非管理者服务端返回 0。
 - 前端 5 个页面：`/`（房间列表）、`/login`、`/register`、`/rooms/new`、`/rooms/:id`。
 - 验证：`pytest`（schema 断言 + 服务层 + 接口层）、`smoke.py`（真实 HTTP 全链路）、密钥检索、文档同步。
 

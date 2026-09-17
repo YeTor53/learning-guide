@@ -86,6 +86,11 @@ def _room_vo(
     )
 
 
+def _visible_pending_count(my_role: Optional[str], pending_count: int) -> int:
+    """待批申请数只对房主/协管有意义（功能页 FQ-4：服务端强制，非管理者一律返回 0）。"""
+    return pending_count if my_role in MANAGER_ROLES else 0
+
+
 def _member_vo(item: repo.MemberRowWithName) -> MemberVO:
     member = item.member
     return MemberVO(
@@ -201,13 +206,14 @@ def list_rooms(conn: Connection, actor: Optional[UserVO], f: repo.RoomFilter) ->
     result: list[RoomListItem] = []
     for item in items:
         member_count, pending_count = aggregates.get(item.room.id, (0, 0))
+        my_role = roles.get(item.room.id)
         result.append(
             RoomListItem(
                 **_room_vo(
                     item,
                     member_count=member_count,
-                    pending_count=pending_count,
-                    my_role=roles.get(item.room.id),
+                    pending_count=_visible_pending_count(my_role, pending_count),
+                    my_role=my_role,
                     my_request_status="pending" if item.room.id in pending else None,
                 ).model_dump()
             )
@@ -224,11 +230,12 @@ def get_room_detail(conn: Connection, actor: Optional[UserVO], room_id: str) -> 
     member_count, pending_count = aggregates.get(room_id, (0, 0))
     roles = repo.my_active_roles(conn, actor.id, [room_id]) if actor else {}
     pending = repo.my_pending_requests(conn, actor.id, [room_id]) if actor else set()
+    my_role = roles.get(room_id)
     room = _room_vo(
         item,
         member_count=member_count,
-        pending_count=pending_count,
-        my_role=roles.get(room_id),
+        pending_count=_visible_pending_count(my_role, pending_count),
+        my_role=my_role,
         my_request_status="pending" if room_id in pending else None,
     )
     include_inactive = room.status == "ended"  # 结束后展示历史成员与退出原因（功能页 F-09/F-12）
@@ -287,6 +294,25 @@ def list_join_requests(conn: Connection, actor: UserVO, room_id: str, status: Op
         raise AppError(ERR_NOT_FOUND, "房间不存在", status=404)
     assert_manager_role(conn, actor, item.room)
     return [_request_vo(r) for r in repo.list_join_requests(conn, room_id, status)]
+
+
+def withdraw_join_request(conn: Connection, actor: UserVO, request_id: str) -> JoinRequestVO:
+    """撤回申请：仅本人可撤回，且只有 `pending` 可撤回（否则 `CONFLICT`）。撤回后可立即再次申请。"""
+    request = repo.get_join_request(conn, request_id)
+    if request is None:
+        raise AppError(ERR_NOT_FOUND, "申请不存在", status=404)
+    if request.user_id != actor.id:
+        raise AppError(ERR_FORBIDDEN, "只能撤回自己的申请", status=403)
+    with conn.transaction():
+        repo.lock_room(conn, request.room_id)
+        current = repo.get_join_request(conn, request_id)
+        if current is None or current.status != "pending":
+            raise AppError(ERR_CONFLICT, "该申请已被处理", status=409)
+        repo.withdraw_join_request(conn, request_id, _now(), actor.id)
+    withdrawn = repo.get_join_request(conn, request_id)
+    if withdrawn is None:
+        raise AppError(ERR_INTERNAL, "撤回后无法读取结果", status=500)
+    return _request_vo(repo.JoinRequestRowWithName(withdrawn, actor.display_name))
 
 
 def approve_join_request(conn: Connection, actor: UserVO, request_id: str) -> ApprovalResult:

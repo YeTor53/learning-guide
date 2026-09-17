@@ -138,12 +138,13 @@ CREATE INDEX IF NOT EXISTS ix_chat_messages_room_time ON chat_messages (room_id,
 | 操作 | 触发者 | 前置与规则 | 副作用（同事务） | 错误码 |
 | --- | --- | --- | --- | --- |
 | 建房 | 任意登录用户 | 主题 ∈ 4 值；标题 1–80 字；简介 ≤500 字；`capacity` 固定 8（可留参） | 锁无需；写 `rooms`（生成 `room_code`，冲突重试 3 次）+ 写 `room_members(host, active)` | `VALIDATION` |
-| 列表 | 任何人 | `status` ∈ {active,ended,all}；`topic` 可选；`mine=1` 需登录（口径：我建的 / 我参与过的 / 我有待批申请的） | 只读；聚合 `member_count`/`pending_count`/`my_role`/`my_request` | `VALIDATION` |
+| 列表 | 任何人 | `status` ∈ {active,ended,all}；`topic` 可选；`mine=1` 需登录（口径：我建的 / 我参与过的 / 我有待批申请的） | 只读；聚合 `member_count`/`pending_count`/`my_role`/`my_request`；**`pending_count` 只对房主/协管返回真值，其余一律 0**（FQ-4） | `VALIDATION` |
 | 详情 | 任何人 | 房间存在 | 只读；房间 + 活跃成员 + 最近 20 条消息 + 我的状态 | `NOT_FOUND` |
 | 提交申请 | 登录用户 | 房间 `active`；非活跃成员；无 `pending` | 写 `join_requests(pending)` | `ROOM_ENDED` / `ALREADY_MEMBER` / `ALREADY_PENDING` |
 | 看申请列表 | Host/Moderator | 房间存在 | 只读（`status` 可选过滤） | `FORBIDDEN` |
 | 批准 | Host/Moderator | 房间 `active`；申请 `pending`；活跃人数 < `capacity` | **锁 `rooms` 行** → 写成员 `participant/active` + 申请置 `approved`（`decided_by=actor`） | `FORBIDDEN` / `ROOM_ENDED` / `ROOM_FULL` / `ALREADY_MEMBER` / `CONFLICT` |
 | 拒绝 | Host/Moderator | 房间 `active`；申请 `pending` | 申请置 `rejected`（`decided_by=actor`） | `FORBIDDEN` / `ROOM_ENDED` / `CONFLICT` |
+| 撤回申请 | **申请人本人** | 申请 `pending`；锁 `rooms` 行 | 申请置 `withdrawn`（`decided_by=本人`）；撤回后可立即再申请 | `FORBIDDEN` / `CONFLICT` |
 | 离开 | 本人（非 Host） | 房间 `active`；是活跃成员 | 成员置 `inactive/self_leave` + `left_at` | `NOT_MEMBER` / `HOST_CANNOT_LEAVE` / `ROOM_ENDED` |
 | 结束房间 | **仅 Host** | 房间 `active` | **锁 `rooms` 行**：① `status=ended`、`ended_at`；② 全部活跃成员 → `inactive/room_ended`；③ 全部 `pending` 申请 → `cancelled`（`decided_by=NULL` 表示系统）；④ 提交后（M2）：`delete_room` 强制断开；⑤ 提交后（M4）：触发纪要生成 | `FORBIDDEN` / `ROOM_ENDED` |
 
@@ -155,13 +156,14 @@ CREATE INDEX IF NOT EXISTS ix_chat_messages_room_time ON chat_messages (room_id,
 
 | 方法 | 路径 | 权限 | 请求 | 成功 |
 | --- | --- | --- | --- | --- |
-| GET | `/api/rooms` | 公开 | `?status=active\|ended\|all&topic=&mine=1&limit=20&offset=0` | 200 `{rooms: RoomListItem[], total}` |
+| GET | `/api/rooms` | 公开 | `?status=active\|ended\|all&topic=&mine=1&limit=20&offset=0` | 200 `{rooms: RoomListItem[], total, limit, offset}`；`pendingCount` 对非管理者恒为 0 |
 | POST | `/api/rooms` | 登录 | `{topic, topicLabel, title, description?}` | 201 `RoomVO & {myRole}` |
 | GET | `/api/rooms/{room_id}` | 公开 | — | 200 `RoomDetail` |
 | POST | `/api/rooms/{room_id}/join-requests` | 登录 | `{message?}` | 201 `JoinRequestVO` |
 | GET | `/api/rooms/{room_id}/join-requests` | Host/Moderator | `?status=pending` | 200 `{requests: JoinRequestVO[]}` |
 | POST | `/api/join-requests/{request_id}/approve` | Host/Moderator | — | 200 `{request, member}` |
 | POST | `/api/join-requests/{request_id}/reject` | Host/Moderator | — | 200 `{request}` |
+| POST | `/api/join-requests/{request_id}/withdraw` | 申请人本人 | — | 200 `{request}` |
 | POST | `/api/rooms/{room_id}/leave` | 活跃成员 | — | 200 `{}` |
 | POST | `/api/rooms/{room_id}/end` | Host | — | 200 `RoomVO` |
 
@@ -223,6 +225,7 @@ backend/
 | `list_join_requests` | `(conn, room_id: str, status: str \| None) -> list[JoinRequestRow]` | 申请列表 |
 | `decide_join_request` | `(conn, request_id: str, status: str, decided_by: str \| None, at: datetime) -> None` | 落决定（`decided_by=None` 表示系统） |
 | `cancel_pending_requests` | `(conn, room_id: str, at: datetime) -> int` | 房间结束时批量 `cancelled`；返回行数 |
+| `withdraw_join_request` | `(conn, request_id: str, at: datetime, by: str) -> None` | 申请人撤回 → `withdrawn` + `decided_at` + `decided_by=本人` |
 | `list_recent_messages` | `(conn, room_id: str, limit: int) -> list[MessageRow]` | 详情页最近消息（纪要复用） |
 
 ### 6.4 `app/services/rooms.py`（业务规则，唯一写库入口）
@@ -237,6 +240,7 @@ backend/
 | `list_join_requests` | `(conn, actor: User, room_id: str, status: str \| None) -> list[JoinRequestVO]` | `assert_room_role(host, moderator)`（房间可 `ended`，只读） |
 | `approve_join_request` | `(conn, actor: User, request_id: str) -> Approval` | `lock_room` → 房间 `active` → 申请 `pending` → 人数 < `capacity` → 写成员 + 落决定 |
 | `reject_join_request` | `(conn, actor: User, request_id: str) -> JoinRequestVO` | `lock_room` → `active` → 申请 `pending` → 落决定 |
+| `withdraw_join_request` | `(conn, actor: User, request_id: str) -> JoinRequestVO` | 仅本人；`lock_room` → 申请 `pending` → 置 `withdrawn`（撤回后可立即再申请） |
 | `leave_room` | `(conn, actor: User, room_id: str) -> None` | `lock_room` → `active` → 活跃成员 → 非 Host → `deactivate_member(self_leave)` |
 | `end_room` | `(conn, actor: User, room_id: str) -> RoomVO` | `lock_room` → `assert_room_role(host)` → `active` → `update_room_ended` + `deactivate_all_members` + `cancel_pending_requests`（同事务）→ 提交后副作用（M2 `delete_room`、M4 纪要） |
 | `assert_room_active`（内部） | `(room: RoomRow \| None) -> RoomRow` | 存在否则 `NOT_FOUND`；`active` 否则 `ROOM_ENDED` |
@@ -334,6 +338,8 @@ frontend/src/
 | 2026-09-17 | r001 | §9 迁移判据由「`session_summaries≥1`」改为 r001 实际 7 张表行数；命令补 `backend/` 前缀 | 纪要表属 M4，r001 不建该表，原判据无法满足 |
 | 2026-09-17 | r001 | §6 目录注释去掉种子里的「纪要」；补注 §6.5 已移出本页 | 同上（避免读者以为 r001 会写纪要数据） |
 | 2026-09-17 | r001 | §6.3 补 `my_active_roles` / `my_pending_requests`；§6.4 补 `assert_manager_role` | cp-r001-3 实现中为「避免列表 N+1」与「结束后可追溯查看申请」新增，签名已落地 |
+| 2026-09-17 | r001 | §4 补「撤回申请」规则、§5 补第 10 条路由 `/api/join-requests/{id}/withdraw`、§6.3/§6.4 补对应函数 | 功能页 F-04 的「撤回申请」按钮此前在接口清单里缺对应端点（设计漏项），补齐后行为与文案一致 |
+| 2026-09-17 | r001 | §4/§5 标注 `pending_count` 的可见性：非房主/协管服务端返回 0 | 用户 2026-09-17 拍板「严格返回 0」（对应功能页 FQ-4），不再只靠前端隐藏 |
 | 2026-09-17 | r001 | §4 列表行的 `mine=1` 口径写实：我建的 / 我参与过的 / 我有待批申请的 | 功能页 F-01 的「我参与」在实现中含「有待批申请」，卡片「已申请」徽标需要它 |
 
 ## What's next

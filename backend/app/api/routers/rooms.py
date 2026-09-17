@@ -88,6 +88,13 @@ def list_join_requests(
     return ok({"requests": [_dump(item) for item in items]}, status=200)
 
 
+@router.post("/join-requests/{request_id}/withdraw", status_code=200)
+def withdraw_join_request(request_id: str, actor: UserVO = Depends(current_user), conn: Connection = Depends(db_conn)):
+    """撤回自己的待批申请（撤回后可再次申请）。"""
+    result = rooms_service.withdraw_join_request(conn, actor, request_id)
+    return ok({"request": _dump(result)}, status=200)
+
+
 @router.post("/join-requests/{request_id}/approve", status_code=200)
 def approve_join_request(request_id: str, actor: UserVO = Depends(current_user), conn: Connection = Depends(db_conn)):
     """批准加入：成功返回 {request, member}。"""

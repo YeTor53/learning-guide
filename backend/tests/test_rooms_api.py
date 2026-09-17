@@ -144,6 +144,45 @@ def test_full_flow_join_approve_leave_end(client, db) -> None:
     assert {r["status"] for r in all_requests} == {"approved", "cancelled"}
 
 
+def test_pending_count_visible_only_to_managers(client, db) -> None:
+    """FQ-4：待批申请数对非房主/协管（含申请人本人）服务端一律返回 0。"""
+    host = register_user(db, "房主")
+    guest = register_user(db, "申请人")
+    _login_as(client, host)
+    room = _create_room(client, "待批数房间")
+
+    _login_as(client, guest)
+    client.post(f"/api/rooms/{room['id']}/join-requests", json={})
+    listing = client.get("/api/rooms").json()["data"]["rooms"]
+    assert next(i for i in listing if i["id"] == room["id"])["pendingCount"] == 0
+    assert client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]["pendingCount"] == 0
+
+    _login_as(client, host)
+    listing = client.get("/api/rooms").json()["data"]["rooms"]
+    assert next(i for i in listing if i["id"] == room["id"])["pendingCount"] == 1
+    assert client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]["pendingCount"] == 1
+
+
+def test_withdraw_flow(client, db) -> None:
+    host = register_user(db, "房主")
+    guest = register_user(db, "申请人")
+    _login_as(client, host)
+    room = _create_room(client, "撤回流程房间")
+
+    _login_as(client, guest)
+    request_id = client.post(f"/api/rooms/{room['id']}/join-requests", json={}).json()["data"]["id"]
+
+    withdrawn = client.post(f"/api/join-requests/{request_id}/withdraw")
+    assert withdrawn.status_code == 200 and withdrawn.json()["data"]["request"]["status"] == "withdrawn"
+
+    assert client.post(f"/api/rooms/{room['id']}/join-requests", json={}).status_code == 201  # 可再次申请
+    assert client.post(f"/api/join-requests/{request_id}/withdraw").status_code == 409         # 旧申请已处理
+
+    _login_as(client, host)
+    pending = client.get(f"/api/rooms/{room['id']}/join-requests?status=pending").json()["data"]["requests"]
+    assert len(pending) == 1 and pending[0]["id"] != request_id
+
+
 def test_reject_flow_and_reapply(client, db) -> None:
     host = register_user(db, "房主")
     guest = register_user(db, "申请人")

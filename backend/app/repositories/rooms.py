@@ -359,6 +359,14 @@ def decide_join_request(conn: Connection, request_id: str, status: str, decided_
     )
 
 
+def withdraw_join_request(conn: Connection, request_id: str, at: datetime, by: str) -> None:
+    """申请人撤回：置 `withdrawn` 并落 `decided_at`（`decided_by` 记为本人）。"""
+    conn.execute(
+        "UPDATE join_requests SET status = 'withdrawn', decided_at = %s, decided_by = %s WHERE id = %s",
+        (at, by, request_id),
+    )
+
+
 def cancel_pending_requests(conn: Connection, room_id: str, at: datetime) -> int:
     """房间结束时的连带动作：待批申请置 `cancelled`（`decided_by=NULL` 表示系统）。"""
     cur = conn.execute(

@@ -159,6 +159,33 @@ def test_reject_then_can_request_again(db) -> None:
     assert again.status == "pending"
 
 
+def test_withdraw_join_request_allows_reapply(db) -> None:
+    host = register_user(db, "房主甲")
+    guest = register_user(db, "申请人乙")
+    room = _make_room(db, host)
+    request = _join(db, guest, room.id)
+
+    withdrawn = rooms_service.withdraw_join_request(db, guest, request.id)
+    assert withdrawn.status == "withdrawn" and withdrawn.decided_by == guest.id
+
+    assert _join(db, guest, room.id).status == "pending"  # 撤回后可立即再申请
+    with pytest.raises(AppError) as exc:
+        rooms_service.withdraw_join_request(db, guest, request.id)  # 已处理过的申请不能再撤回
+    assert (exc.value.code, exc.value.status) == ("CONFLICT", 409)
+
+
+def test_withdraw_requires_owner(db) -> None:
+    host = register_user(db, "房主甲")
+    guest = register_user(db, "申请人乙")
+    outsider = register_user(db, "路人丙")
+    room = _make_room(db, host)
+    request = _join(db, guest, room.id)
+
+    with pytest.raises(AppError) as exc:
+        rooms_service.withdraw_join_request(db, outsider, request.id)
+    assert (exc.value.code, exc.value.status) == ("FORBIDDEN", 403)
+
+
 # ---------- 离开 ----------
 
 def test_leave_room_marks_self_leave(db) -> None:
@@ -251,7 +278,12 @@ def test_list_rooms_filters_and_aggregates(db) -> None:
     titles = {item.title for item in active_items}
     assert "进行中的房间" in titles and "已结束的房间" not in titles
     assert active_total == len(active_items)
-    assert next(i for i in active_items if i.id == active_room.id).pending_count == 1
+    guest_view = next(i for i in active_items if i.id == active_room.id)
+    assert guest_view.pending_count == 0 and guest_view.my_role is None  # 非管理者：服务端严格返回 0（FQ-4）
+    host_view = next(
+        i for i in rooms_service.list_rooms(db, host, repo.RoomFilter(status="active"))[0] if i.id == active_room.id
+    )
+    assert host_view.pending_count == 1 and host_view.my_role == "host"
 
     ended_items, _ = rooms_service.list_rooms(db, None, repo.RoomFilter(status="ended"))
     ended_titles = {item.title for item in ended_items}
