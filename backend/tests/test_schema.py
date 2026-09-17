@@ -196,7 +196,10 @@ def test_join_request_can_resubmit_after_rejection(db, room_ctx) -> None:
            WHERE id = 'req_1'"""
     )
     db.execute("INSERT INTO join_requests (id, room_id, user_id) VALUES ('req_2', 'r_1', 'u_2')")
-    pending = db.execute("SELECT count(*) FROM join_requests WHERE status = 'pending'").fetchone()[0]
+    # 只统计本用例的房间/用户：库里还有种子数据（room_demo_* 下有 2 条 pending）
+    pending = db.execute(
+        "SELECT count(*) FROM join_requests WHERE room_id = 'r_1' AND user_id = 'u_2' AND status = 'pending'"
+    ).fetchone()[0]
     assert pending == 1
 
 
