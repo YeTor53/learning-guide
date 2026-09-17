@@ -2,14 +2,14 @@
 
 围绕一门学习主题的多人音视频小组讨论室：账户、房间、等候室审批、三种角色权限、群聊、举手与焦点发言、屏幕共享、服务端踢人、房间结束后的 LLM 讨论纪要。
 
-> 当前状态：**r001 已实现完毕，待人工复核与合并**（cp-r001-1..4 全部完成：数据层 / 账户 / 房间与申请 / 前端页面与冒烟，`pytest` 72 项 + `smoke.py` 22 项全绿）。
+> 当前状态：**核心闭环已实现，待人工复核与合并**。数据层与种子、注册登录会话、建房 / 列表 / 详情 / 加入申请 / 批准 / 拒绝 / 撤回 / 离开 / 结束房间，以及前端 5 页与真实 HTTP 冒烟均已落地：`pytest` 72 项、冒烟 22 项、前端类型检查与构建全绿。
 
 ## 项目地图
 
 | 位置 | 内容 |
 | --- | --- |
-| `docs/00-project/global-roadmap.md` | 项目级规划：起点 / 终局 / 里程碑（草稿，待批准） |
-| `docs/00-requirements/` | 每轮需求单（`rNNN-*.md`）与变更记录 |
+| `docs/00-project/global-roadmap.md` | 项目级规划：终点、里程碑与验收点 |
+| `docs/00-requirements/` | 需求单（`rNNN-*.md`）与变更记录 |
 | `docs/01-architecture/` | 总体架构、模块图、数据流 |
 | `docs/02-modules/` | 每个模块一份：设计 + 实现 |
 | `docs/03-decisions/` | ADR：为什么这么设计、改了什么约定 |
@@ -17,22 +17,23 @@
 | `docs/glossary.md` | 术语表 |
 | `AGENTS.md` | 给 AI 的项目规则（禁区、验证命令、提交规范） |
 
-## 当前轮次
+## 已定选型
 
-`r001`（里程碑 M1：骨架 · 账户 · 房间）—— **实现已完成**（cp-r001-1..4，分支 `req/r001-skeleton`）：数据层与种子、注册登录会话、建房/列表/详情/申请/批准/拒绝/撤回/离开/结束、前端 5 页与真实 HTTP 冒烟。整体 `status: draft`，待人工复核后由人 `merge --no-ff` 并打 `round-r001-done`。
+- **数据库**：PostgreSQL（本机 17.11，库 `learning_guide`，角色 `lg_app`）
+- **前端**：React 18 + Vite + TypeScript + TanStack Query，图标统一 Lucide（设计规范见 `docs/04-style/global-style.md`）
+- **后端**：Python 3.11 + FastAPI + psycopg3，conda 环境 `learningguide`
+- **数据层**：手写 SQL + 轻量版本表；**实时音视频**：LiveKit Cloud 为主、自建留档；**纪要**：DeepSeek
+- **交付物**：zip + GitHub 仓库 + npm 包（发布细则待定）
 
-已定：题目 A / 位置 / 数据库 PostgreSQL（本机安装，17.11 已就绪）/ 前端 React + 后端 Python（FastAPI）/ 数据层=手写 SQL + 轻量版本表 / LiveKit=Cloud 为主 + 自建留档 / 纪要=DeepSeek / 加分项=增量项 / 运行环境=conda 环境 `learningguide`（ADR-0006）/ 提交物 = zip + GitHub 仓库 + npm 包（细则 P11 **暂缓**）。
+## 工程说明
 
-- 总设计（本轮，待批准）：`docs/01-architecture/r001-app-architecture.md`
-- 需求单（本轮，待批准）：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
-- 房间模块：功能设计 `docs/02-modules/r001-rooms-features.md`；实现设计 `docs/02-modules/r001-rooms.md`
-- 账户模块：功能设计 `docs/02-modules/r001-accounts-features.md`；实现设计 `docs/02-modules/r001-accounts.md`
-- 决策记录：`docs/03-decisions/`（ADR-0001~0006）
-- 归档（非本轮）：`docs/99-archive/`（房间 M2/M3 能力、纪要 M4）
+- 实施节奏、里程碑与验收证据：`docs/00-project/global-roadmap.md`
+- 需求单与逐条验收：`docs/00-requirements/`
+- 提交前检查命令、禁区与提交规范：`AGENTS.md`
 
-## 怎么跑（本机，r001）
+## 怎么跑（本机）
 
-前置：本机 PostgreSQL 17.11 服务在跑、库与角色已建（见 `docs/tutorials/r001-postgres-setup.md`，含 §4b 的建表授权）、
+前置：本机 PostgreSQL 17.11 服务在跑、库与角色已建（见 `docs/tutorials/r001-postgres-setup.md`，含建表授权步骤）、
 conda 环境 `learningguide` 已就绪、仓库根 `.env` 已填（`DATABASE_URL` / `SESSION_SECRET`）。
 
 ```bash

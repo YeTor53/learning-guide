@@ -35,7 +35,7 @@ psycopg 3 连接池 ──> PostgreSQL（本机服务, :5432, 库 learning_guide
 
 | 层 | 选型 | 落地形态与理由 |
 | --- | --- | --- |
-| 后端框架 | FastAPI + uvicorn | 同步 `def` 路由（FastAPI 会在线程池执行）：本作业规模不需要 async，避免 async 驱动/同步池混用的心智负担；OpenAPI 自动生成可作为接口事实源 |
+| 后端框架 | FastAPI + uvicorn | 同步 `def` 路由（FastAPI 会在线程池执行）：本项目规模不需要 async，避免 async 驱动/同步池混用的心智负担；OpenAPI 自动生成可作为接口事实源 |
 | 数据库驱动 | `psycopg` 3（`psycopg[binary,pool]`） | 同步连接池，最少概念；SQL 全手写（ADR-0005） |
 | 迁移 | 自研 `app/db/migrate.py` + `schema_migrations` 版本表 | 前进式：按文件名顺序执行未应用版本；开发期 `--reset` 全量重建 |
 | Python 环境 | **conda 环境 `learningguide`**（Python 3.11.16，ADR-0006） | 后端运行与测试都在该环境；PyCharm 选它作解释器；**不用** `backend/.venv` |
@@ -111,7 +111,7 @@ LearningGuide-LiveKit/
 | `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | M2 起 | Cloud 项目值（或自建 `ws://127.0.0.1:7880`）；**仅后端可读** |
 | `LIVEKIT_MODE` | M2 起 | `cloud` / `self`（决定踢人用 `revoke_token_ts` 还是短 TTL，见 ADR-0003） |
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | M4 起 | DeepSeek：`https://api.deepseek.com/v1`、`deepseek-chat` |
-| `ROOM_CAPACITY` | 否 | 默认 8（题面硬要求，仅允许 ≤8） |
+| `ROOM_CAPACITY` | 否 | 默认 8（交付要求硬要求，仅允许 ≤8） |
 
 规则：`.env` 永不入库；日志与错误响应不得回显任何 Secret 或 DSN 密码；`require_env()` 缺失即抛 `CONFIG_MISSING` 并让进程退出（不允许"默认密钥"）。
 

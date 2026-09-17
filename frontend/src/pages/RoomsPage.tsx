@@ -66,7 +66,7 @@ export default function RoomsPage() {
         <div className="hero-inner">
           <span className="kicker">
             <Hash {...ICON} />
-            Learning Guide · 题目 A
+            实时多人学习讨论空间
           </span>
           <h1 className="display">
             {title.map((char, index) => (
@@ -79,7 +79,7 @@ export default function RoomsPage() {
           </h1>
           <p className="hero-sub">
             面向一门学习主题的多人音视频讨论室：等候室审批、三种角色、举手与焦点发言、屏幕共享与课后纪要。
-            这一轮（r001）先把骨架跑通：账户、房间、加入申请与结束房间。
+            现在可以创建房间、申请加入，并在房间结束后回看整场讨论记录。
           </p>
           <div className="stats">
             <div>
@@ -190,7 +190,7 @@ export default function RoomsPage() {
         <div className="card">
           <div className="alert" role="alert">
             <AlertTriangle size={16} strokeWidth={1.75} style={{ marginTop: 2, flex: '0 0 16px' }} />
-            连不上后端：{apiError?.message ?? '未知错误'}。请确认后端已启动（dev 形态见 README「怎么跑」）。
+            服务暂时不可用：{apiError?.message ?? '未知错误'}。请稍后重试。
           </div>
           <button className="btn" style={{ marginTop: 12 }} onClick={() => refetch()}>
             <RefreshCw {...ICON} />

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { roomsApi, type RoomDetail } from '../api/rooms'
 
-/** 详情页 5 秒轮询（功能页 F-03；M3 起改走 LiveKit 数据通道）。 */
+/** 详情页 5 秒轮询：接入实时通道后改为推送（当前实现见 docs/02-modules/r001-rooms-features.md F-03）。 */
 const POLL_INTERVAL_MS = 5_000
 
 export function useRoomDetail(roomId: string) {

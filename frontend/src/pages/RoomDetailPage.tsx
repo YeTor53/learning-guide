@@ -337,7 +337,7 @@ export default function RoomDetailPage() {
             </div>
           )}
           <p className="dim" style={{ marginTop: 16, marginBottom: 0, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-            房间内实时收发消息属 M3；本轮只读展示历史消息。
+            这里展示最近讨论记录（只读）。
             <Link to="/" style={{ color: 'var(--accent)' }}>
               返回列表
             </Link>
