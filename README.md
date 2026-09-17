@@ -19,7 +19,10 @@
 
 ## 当前轮次
 
-初始化（无轮次号）：建仓 + 文档树 + 规划草稿。批准 `global-roadmap.md` 后开 `r001`（对应里程碑 M1）。
+`r001`（里程碑 M1：骨架 · 账户 · 房间）—— 需求单与设计页已起草，`status: draft`，待复核拍板（含设计页 §11 的 R1~R5）。此前初始化轮次（建仓 + 文档树 + 规划草稿）已提交。
+
+- 需求单：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
+- 设计页：`docs/01-architecture/r001-app-architecture.md`
 
 ## 怎么跑
 

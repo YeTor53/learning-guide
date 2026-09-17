@@ -13,7 +13,7 @@ updated: 2026-09-16
 | 项 | Do | Don't |
 | --- | --- | --- |
 | 文档文件名 | 带轮次：`rNNN-短名.md`；项目级用 `global-` 前缀 | `新建文档.md`、`design2.md` |
-| 文档页类 | 一页一类：concept / task / tutorial / reference | 参考页讲概念、概念页列参数 |
+| 文档页类 | 一页一类：concept / task / tutorial / reference / requirement（需求单）/ adr（决策） | 参考页讲概念、概念页列参数 |
 | 事实来源 | 一个概念只在一处讲，别处链接 | 同一张表抄两处 |
 | 提交信息 | `type(scope): ≤50字 [Req: rNNN]` | `update`、`fix bug` |
 | 提交粒度 | 一个逻辑增量一次提交 | 混多个不相关改动 |
