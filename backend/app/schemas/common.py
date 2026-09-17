@@ -7,9 +7,19 @@ from __future__ import annotations
 import re
 from typing import NamedTuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class CamelModel(BaseModel):
+    """对外模型基类：字段内部 snake_case，JSON 一律 camelCase（请求体两种写法都接受）。
+
+    所有模块共用同一约定，前端只按 camelCase 取值（账户与房间两套 VO 口径一致）。
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class Page(NamedTuple):

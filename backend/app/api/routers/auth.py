@@ -20,7 +20,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _user_payload(user: UserVO | None) -> dict:
-    return {"user": user.model_dump(mode="json") if user else None}
+    """出参一律 camelCase（与房间模块同一约定，前端只按 camelCase 取值）。"""
+    return {"user": user.model_dump(mode="json", by_alias=True) if user else None}
 
 
 @router.post("/register", status_code=201)

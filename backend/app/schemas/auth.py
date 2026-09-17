@@ -7,15 +7,15 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 
-from app.schemas.common import validate_email
+from app.schemas.common import CamelModel, validate_email
 
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128
 
 
-class RegisterIn(BaseModel):
+class RegisterIn(CamelModel):
     email: str = Field(description="登录邮箱，大小写不敏感")
     display_name: str = Field(min_length=1, max_length=32, description="显示名（1~32 字）")
     password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
@@ -34,7 +34,7 @@ class RegisterIn(BaseModel):
         return stripped
 
 
-class LoginIn(BaseModel):
+class LoginIn(CamelModel):
     email: str
     password: str
 
@@ -44,7 +44,7 @@ class LoginIn(BaseModel):
         return validate_email(value)
 
 
-class UserVO(BaseModel):
+class UserVO(CamelModel):
     """对外暴露的用户视图（不含任何口令材料）。"""
 
     id: str

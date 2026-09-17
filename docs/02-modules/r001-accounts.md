@@ -37,8 +37,8 @@ updated: 2026-09-17
 
 | 方法与路径 | 请求体 | 成功响应 | 失败 |
 | --- | --- | --- | --- |
-| `POST /api/auth/register` | `{email, display_name, password}` | `201`，`data.user` = UserVO，并下发会话 Cookie | `400 VALIDATION`；`409 EMAIL_TAKEN` |
-| `POST /api/auth/login` | `{email, password}` | `200`，`data.user` = UserVO，并下发会话 Cookie | `400 VALIDATION`；`401 INVALID_CREDENTIALS` |
+| `POST /api/auth/register` | `{email, displayName, password}`（camelCase；请求体也接受 snake_case） | `201`，`data.user` = UserVO，并下发会话 Cookie | `400 VALIDATION`；`409 EMAIL_TAKEN` |
+| `POST /api/auth/login` | `{email, password}`（camelCase） | `200`，`data.user` = UserVO，并下发会话 Cookie | `400 VALIDATION`；`401 INVALID_CREDENTIALS` |
 | `POST /api/auth/logout` | — | `200`，`data.user = null`，清 Cookie | —（幂等，未登录调用也返回 200） |
 | `GET /api/auth/me` | — | `200`，`data.user` = UserVO 或 `null` | —（未登录不报 401，前端首屏用它判断状态） |
 

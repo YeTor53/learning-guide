@@ -1,0 +1,102 @@
+/* 单文件样式（不引 UI 框架，控制体量）：干净、留白足够、可读优先 */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #e3e6ea;
+  --text: #1f2328;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --danger: #dc2626;
+  --ok: #15803d;
+  --warn: #b45309;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  line-height: 1.6;
+}
+
+.app { min-height: 100vh; }
+.container { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+.muted { color: var(--muted); }
+.row { display: flex; gap: 12px; align-items: center; }
+.spread { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+.navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+}
+.navbar .brand { font-weight: 700; text-decoration: none; color: var(--text); }
+.navbar .links { display: flex; gap: 16px; align-items: center; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.card h2, .card h3 { margin: 0 0 8px; }
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: #f3f4f6;
+  color: var(--muted);
+}
+.badge.active { background: #ecfdf5; border-color: #bbf7d0; color: var(--ok); }
+.badge.ended { background: #f3f4f6; color: var(--muted); }
+.badge.me { background: #eff6ff; border-color: #bfdbfe; color: var(--primary); }
+
+button {
+  font: inherit;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: #cbd5e1; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+button.link { border: none; background: none; color: var(--primary); padding: 0; }
+
+input, textarea, select {
+  font: inherit;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+label { font-size: 14px; color: var(--muted); }
+
+.errorbar {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.tabs button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.messages { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow: auto; }
+.messages .msg { display: flex; gap: 8px; }
+.messages .time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.members, .requests { display: flex; flex-direction: column; gap: 8px; }
+.member, .request { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+
+.skeleton { background: #eceff3; border-radius: 8px; height: 88px; }

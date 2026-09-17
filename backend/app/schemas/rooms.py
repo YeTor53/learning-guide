@@ -9,18 +9,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
-from pydantic.alias_generators import to_camel
+from pydantic import Field
+
+from app.schemas.common import CamelModel
 
 TopicLiteral = Literal["epicureanism", "math-biology", "german-history", "custom"]
 TOPICS: tuple[str, ...] = ("epicureanism", "math-biology", "german-history", "custom")
 MEMBER_ROLES = ("host", "moderator", "participant")
-
-
-class CamelModel(BaseModel):
-    """对外模型基类：内部字段 snake_case，序列化按 camelCase（请求体两种写法都接受）。"""
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class CreateRoomIn(CamelModel):

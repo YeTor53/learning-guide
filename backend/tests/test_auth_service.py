@@ -114,6 +114,7 @@ def test_register_endpoint_sets_cookie_and_me_returns_user(client) -> None:
     body = resp.json()
     assert body["ok"] is True and body["data"]["user"]["email"] == email
     assert "password" not in str(body) and "password_hash" not in str(body)
+    assert body["data"]["user"]["displayName"] == "接口同学"  # 用户 VO 也是 camelCase
     assert resp.cookies.get("lg_session")
 
     me = client.get("/api/auth/me")
