@@ -12,6 +12,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from psycopg.errors import InsufficientPrivilege
+
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
@@ -53,6 +55,14 @@ def main(argv: list[str] | None = None) -> int:
             for table, count in counts.items():
                 print(f"    {table:<20} {count}")
         return 0
+    except InsufficientPrivilege as exc:  # 最常见的环境问题：角色没有建表权限
+        print(f"[ERROR] {type(exc).__name__}: {exc}")
+        print(
+            "[HINT] lg_app 对 schema public 没有建表权限（PostgreSQL 15+ 默认如此）。"
+            "用 postgres 连到 learning_guide 执行：GRANT CREATE, USAGE ON SCHEMA public TO lg_app;"
+            "（步骤见 docs/tutorials/r001-postgres-setup.md §4b）"
+        )
+        return 1
     except Exception as exc:  # noqa: BLE001 —— 只打印异常类型与消息，绝不回显 DSN
         print(f"[ERROR] {type(exc).__name__}: {exc}")
         return 1
