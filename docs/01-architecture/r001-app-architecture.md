@@ -127,7 +127,7 @@ LearningGuide-LiveKit/
 
 ## 7. 数据层机制
 
-- **一次建全**：`001_schema.sql` 建全部业务表（含 `session_migrations` 版本表；表定义以模块页为单一事实源：房间相关见 `r001-rooms.md` §3，纪要表见归档页）。
+- **一次建全**：`001_schema.sql` 建全部业务表（含 `schema_migrations` 版本表；表定义以模块页为单一事实源：房间相关见 `r001-rooms.md` §3，纪要表见归档页）。
 - **迁移执行**：`run_migrations(conn)` 读取 `sql/*.sql`（文件名序），已在 `schema_migrations` 的版本跳过，其余在**单事务**内逐语句执行（PostgreSQL 支持事务性 DDL）。
 - **开发重建**：`reset_schema(conn)` 仅在显式 `--reset` 时 DROP；`seed(conn)` 用 `ON CONFLICT DO NOTHING` 保证幂等。
 - **连接池**：进程级 `ConnectionPool(min_size=1, max_size=8)`；每请求借一条连接（`autocommit=False`），只读函数不开显式事务，写函数在 service 内 `with conn.transaction():`。

@@ -170,7 +170,7 @@ CREATE INDEX IF NOT EXISTS ix_chat_messages_room_time ON chat_messages (room_id,
 ```
 backend/
 ├─ app/db/sql/001_schema.sql          # §3 的 DDL（逐字）
-├─ app/db/sql/002_seed.sql            # 演示账号 3 个、示例房间 3 个、历史消息 12 条、1 个已结束房间 + 纪要
+├─ app/db/sql/002_seed.sql            # 演示账号 3 个、示例房间 3 个、历史消息 12 条、1 个已结束房间（纪要属 M4，本轮无该表）
 ├─ app/db/pool.py                     # 连接池
 ├─ app/db/migrate.py                  # 迁移与种子
 ├─ app/repositories/rooms.py          # 本模块全部 SQL 绑定
@@ -242,6 +242,8 @@ backend/
 
 事务约定：`create_room / approve_join_request / reject_join_request / leave_room / end_room / kick_member / set_member_role / transfer_host / redeem_invite` 全部在**单个事务**内完成（service 内 `with conn.transaction():`）；只读函数不显式开事务。
 
+> 本页不设 §6.5：原 §6.5 `app/services/livekit.py` 属 M2，已随邀请/踢人一起移出 → `docs/99-archive/r001-ahead-m2-m3-rooms.md` §6.5。
+
 ### 6.6 `app/schemas/rooms.py`（Pydantic v2）
 
 | 模型 | 字段 | 说明 |
@@ -307,7 +309,7 @@ frontend/src/
 
 | 层 | 对象 | 判据 |
 | --- | --- | --- |
-| 迁移 | `python scripts/db_init.py --reset --seed` | 打印 7 张表行数：`users≥3`、`rooms≥3`、`chat_messages≥12`、`session_summaries≥1` |
+| 迁移 | `python backend/scripts/db_init.py --reset --seed` | 打印 7 张表行数：`schema_migrations=2`、`users≥3`、`rooms≥3`、`room_members≥6`、`join_requests≥3`、`chat_messages≥12`、`invites` 本轮为空（0，表先建、M2 才用） |
 | 单元/集成（pytest） | `tests/test_rooms_service.py` | 建房写 Host 成员（1 条 `active`）；重复申请→`ALREADY_PENDING`；`capacity` 满→`ROOM_FULL`（塞 8 人后第 9 个被拒）；`end_room` 后成员全 `inactive/room_ended`、`pending` 全 `cancelled`；非 Host `end_room`→`FORBIDDEN`；`HOST_CANNOT_LEAVE`；已结束房间 `request_join`→`ROOM_ENDED` |
 | 并发 | `tests/test_rooms_concurrency.py` | 两个线程同时批准最后一个名额：恰好 1 个成功、1 个 `ROOM_FULL`，库中活跃成员数 = `capacity` |
 | 冒烟（真实 HTTP） | `python scripts/smoke.py` | 每步状态码符合预期，末尾打印 `PASS n/n` |
@@ -321,6 +323,13 @@ frontend/src/
 | B2 | 数据层连接与迁移 | 已定：`psycopg` 连接池 + 手写 SQL + `schema_migrations` 版本表（ADR-0005 / 架构页 §7） | — | 已闭环 |
 | B3 | 路由与会话中间件形态 | 已定：FastAPI `Depends` + 签名 Cookie；开发与交付均走同源（Vite 代理 / 静态托管），不放开 CORS | — | 已闭环（架构页 §6） |
 | R-1 | 列表与详情的刷新策略 | 轮询 5s / 手动刷新 / SSE | 详情页轮询 5s（M3 起房内状态改走 LiveKit data channel） | 影响前端复杂度 |
+
+## 11. 变更记录
+
+| 日期 | 轮次 | 变更 | 原因 |
+| --- | --- | --- | --- |
+| 2026-09-17 | r001 | §9 迁移判据由「`session_summaries≥1`」改为 r001 实际 7 张表行数；命令补 `backend/` 前缀 | 纪要表属 M4，r001 不建该表，原判据无法满足 |
+| 2026-09-17 | r001 | §6 目录注释去掉种子里的「纪要」；补注 §6.5 已移出本页 | 同上（避免读者以为 r001 会写纪要数据） |
 
 ## What's next
 

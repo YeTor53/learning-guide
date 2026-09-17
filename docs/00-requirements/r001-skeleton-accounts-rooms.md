@@ -19,7 +19,7 @@ updated: 2026-09-17
 
 **做（M1）**
 - 仓库骨架：`backend/`（FastAPI + psycopg + 手写 SQL，见总设计 §2/§4）与 `frontend/`（React + TS + Vite），两进程开发、单源交付（uvicorn 托管 `dist`）。
-- 数据层：`001_schema.sql`（r001 所需表：`schema_migrations`、`users`、`rooms`、`room_members`、`join_requests`）+ `002_seed.sql`（演示账号、示例房间）+ `migrate.py`（`run_migrations`/`reset_schema`/`seed`/`table_counts`）+ `db_init.py`。
+- 数据层：`001_schema.sql`（7 张表，与模块页 §3 DDL 逐字一致：`schema_migrations`、`users`、`rooms`、`room_members`、`join_requests`、`invites`、`chat_messages`；其中 `invites` 本轮只建表不使用）+ `002_seed.sql`（3 个演示账号、3 个示例房间、6 条成员、3 条申请、12 条历史消息）+ `migrate.py`（`run_migrations`/`reset_schema`/`seed`/`table_counts`）+ `db_init.py`。
 - 账户：注册、登录、登出、当前用户；scrypt 口令哈希；签名 Cookie 会话。
 - 房间：创建（主题/标题/简介）、列表（状态/主题/我的筛选、分页）、详情（成员列表）；房间生命周期 `active → ended` 与本轮结束流程（房间置 ended + 活跃成员转 `inactive/room_ended` + 待批申请转 `cancelled`，同一事务）。
 - 加入申请：提交（五种拦截与提示）、列表（房主/协管可见）、批准、拒绝；容量校验（`ROOM_FULL`）。
@@ -102,14 +102,14 @@ updated: 2026-09-17
 
 ## 8. 人工步骤与凭证约定
 
-- `backend/.env` 由 agent 生成模板（含 `DATABASE_URL` 占位与随机 `SESSION_SECRET`），**`lg_app` 密码由用户自己填入**（agent 不接触明文）。
+- 仓库根 `.env`（与 `.env.example` 同级，由 `app/config.py` 读取）由 agent 生成模板（含 `DATABASE_URL` 占位与随机 `SESSION_SECRET`），**`lg_app` 密码由用户自己填入**（agent 不接触明文）。
 - LiveKit Cloud 的 `LIVEKIT_*` 与 DeepSeek 的 `LLM_*` 本轮留空（M2/M4 前填）。
 
 ## 9. 实施顺序（每个 cp 一提交一 tag）
 
 | cp | 内容 | 完成判据 |
 | --- | --- | --- |
-| cp-r001-1 | 骨架与数据层：`config.py`/`pool.py`/`migrate.py`/`sql/*.sql`、`db_init.py`、`test_schema.py`、`requirements*.txt`（pip freeze）、`.env` 模板 | `db_init --reset --seed` 有真实输出；schema 断言全绿 |
+| cp-r001-1 | 骨架与数据层：`config.py`/`pool.py`/`migrate.py`/`sql/*.sql`、`api/{errors,envelope}.py`（骨架：`AppError` + 信封，`config.py` 依赖）、`db_init.py`、`test_schema.py`、`requirements*.txt`（pip freeze）、`.env` 模板与 `.env.example`（按架构页 §5 键表） | `python backend/scripts/db_init.py --reset --seed` 有真实输出；`pytest backend/tests -q` 全绿 |
 | cp-r001-2 | 账户：`security/*`、`services/auth.py`、`repositories/users.py`、`api/routers/auth.py`、`schemas/auth.py`、`test_auth_service.py` | 注册/登录/登出/me 全链路 + 401/409 用例通过 |
 | cp-r001-3 | 房间与申请：`services/rooms.py`、`repositories/rooms.py`、`api/routers/rooms.py`、`schemas/rooms.py`、服务层与并发用例 | 验收清单中房间/申请全部条目可勾选；并发用例通过 |
 | cp-r001-4 | 前端页面与冒烟：`frontend/` 5 页 + `http.ts`/hooks + `smoke.py` + README「怎么跑」 | `tsc`/`build` 全绿；`smoke.py` PASS n/n；9 步演示脚本走通 |
