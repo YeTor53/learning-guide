@@ -111,8 +111,9 @@ P3′、P5、P6、P9 已定（见 §4）；对应旧选项表作废。
 | `docs/00-requirements/r001-skeleton-accounts-rooms.md` | r001 | r001 需求单 | superseded | 需随总设计重写 |
 | `docs/02-modules/r001-rooms.md`（实现） | r001 | r001 | draft | 内容含 M2/M3 项（邀请、踢人、角色、移交），超出 r001 范围 |
 | `docs/02-modules/r001-rooms-features.md`（功能） | r001 | r001 | draft | 同上，F-06/F-07/F-10/F-11 属 M2 |
-| `docs/02-modules/r001-summaries.md`（实现） | r001 | **M4** | draft | **提前产出**：内容属 M4，却挂在 r001 名下 |
-| `docs/02-modules/r001-summaries-features.md`（功能） | r001 | **M4** | draft | 同上 |
+| ~~`docs/02-modules/r001-summaries.md`~~ → `docs/99-archive/r001-ahead-m4-summaries.md` | r001 | **M4** | **已归档**（backlog） | 提前产出（属 M4），已按 §8.3 B 归位 |
+| ~~`docs/02-modules/r001-summaries-features.md`~~ → `docs/99-archive/r001-ahead-m4-summaries-features.md` | r001 | **M4** | **已归档**（backlog） | 同上 |
+| `docs/02-modules/r001-rooms.md` / `-features.md` | r001 | r001 | draft | **已剥离 M2/M3 项** → `docs/99-archive/r001-ahead-m2-m3-rooms.md`（backlog）；r001 页现只含 M1 |
 | `docs/03-decisions/` ADR-0001~0004 | 混合 | 决策记录 | 0001/0002 accepted，0003/0004 proposed | 正常 |
 
 **结论**：跳步发生在「总设计（架构页）仍作废未重写」的情况下先产出了模块级功能/实现设计，且把 M4 的纪要设计、M2/M3 的房间能力混进了 r001 命名空间。
