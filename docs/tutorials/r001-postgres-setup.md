@@ -101,6 +101,8 @@ SESSION_SECRET=<我会用随机值生成>
 | 端口被占用（安装时提示换端口） | 记下实际端口，本教程所有命令与 `.env` 都用该端口 |
 | 服务没启动 | 服务管理器里启动 `postgresql-x64-17`；后端报 `OperationalError` 时先查服务 |
 | 中文乱码 | 建库时必须带 `ENCODING 'UTF8'`（§4 已含） |
+| **`CREATE DATABASE 无法在事务块中运行`（SQL state 25001）** | pgAdmin 的 Query Tool **Auto-commit 默认关闭** → 语句被包在事务里，而 `CREATE DATABASE` 按 PostgreSQL 规定不允许在事务块内执行（与 SQL 写法无关）。两条解法：① Query Tool 工具栏把 **Auto-commit** 打开，再**单独**执行这一条；② 改用 psql（默认自动提交）：`psql -U postgres -h 127.0.0.1 -p 5432 -c "CREATE DATABASE ..."` 或 `createdb -U postgres -O lg_app -E UTF8 -T template0 learning_guide`。同类的"不能进事务块"语句还有 `CREATE INDEX CONCURRENTLY`、`VACUUM`、`ALTER SYSTEM` |
+| Query Tool 是灰的/点不动 | pgAdmin 的 Query Tool 走 Tools 菜单或对象浏览器**某些节点的右键菜单**（官方文档口径）；必须先**连上服务器**（双击 `Servers > PostgreSQL 17` 输密码）并在树里选到 **数据库或更下面的节点**（如 `Databases > postgres`）|
 
 ## What's next
 
