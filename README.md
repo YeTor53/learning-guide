@@ -25,7 +25,8 @@
 
 - 需求单：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
 - 设计页：`docs/01-architecture/r001-app-architecture.md`（待重写）
-- 模块详细设计：`docs/02-modules/r001-rooms.md`（房间）、`docs/02-modules/r001-summaries.md`（纪要，实现于 M4）
+- 功能设计（做什么）：`docs/02-modules/r001-rooms-features.md`（房间）、`docs/02-modules/r001-summaries-features.md`（纪要，实现于 M4）
+- 实现设计（怎么做）：`docs/02-modules/r001-rooms.md`、`docs/02-modules/r001-summaries.md`
 
 ## 怎么跑
 

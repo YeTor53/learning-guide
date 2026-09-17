@@ -12,6 +12,8 @@ updated: 2026-09-17
 不在本页重复的：结果信封与后端目录总览（以重写后的 `docs/01-architecture/r001-app-architecture.md` 为准）、项目方向与里程碑（`docs/00-project/global-roadmap.md`）、纪要（`docs/02-modules/r001-summaries.md`）。
 本文对三项待拍板保持中立，只在 §10 标出分支点：LiveKit 来源（P3′）、PostgreSQL 落地（P9）、后端框架与迁移工具（P10）。
 
+> 功能行为、交互状态、按钮与提示文案以 **功能页** `docs/02-modules/r001-rooms-features.md` 为准；本页只讲怎么实现（数据模型 / 接口 / 函数路径）。
+
 ## 1. 范围与里程碑归属
 
 | 项 | 里程碑 | 本文是否给到实现级 |
