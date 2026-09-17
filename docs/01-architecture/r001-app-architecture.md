@@ -266,6 +266,41 @@ HTTP 请求 → 路由（解析 + 依赖注入：连接、当前用户）
 | LiveKit Cloud | 注册 → 建项目 → 抄 `LIVEKIT_URL/API_KEY/API_SECRET` 进 `.env` | **用户操作**（M2 前完成即可） |
 | LLM Key | DeepSeek Key 进 `.env` | 用户操作（M4 前完成即可） |
 
+### 12.1 PostgreSQL 安装器逐页选项（EDB 安装包；2026-09-17 补充）
+
+| 安装器页面 | 建议选择 | 原因 |
+| --- | --- | --- |
+| Installation Directory | 默认 `C:\Program Files\PostgreSQL\17` | 与官方文档一致，出问题好排查 |
+| Select Components | `PostgreSQL Server` ✔（必选）；`Command Line Tools` ✔（要 `psql`，便于取证与核对）；`pgAdmin 4` 可选（建议 ✔，方便肉眼看表）；**`Stack Builder` 取消勾选** | Stack Builder 只用来装**附加包**（PostGIS、psqlODBC、Web 栈、EDB 工具等），本项目一律不需要 |
+| Data Directory | 默认 | — |
+| Password | 给 `postgres` 超级用户设密码并**记牢**；**不要发到聊天/文档/仓库** | 建库建角色时要用（本机超级用户凭据不进任何交付物） |
+| Port | `5432`（默认） | 与 `.env` 的 DSN 一致 |
+| Advanced Options / Locale | 默认（UTF8） | 避免排序/编码差异带来的意外 |
+| 安装完成页 | **取消** 「Launch Stack Builder at exit?」 | 同 Stack Builder 一行 |
+| 若 Stack Builder 已被打开 | 不勾任何分类 → 直接 Cancel / Quit（Next 会保持灰色） | 同上；误装也只是多几个包，但没必要、拖慢安装 |
+
+安装后核对（任一条不过就别往下走）：
+
+```bash
+psql --version                       # 客户端可用
+sc query postgresql-x64-17           # 服务状态应为 RUNNING（服务名随版本号）
+netstat -ano | findstr :5432         # 端口在监听
+```
+
+建库与建角色（在「SQL Shell (psql)」里以 `postgres` 身份执行；密码自己设，不经他人）：
+
+```sql
+CREATE ROLE lg_app LOGIN PASSWORD '你自己设的密码';
+CREATE DATABASE learning_guide OWNER lg_app ENCODING 'UTF8';
+\q
+```
+
+然后把连接串写进 `.env`（本机文件，不入库）：
+
+```
+DATABASE_URL=postgresql://lg_app:你自己设的密码@127.0.0.1:5432/learning_guide
+```
+
 ## 13. 失败与边界（架构级）
 
 | 情况 | 期望行为 |
