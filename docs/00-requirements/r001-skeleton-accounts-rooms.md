@@ -95,7 +95,7 @@ updated: 2026-09-17
 | --- | --- |
 | 本需求单：转 `approved` → 验收逐条勾选（带证据） | 轮次开始 / 结束 |
 | 总设计 `r001-app-architecture.md`：转 `approved`；实现偏差回填 | 批准时 / 结束 |
-| 模块页 `r001-rooms.md`（实现回填：设计 vs 实际 + 变更记录）、`r001-rooms-features.md`（功能核对） | 每 cp |
+| 模块页 `r001-rooms.md`（实现回填：设计 vs 实际 + 变更记录）、`r001-rooms-features.md`（功能核对）；账户两页 `r001-accounts.md` / `r001-accounts-features.md`（cp-r001-2 后已回填，均 approved） | 每 cp |
 | 教程页 `docs/tutorials/r001-postgres-setup.md`（已建，随实际卡点补充）；如新增运行步骤则加 `r001-run-and-demo.md` | 实现期 |
 | `README.md`「怎么跑」+ `AGENTS.md` 的 `<check>` 与实际命令核对 | 结束 |
 | `global-roadmap.md` §3 里程碑 M1 状态回填 | 结束 |

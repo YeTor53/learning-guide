@@ -110,13 +110,14 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 文档 | 前缀 | 应有归属 | 现状 | 问题 |
 | --- | --- | --- | --- | --- |
 | `docs/00-project/global-roadmap.md` | global | 项目级 | draft，含已决/待拍板 | 正常（P3′/P9/P10/P12 已定；P11 暂缓） |
-| `docs/01-architecture/r001-app-architecture.md` | r001 | r001 总设计 | **已重写**（2026-09-17，draft 待复核） | 已补齐总设计，含分层/目录/会话/数据层/验证矩阵/环境准备 |
-| `docs/00-requirements/r001-skeleton-accounts-rooms.md` | r001 | r001 需求单 | **已重写**（2026-09-17，draft 待批准） | 正常（与总设计、模块页口径一致） |
-| `docs/02-modules/r001-rooms.md`（实现） | r001 | r001 | draft（**已剥离 M2/M3**，只含 M1） | 正常 |
-| `docs/02-modules/r001-rooms-features.md`（功能） | r001 | r001 | draft（**已剥离 M2/M3**，只含 M1） | 正常 |
+| `docs/01-architecture/r001-app-architecture.md` | r001 | r001 总设计 | **已重写并 approved**（2026-09-17） | 含分层/目录/会话/数据层/验证矩阵/环境准备 |
+| `docs/00-requirements/r001-skeleton-accounts-rooms.md` | r001 | r001 需求单 | **已重写并 approved**（2026-09-17） | 正常（与总设计、模块页口径一致） |
+| `docs/02-modules/r001-rooms.md`（实现） | r001 | r001 | approved（**已剥离 M2/M3**，只含 M1） | 正常 |
+| `docs/02-modules/r001-rooms-features.md`（功能） | r001 | r001 | approved（**已剥离 M2/M3**，只含 M1） | 正常 |
+| `docs/02-modules/r001-accounts.md`（实现） | r001 | r001 | **已新建**（approved，cp-r001-2 后按代码回填） | 补齐账户模块的接口/函数签名事实源 |
+| `docs/02-modules/r001-accounts-features.md`（功能） | r001 | r001 | **已新建**（approved） | 补齐账户模块的行为与文案事实源 |
 | ~~`docs/02-modules/r001-summaries.md`~~ → `docs/99-archive/r001-ahead-m4-summaries.md` | r001 | **M4** | **已归档**（backlog） | 提前产出（属 M4），已按 §8.3 B 归位 |
 | ~~`docs/02-modules/r001-summaries-features.md`~~ → `docs/99-archive/r001-ahead-m4-summaries-features.md` | r001 | **M4** | **已归档**（backlog） | 同上 |
-| `docs/02-modules/r001-rooms.md` / `-features.md` | r001 | r001 | draft | **已剥离 M2/M3 项** → `docs/99-archive/r001-ahead-m2-m3-rooms.md`（backlog）；r001 页现只含 M1 |
 | `docs/03-decisions/` ADR-0001~0006 | 混合 | 决策记录 | 0001~0003/0005/0006 accepted；0004 proposed（P11 暂缓） | 正常 |
 
 **结论**：跳步发生在「总设计（架构页）仍作废未重写」的情况下先产出了模块级功能/实现设计，且把 M4 的纪要设计、M2/M3 的房间能力混进了 r001 命名空间。

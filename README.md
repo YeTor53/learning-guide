@@ -25,7 +25,8 @@
 
 - 总设计（本轮，待批准）：`docs/01-architecture/r001-app-architecture.md`
 - 需求单（本轮，待批准）：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
-- 模块功能设计：`docs/02-modules/r001-rooms-features.md`；模块实现设计：`docs/02-modules/r001-rooms.md`
+- 房间模块：功能设计 `docs/02-modules/r001-rooms-features.md`；实现设计 `docs/02-modules/r001-rooms.md`
+- 账户模块：功能设计 `docs/02-modules/r001-accounts-features.md`；实现设计 `docs/02-modules/r001-accounts.md`
 - 决策记录：`docs/03-decisions/`（ADR-0001~0006）
 - 归档（非本轮）：`docs/99-archive/`（房间 M2/M3 能力、纪要 M4）
 
