@@ -2,7 +2,7 @@
 
 围绕一门学习主题的多人音视频小组讨论室：账户、房间、等候室审批、三种角色权限、群聊、举手与焦点发言、屏幕共享、服务端踢人、房间结束后的 LLM 讨论纪要。
 
-> 当前状态：**初始化**（仓库骨架 + 文档树 + 项目规划草稿，待批准）。尚未进入实现。
+> 当前状态：**r001 文档待批准**（总设计 + 需求单均已重写，`status: draft`），尚未进入实现。
 
 ## 项目地图
 
@@ -19,14 +19,14 @@
 
 ## 当前轮次
 
-`r001`（里程碑 M1：骨架 · 账户 · 房间）—— **总设计已重写完成，`status: draft` 待复核**；需求单待按总设计重写（顺序见 `docs/00-project/global-roadmap.md` §8）。
+`r001`（里程碑 M1：骨架 · 账户 · 房间）—— **总设计与需求单均已重写完成，`status: draft` 待批准**（产出顺序见 `docs/00-project/global-roadmap.md` §8）。
 
-已定：题目 A / 位置 / 数据库 PostgreSQL（本机安装）/ 前端 React + 后端 Python（FastAPI）/ 数据层=手写 SQL + 轻量版本表 / LiveKit=Cloud 为主 + 自建留档 / 纪要=DeepSeek / 加分项=增量项 / 提交物 = zip + GitHub 仓库 + npm 包（细则待 P11）。
+已定：题目 A / 位置 / 数据库 PostgreSQL（本机安装，17.11 已就绪）/ 前端 React + 后端 Python（FastAPI）/ 数据层=手写 SQL + 轻量版本表 / LiveKit=Cloud 为主 + 自建留档 / 纪要=DeepSeek / 加分项=增量项 / 运行环境=conda 环境 `learningguide`（ADR-0006）/ 提交物 = zip + GitHub 仓库 + npm 包（细则 P11 **暂缓**）。
 
-- 总设计（本轮，待复核）：`docs/01-architecture/r001-app-architecture.md`
-- 需求单：`docs/00-requirements/r001-skeleton-accounts-rooms.md`（superseded，待重写）
+- 总设计（本轮，待批准）：`docs/01-architecture/r001-app-architecture.md`
+- 需求单（本轮，待批准）：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
 - 模块功能设计：`docs/02-modules/r001-rooms-features.md`；模块实现设计：`docs/02-modules/r001-rooms.md`
-- 决策记录：`docs/03-decisions/`（ADR-0001~0005）
+- 决策记录：`docs/03-decisions/`（ADR-0001~0006）
 - 归档（非本轮）：`docs/99-archive/`（房间 M2/M3 能力、纪要 M4）
 
 ## 怎么跑

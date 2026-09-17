@@ -320,7 +320,7 @@ DATABASE_URL=postgresql://lg_app:你自己设的密码@127.0.0.1:5432/learning_g
 | --- | --- | --- | --- |
 | P11 | 提交物细则（npm 发布对象 / 仓库公开性 / zip 主次） | 待拍板 | 只影响 §4 目录（是否新增包目录）与 README「交付」章节，不阻塞 r001 实现 |
 | — | 会话方案最终形态（Cookie 签名） | 本文已定（§6），如改为 `jose`/Bearer 需改 §6 与前端 `http.ts` | 影响安全叙事与代码量 |
-| — | PostgreSQL 安装方式（winget / 图形 / 免安装 zip） | 待用户选 | 影响 §12 步骤 1 的命令 |
+| — | PostgreSQL 安装方式 | **已定且已完成**：EDB 图形安装包 → 本机 17.11、服务 RUNNING、`lg_app`/`learning_guide` 已建 | — |
 
 ## What's next
 
