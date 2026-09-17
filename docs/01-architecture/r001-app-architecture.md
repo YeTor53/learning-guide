@@ -38,6 +38,7 @@ psycopg 3 连接池 ──> PostgreSQL（本机服务, :5432, 库 learning_guide
 | 后端框架 | FastAPI + uvicorn | 同步 `def` 路由（FastAPI 会在线程池执行）：本作业规模不需要 async，避免 async 驱动/同步池混用的心智负担；OpenAPI 自动生成可作为接口事实源 |
 | 数据库驱动 | `psycopg` 3（`psycopg[binary,pool]`） | 同步连接池，最少概念；SQL 全手写（ADR-0005） |
 | 迁移 | 自研 `app/db/migrate.py` + `schema_migrations` 版本表 | 前进式：按文件名顺序执行未应用版本；开发期 `--reset` 全量重建 |
+| Python 环境 | **conda 环境 `learningguide`**（Python 3.11.16，ADR-0006） | 后端运行与测试都在该环境；PyCharm 选它作解释器；**不用** `backend/.venv` |
 | 配置 | `python-dotenv` + `app/config.py` | 全仓**只有 `config.py` 读 `process.env`**；缺关键项启动即失败（不静默兜底） |
 | 前端 | React + TypeScript + Vite | SPA；`react-router-dom` 路由；`@tanstack/react-query` 负责取数/缓存/轮询 |
 | 前端样式 | 单文件 CSS + CSS Modules | 不引 UI 框架，控制体量与风格争议 |
@@ -45,7 +46,7 @@ psycopg 3 连接池 ──> PostgreSQL（本机服务, :5432, 库 learning_guide
 | 测试 | pytest + FastAPI `TestClient`（httpx） | 服务层与接口层分开测；schema 与约束用断言验证 |
 | 运行/部署 | 开发：Vite dev + uvicorn `--reload`；演示：uvicorn 直接托管 `frontend/dist`（同源） | 演示一条命令起后端即可；Compose 属 M5 加分项 |
 
-新增依赖（**安装前需用户批准**）：后端 `fastapi`、`uvicorn[standard]`、`psycopg[binary,pool]`、`python-dotenv`；开发用 `pytest`、`httpx`。前端 `react`、`react-dom`、`react-router-dom`、`@tanstack/react-query`；开发用 `vite`、`typescript`、`@vitejs/plugin-react`、`@types/react`、`@types/react-dom`。
+后端依赖（**已装入 conda 环境 `learningguide`**，见 ADR-0006）：`fastapi`、`uvicorn[standard]`、`psycopg[binary,pool]`、`python-dotenv`；开发用 `pytest`、`httpx`。`requirements.txt` / `requirements-dev.txt` 由 cp-r001-1 用 `pip freeze` 生成。前端 `react`、`react-dom`、`react-router-dom`、`@tanstack/react-query`；开发用 `vite`、`typescript`、`@vitejs/plugin-react`、`@types/react`、`@types/react-dom`。
 
 ## 3. 分层与依赖规则（硬约束）
 
@@ -65,9 +66,8 @@ psycopg 3 连接池 ──> PostgreSQL（本机服务, :5432, 库 learning_guide
 LearningGuide-LiveKit/
 ├─ README.md  AGENTS.md  .env.example  .gitignore  .gitattributes
 ├─ backend/
-│  ├─ requirements.txt           # 运行依赖（固定主版本）
+│  ├─ requirements.txt           # 运行依赖（pip freeze 结果，固定版本）
 │  ├─ requirements-dev.txt       # pytest / httpx
-│  ├─ .venv/                     # 项目内虚拟环境（.gitignore）
 │  ├─ app/
 │  │  ├─ main.py                 # create_app()：装配路由/异常处理/静态托管/生命周期
 │  │  ├─ config.py               # 唯一的进程环境读取处
@@ -242,7 +242,7 @@ HTTP 请求 → 路由（解析 + 依赖注入：连接、当前用户）
 
 | 层 | 命令 | 判据 |
 | --- | --- | --- |
-| 依赖 | `pip install -r backend/requirements.txt -r backend/requirements-dev.txt` | 安装成功（需用户批准） |
+| 依赖 | `conda activate learningguide` 后 `pip install -r backend/requirements.txt -r backend/requirements-dev.txt -i https://pypi.tuna.tsinghua.edu.cn/simple` | 已装齐（ADR-0006 有版本表）；换机时按此复现 |
 | 数据 | `python backend/scripts/db_init.py --reset --seed` | 打印各表行数（`users≥3`、`rooms≥3`） |
 | schema 断言 | `pytest backend/tests/test_schema.py -q` | 表/列/约束存在；部分唯一索引真挡住重复 pending；CHECK 真挡住非法状态 |
 | 服务层 | `pytest backend/tests/test_rooms_service.py backend/tests/test_auth_service.py -q` | 规则用例全绿（容量、结束连带动作、Host 不可离开等） |
@@ -260,7 +260,7 @@ HTTP 请求 → 路由（解析 + 依赖注入：连接、当前用户）
 | --- | --- | --- |
 | 装 PostgreSQL | `winget install PostgreSQL.PostgreSQL.17`（或图形安装包 / 官方免安装 zip） | **需用户批准**（下载约 300MB） |
 | 建库建角色 | `CREATE ROLE lg_app LOGIN PASSWORD '…';` `CREATE DATABASE learning_guide OWNER lg_app;` | 装好后由 agent 执行（需授权） |
-| 后端依赖 | `python -m venv backend/.venv` + `pip install -r …` | 需用户批准 |
+| 后端环境 | `conda create -n learningguide python=3.11 -y` + 清华源 `pip install -r backend/requirements.txt` | **已完成**（ADR-0006：环境已建、依赖已装） |
 | 前端依赖 | `cd frontend && npm install` | 需用户批准 |
 | `.env` | 复制 `.env.example` → `.env` 并填 `DATABASE_URL`、`SESSION_SECRET`（随机生成） | agent 生成占位、用户确认 |
 | LiveKit Cloud | 注册 → 建项目 → 抄 `LIVEKIT_URL/API_KEY/API_SECRET` 进 `.env` | **用户操作**（M2 前完成即可） |

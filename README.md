@@ -31,4 +31,10 @@
 
 ## 怎么跑
 
-M1 落地后回填：环境变量（`.env.example` → `.env`）、安装、启动命令、两个浏览器演示完整路径。
+（cp-r001-4 回填完整步骤，当前占位）
+
+- 后端运行环境：conda 环境 `learningguide`（Python 3.11.16，见 `docs/03-decisions/r001-adr-0006-python-env-conda.md`）
+  `conda activate learningguide`；或在 PyCharm 里选该环境作解释器
+- 本机 PostgreSQL 17.11（服务 `postgresql-x64-17`），库 `learning_guide`、角色 `lg_app`
+- 密钥与连接串放本机 `.env`（不入库）；示例见 `.env.example`
+

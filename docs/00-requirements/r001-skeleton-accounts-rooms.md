@@ -68,7 +68,8 @@ updated: 2026-09-17
 ## 4. 影响面
 
 - 新增 `backend/`、`frontend/` 两棵源码树与配置（`.env.example` 已存在，本轮补 `DATABASE_URL`/`SESSION_SECRET` 说明）。
-- 新增依赖（**安装前需批准**）：后端 `fastapi`、`uvicorn[standard]`、`psycopg[binary,pool]`、`python-dotenv`、开发 `pytest`、`httpx`；前端 `react`、`react-dom`、`react-router-dom`、`@tanstack/react-query`、`vite`、`typescript`、`@vitejs/plugin-react`、`@types/*`。
+- 后端运行环境：**conda 环境 `learningguide`（Python 3.11.16）已建，后端依赖已装齐**（ADR-0006）；`requirements*.txt` 由 cp-r001-1 用 `pip freeze` 生成。
+- 前端依赖（**安装前需批准**）：`react`、`react-dom`、`react-router-dom`、`@tanstack/react-query`、`vite`、`typescript`、`@vitejs/plugin-react`、`@types/*`（装在 `frontend/node_modules`）。
 - 环境：本机 PostgreSQL 17.11 已就绪（服务 RUNNING、5432 可连、`lg_app` 与 `learning_guide` 已建）。
 - 不改动既有文档结构；归档页（`docs/99-archive/`）本轮不动。
 
@@ -108,7 +109,7 @@ updated: 2026-09-17
 
 | cp | 内容 | 完成判据 |
 | --- | --- | --- |
-| cp-r001-1 | 骨架与数据层：`config.py`/`pool.py`/`migrate.py`/`sql/*.sql`、`db_init.py`、`test_schema.py`、`.env` 模板、`.gitignore` 核对 | `db_init --reset --seed` 有真实输出；schema 断言全绿 |
+| cp-r001-1 | 骨架与数据层：`config.py`/`pool.py`/`migrate.py`/`sql/*.sql`、`db_init.py`、`test_schema.py`、`requirements*.txt`（pip freeze）、`.env` 模板 | `db_init --reset --seed` 有真实输出；schema 断言全绿 |
 | cp-r001-2 | 账户：`security/*`、`services/auth.py`、`repositories/users.py`、`api/routers/auth.py`、`schemas/auth.py`、`test_auth_service.py` | 注册/登录/登出/me 全链路 + 401/409 用例通过 |
 | cp-r001-3 | 房间与申请：`services/rooms.py`、`repositories/rooms.py`、`api/routers/rooms.py`、`schemas/rooms.py`、服务层与并发用例 | 验收清单中房间/申请全部条目可勾选；并发用例通过 |
 | cp-r001-4 | 前端页面与冒烟：`frontend/` 5 页 + `http.ts`/hooks + `smoke.py` + README「怎么跑」 | `tsc`/`build` 全绿；`smoke.py` PASS n/n；9 步演示脚本走通 |
