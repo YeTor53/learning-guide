@@ -105,13 +105,64 @@ P10 决定「后端怎么碰数据库、怎么做迁移」。本文给逐维度�
 1. 本机无 SQLAlchemy：可用 `uv` 建**临时 venv** 装 `sqlalchemy`，跑同一套 CRUD 的三方对比（手写 / Core / ORM），全程不影响项目环境 —— 需用户授权（涉及下载安装）。
 2. 本机无 PostgreSQL（P9=A 待执行）：库装好后在**真库**上跑 8 人房间规模的真实脚本，测单请求端到端耗时（含往返），产出一张"本项目真实语句"的性能表。
 
+## 8. 「迁移用 D（Alembic）」的复杂度核算（2026-09-17）
+
+本节回答"如果把迁移器换成 Alembic（方案 D），复杂度是多少"。事实来源：Alembic 官方文档（tutorial / autogenerate / operation reference）与 PyPI 元数据，**非实测**（本机未装 Alembic，实测方案见 §8.5）。
+
+### 8.1 D 的搭建面（`alembic init` 会生成什么）
+
+| 产物 | 作用 | 我们要动的 |
+| --- | --- | --- |
+| `alembic.ini` | 主配置（含 `sqlalchemy.url`） | 要改：URL、日志级别 |
+| `alembic/env.py` | 运行环境脚本 | 要写：把 DSN 从 `.env` 读进来、`target_metadata=None`（不用 ORM）、事务/DDL 行为确认 |
+| `alembic/script.py.mako` | 迁移文件模板 | 一般不动 |
+| `alembic/README` | 模板自带说明 | 与项目 README 二选一，避免双源 |
+| `alembic/versions/*.py` | 每个迁移一个文件（`upgrade()` / `downgrade()`） | **每个迁移手写**，DDL 以字符串形式写在 Python 里 |
+| `pyproject.toml` | 现代模板附带 | 与项目依赖清单合并 |
+
+### 8.2 依赖与经济性
+
+- `alembic 1.20.0` 的依赖是 **`SQLAlchemy>=2.0` + `Mako` + `typing-extensions`** → 方案 D 即便查询全手写，也要引入 **SQLAlchemy 与 Mako** 两个新依赖。
+- **autogenerate 用不上**：官方定义为「把数据库当前 schema 与**应用里的 ORM MetaData** 对比后生成迁移」。我们没有 ORM 模型 → 这个"最大卖点"归零，每个迁移仍要**手写 SQL**（等于 D 只买到"版本链 + downgrade"）。
+- 离线模式（`--sql`）还有额外约束：CRUD 语句里的字面值默认走绑定参数，生成 SQL 脚本时要靠 `inline_literal` 处理，属于"用了才知道"的坑。
+
+### 8.3 复杂度对比（同一件事的两种做法）
+
+| 维度 | A：手写 SQL + 轻量版本表 | D：手写 SQL + Alembic |
+| --- | --- | --- |
+| 一次性搭建 | 1 个 `migrate.py`（4 个函数，约 60 行）+ 1 个 CLI | 6 项脚手架 + `env.py` 配置 + `.ini`/`.env` 双配置 + README 一节 |
+| 新增依赖 | 0 | SQLAlchemy、alembic、Mako |
+| 每个迁移 | 追加 1 个 `NNN_*.sql` 文件 | 1 个 Python 文件，DDL 写成字符串，多语句需**逐条** `op.execute(...)`；downgrade 也要手写 |
+| DDL 的可读性 | SQL 文件逐行可读（交付物即答案） | SQL 藏在 Python 字符串里，评审需点进迁移文件看 |
+| 回滚能力 | 无（开发期 `--reset` 重建） | 有（`alembic downgrade -1`） |
+| 版本查询 | `schema_migrations` 一行一版（可 `SELECT`） | `alembic current/history` |
+| 配置一致性风险 | 单处（`.env` 的 DSN） | 两处（应用 DSN 与 `alembic.ini`/`env.py`）→ 需手工保证不漂移 |
+| 首次成本（估） | 1~2 小时（含 schema 断言测试） | **3~5 小时**（含学习与配错排查）≈ A 的 2~3 倍 |
+| 后续每迁移成本 | 写 SQL 即可 | 写 SQL + 样板 + 记得补 downgrade |
+
+### 8.4 结论与替代
+
+- 方案 D 买到的是 **downgrade + 版本链工具**；代价是 **2~3 倍首次搭建、3 个新依赖、SQL 从"交付物"退化成"藏在迁移文件里的字符串"**，且 autogenerate 对无 ORM 的我们无效。
+- 题面只要求「可运行的 SQL Schema + **迁移或初始化脚本**」，不要求回滚；我们也没有多环境 —— 所以 D 的收益在本作业里落不到实处。
+- **推荐替代（A+，零新依赖拿到大部分展示效果）**：保留 A 的写法，把自研 CLI 做成 Alembic 风格：
+  - `python -m app.db.migrate upgrade`（按版本顺序应用未应用版本）
+  - `python -m app.db.migrate current` / `list`（打印当前版本与全部版本）
+  - `python -m app.db.migrate downgrade <版本>`（可选：每个版本可配一个 `NNN_*_down.sql`，有则执行、无则明确报"该版本不支持回滚"）
+  - 版本表继续用 `schema_migrations`（可 `SELECT * FROM schema_migrations` 展示）
+  这样交付里既有"版本链 + 可选回滚 + 命令式操作"，又不引入依赖、不牺牲 SQL 可读性，README 也好写。
+
+### 8.5 若要实测
+
+本机未装 Alembic/SQLAlchemy。授权后用 `uv` 建**临时 venv**：`alembic init` 跑一遍 → 数产物、写一个真实迁移（含部分唯一索引与 CHECK）→ 记录"配错到跑通"的实际耗时与踩坑清单；不触碰项目环境。结论可在 30~40 分钟内给出。
+
 ## 6. 待拍板
 
 | 编号 | 事项 | 选项 | 建议值 |
 | --- | --- | --- | --- |
-| P10 | 数据访问层与迁移 | A 手写 SQL + 版本表 / B SQLAlchemy Core + Alembic / C ORM + Alembic / D 手写 + Alembic 迁移 | **A** |
+| P10 | 数据访问层与迁移 | A 手写 SQL + 版本表 / B SQLAlchemy Core + Alembic / C ORM + Alembic / D 手写 + Alembic 迁移 / **A+ 手写 SQL + 自研 Alembic 风格 CLI** | **A+**（见 §8.4；A 的写法 + 版本链 + 可选回滚，零新依赖） |
 
 ## 变更记录
 
 - 2026-09-17 建立（proposed，待拍板）。
+- 2026-09-17 追加 §8：方案 D（Alembic）的复杂度核算与 A+ 替代（脚手架产物、依赖、autogenerate 前提、首次成本 2~3 倍）。
 - 2026-09-17 追加 §7：CRUD 速度的成本结构、本机实测数字与折算结论（速度不是决策依据；待装环境后补真库对比）。
