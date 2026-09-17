@@ -1,8 +1,8 @@
 ---
-title: r001 纪要功能详细设计（模块页）
+title: r001 纪要功能实现设计（M4 设计预告，已归档）
 description: 讨论纪要的触发链路、输入装配与裁剪、Prompt 设计、LLM 调用封装、落库与重试、函数级实现路径与验证。
 type: reference
-status: draft
+status: backlog
 owner: 陀梓皓
 updated: 2026-09-17
 ---
@@ -12,7 +12,9 @@ updated: 2026-09-17
 命名说明：本文**出现轮次为 r001**（本轮起草），**实现落在 M4**（`global-roadmap.md` §3）；模块页随实现回填。
 不在本页重复的：房间生命周期与规则（`docs/02-modules/r001-rooms.md`）、结果信封与目录总览（重写后的架构页）。
 
-> 功能行为、界面状态与内容规格以 **功能页** `docs/02-modules/r001-summaries-features.md` 为准；本页只讲怎么实现。
+> 功能行为、界面状态与内容规格以同目录功能页 `r001-ahead-m4-summaries-features.md` 为准；本页只讲怎么实现。
+
+> ⚠ **已归档（2026-09-17）**：本文属 **M4** 范围，在 r001 阶段提前产出，按 `global-roadmap.md` §8.3 方案 B 归入 `docs/99-archive/`（`status: backlog`）。**不是本轮（r001）方案**；M4 立轮次时移回 `docs/02-modules/` 并按该轮号改名。
 
 ## 1. 目标与验收
 

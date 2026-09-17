@@ -13,6 +13,7 @@ updated: 2026-09-17
 本文对三项待拍板保持中立，只在 §10 标出分支点：LiveKit 来源（P3′）、PostgreSQL 落地（P9）、后端框架与迁移工具（P10）。
 
 > 功能行为、交互状态、按钮与提示文案以 **功能页** `docs/02-modules/r001-rooms-features.md` 为准；本页只讲怎么实现（数据模型 / 接口 / 函数路径）。
+> **范围**：本文只覆盖 r001（M1）；邀请/踢人/角色/移交等 M2 内容已移至 `docs/99-archive/r001-ahead-m2-m3-rooms.md`（`status: backlog`）。
 
 ## 1. 范围与里程碑归属
 
@@ -21,9 +22,9 @@ updated: 2026-09-17
 | 建房（主题/标题/简介）、列表、详情 | M1 | ✅ |
 | 加入申请：提交 / 列表 / 批准 / 拒绝 | M1 | ✅ |
 | 离开房间、结束房间（含连带动作） | M1 | ✅ |
-| 房间码生成与邀请（限时链接/房间码 + 过期） | M2 | ✅（表与函数已定，API 属 M2） |
-| 踢人（服务端强制断开）、角色任命、Host 移交 | M2 | ✅（签名已定，实现属 M2） |
-| 入房环节「房间已满」提示、举手与焦点（LiveKit 自定义能力） | M2/M3 | 不在本文（见能力页） |
+| 入房环节「房间已满」提示、音视频/屏幕共享/举手/焦点（LiveKit 能力） | M2/M3 | 不在本文（见各自能力页） |
+| 房间码与邀请（限时链接）、踢人、角色任命、Host 移交 | M2 | **已移出本文** → `docs/99-archive/r001-ahead-m2-m3-rooms.md` |
+| 文字群聊实时收发 | M3 | 本文只保留「详情页只读展示最近 20 条」（表与读路径）；写入与实时收发属 M3 |
 
 明确不做：房间删除、重开已结束房间、房间自动结束、公网部署、多租户。
 
@@ -41,7 +42,7 @@ updated: 2026-09-17
 
 ## 3. 数据模型（PostgreSQL）
 
-> `session_summaries`（纪要表）属纪要模块，定义见 `docs/02-modules/r001-summaries.md` §3（单一事实源，不在此复制）。
+> `session_summaries`（纪要表）属 M4，定义见归档页 `docs/99-archive/r001-ahead-m4-summaries.md` §3（单一事实源，不在此复制）。
 
 ```sql
 -- 001_schema.sql（逐字落库；PostgreSQL 15+）
@@ -143,13 +144,8 @@ CREATE INDEX IF NOT EXISTS ix_chat_messages_room_time ON chat_messages (room_id,
 | 看申请列表 | Host/Moderator | 房间存在 | 只读（`status` 可选过滤） | `FORBIDDEN` |
 | 批准 | Host/Moderator | 房间 `active`；申请 `pending`；活跃人数 < `capacity` | **锁 `rooms` 行** → 写成员 `participant/active` + 申请置 `approved`（`decided_by=actor`） | `FORBIDDEN` / `ROOM_ENDED` / `ROOM_FULL` / `ALREADY_MEMBER` / `CONFLICT` |
 | 拒绝 | Host/Moderator | 房间 `active`；申请 `pending` | 申请置 `rejected`（`decided_by=actor`） | `FORBIDDEN` / `ROOM_ENDED` / `CONFLICT` |
-| 建邀请 | Host/Moderator | 房间 `active`；TTL ∈ [5, 1440] 分钟 | 写 `invites`（`code` 6 位、`expires_at`、`max_uses`） | `FORBIDDEN` / `ROOM_ENDED` |
-| 用邀请 | 登录用户 | 邀请未过期、`used_count < max_uses`、房间 `active`、非活跃成员 | `used_count += 1` + 写成员（或直接进入申请流程，见 R-2） | `INVITE_INVALID` / `ROOM_ENDED` / `ALREADY_MEMBER` |
 | 离开 | 本人（非 Host） | 房间 `active`；是活跃成员 | 成员置 `inactive/self_leave` + `left_at` | `NOT_MEMBER` / `HOST_CANNOT_LEAVE` / `ROOM_ENDED` |
 | 结束房间 | **仅 Host** | 房间 `active` | **锁 `rooms` 行**：① `status=ended`、`ended_at`；② 全部活跃成员 → `inactive/room_ended`；③ 全部 `pending` 申请 → `cancelled`（`decided_by=NULL` 表示系统）；④ 提交后（M2）：`delete_room` 强制断开；⑤ 提交后（M4）：触发纪要生成 | `FORBIDDEN` / `ROOM_ENDED` |
-| 踢人（M2） | Host/Moderator | 目标为活跃成员且非 Host | 成员置 `inactive/kicked`；事务提交后调 LiveKit 移除参与者 | `FORBIDDEN` / `NOT_MEMBER` / `ROOM_ENDED` |
-| 改角色（M2） | Host | 目标为活跃成员 | 更新 `role`（`participant↔moderator`） | `FORBIDDEN` |
-| 移交 Host（M2） | Host | 目标为活跃成员 | 双方 `role` 互换（Host ↔ Moderator/Participant） | `FORBIDDEN` |
 
 角色权限矩阵与生命周期转移细节沿用已确认口径（三个角色 × `active`/`ended` 两态），已在 `global-roadmap.md` §2 与本文 §4 表内完全覆盖，不再另开一节复制。
 
@@ -168,11 +164,6 @@ CREATE INDEX IF NOT EXISTS ix_chat_messages_room_time ON chat_messages (room_id,
 | POST | `/api/join-requests/{request_id}/reject` | Host/Moderator | — | 200 `{request}` |
 | POST | `/api/rooms/{room_id}/leave` | 活跃成员 | — | 200 `{}` |
 | POST | `/api/rooms/{room_id}/end` | Host | — | 200 `RoomVO` |
-| POST | `/api/rooms/{room_id}/invites` | Host/Moderator | `{ttlMinutes, maxUses?}` | 201 `{code, expiresAt, url}` （M2） |
-| POST | `/api/invites/{code}/redeem` | 登录 | — | 200 `{room, member}` 或 202 `{request}` （M2，形态见 R-2） |
-| POST | `/api/rooms/{room_id}/members/{user_id}/kick` | Host/Moderator | — | 200 `{}` （M2） |
-| PATCH | `/api/rooms/{room_id}/members/{user_id}` | Host | `{role}` | 200 `MemberVO` （M2） |
-| POST | `/api/rooms/{room_id}/transfer-host` | Host | `{userId}` | 200 `{members}` （M2，见 R-4） |
 
 ## 6. 后端实现路径（逐文件：函数签名 + 职责 + 返回）
 
@@ -224,16 +215,12 @@ backend/
 | `list_members` | `(conn, room_id: str, include_inactive: bool = False) -> list[MemberRow]` | 成员列表（历史含 `exit_reason`） |
 | `deactivate_member` | `(conn, room_id: str, user_id: str, reason: str, at: datetime) -> None` | 单成员退出 |
 | `deactivate_all_members` | `(conn, room_id: str, at: datetime) -> int` | 房间结束时批量 `room_ended`；返回受影响行数 |
-| `update_member_role` | `(conn, room_id: str, user_id: str, role: str) -> None` | 改角色/移交 |
 | `insert_join_request` | `(conn, row: NewJoinRequest) -> None` | 写申请（部分唯一索引兜底并发） |
 | `get_join_request` | `(conn, request_id: str) -> JoinRequestRow \| None` | 批准/拒绝 |
 | `get_pending_request` | `(conn, room_id: str, user_id: str) -> JoinRequestRow \| None` | 重复申请判定 |
 | `list_join_requests` | `(conn, room_id: str, status: str \| None) -> list[JoinRequestRow]` | 申请列表 |
 | `decide_join_request` | `(conn, request_id: str, status: str, decided_by: str \| None, at: datetime) -> None` | 落决定（`decided_by=None` 表示系统） |
 | `cancel_pending_requests` | `(conn, room_id: str, at: datetime) -> int` | 房间结束时批量 `cancelled`；返回行数 |
-| `insert_invite` | `(conn, row: NewInvite) -> None` | 写邀请 |
-| `get_invite_by_code` | `(conn, code: str) -> InviteRow \| None` | 校验邀请 |
-| `bump_invite_used` | `(conn, invite_id: str) -> int` | `used_count += 1`（`WHERE used_count < max_uses`，返回受影响行数，0 表示已用尽） |
 | `list_recent_messages` | `(conn, room_id: str, limit: int) -> list[MessageRow]` | 详情页最近消息（纪要复用） |
 
 ### 6.4 `app/services/rooms.py`（业务规则，唯一写库入口）
@@ -248,26 +235,12 @@ backend/
 | `list_join_requests` | `(conn, actor: User, room_id: str, status: str \| None) -> list[JoinRequestVO]` | `assert_room_role(host, moderator)`（房间可 `ended`，只读） |
 | `approve_join_request` | `(conn, actor: User, request_id: str) -> Approval` | `lock_room` → 房间 `active` → 申请 `pending` → 人数 < `capacity` → 写成员 + 落决定 |
 | `reject_join_request` | `(conn, actor: User, request_id: str) -> JoinRequestVO` | `lock_room` → `active` → 申请 `pending` → 落决定 |
-| `create_invite` | `(conn, actor: User, room_id: str, ttl_minutes: int, max_uses: int) -> InviteVO` | `assert_room_role(host, moderator)` → 写邀请 |
-| `redeem_invite` | `(conn, actor: User, code: str) -> RedeemResult` | 校验未过期/未用尽/房间 `active`/非成员 → 形态见 R-2 |
 | `leave_room` | `(conn, actor: User, room_id: str) -> None` | `lock_room` → `active` → 活跃成员 → 非 Host → `deactivate_member(self_leave)` |
 | `end_room` | `(conn, actor: User, room_id: str) -> RoomVO` | `lock_room` → `assert_room_role(host)` → `active` → `update_room_ended` + `deactivate_all_members` + `cancel_pending_requests`（同事务）→ 提交后副作用（M2 `delete_room`、M4 纪要） |
-| `kick_member` | `(conn, actor: User, room_id: str, user_id: str) -> None` | `lock_room` → `assert_room_role(host, moderator)` → 目标活跃且非 Host → `deactivate_member(kicked)` → 提交后 `livekit.remove_participant` （M2） |
-| `set_member_role` | `(conn, actor: User, room_id: str, user_id: str, role: str) -> MemberVO` | `assert_room_role(host)` → 目标活跃 → 改角色（M2） |
-| `transfer_host` | `(conn, actor: User, room_id: str, user_id: str) -> list[MemberVO]` | `assert_room_role(host)` → 双方角色互换（M2） |
 | `assert_room_active`（内部） | `(room: RoomRow \| None) -> RoomRow` | 存在否则 `NOT_FOUND`；`active` 否则 `ROOM_ENDED` |
 | `assert_room_role`（内部） | `(conn, actor: User \| None, room_id: str, allowed: Sequence[str]) -> MemberRow` | 未登录 `UNAUTHORIZED`；非活跃成员 `FORBIDDEN`；角色不符 `FORBIDDEN` |
 
 事务约定：`create_room / approve_join_request / reject_join_request / leave_room / end_room / kick_member / set_member_role / transfer_host / redeem_invite` 全部在**单个事务**内完成（service 内 `with conn.transaction():`）；只读函数不显式开事务。
-
-### 6.5 `app/services/livekit.py`（M2 用；签名与分支先定）
-
-| 函数 | 签名 | 职责 / 返回 |
-| --- | --- | --- |
-| `issue_token` | `(room_id: str, user: User, role: str, ttl_seconds: int = 3600) -> str` | 用 `AccessToken(...).with_identity(user.id).with_name(user.display_name).with_grants(VideoGrants(room_join=True, room=room_id, can_publish=True, can_publish_data=True, room_admin=(role=='host')))` + `with_room_config(RoomConfiguration(max_participants=8))` 签 JWT；**Secret 只在此模块读环境变量** |
-| `remove_participant` | `(room_id: str, user_id: str, revoke: bool = True) -> None` | 调 `LiveKitAPI.room.remove_participant`；**分支（P3′）**：Cloud 传 `revoke_token_ts=now` 使已签发 Token 立即失效；自建下该字段无同等效果 → 依赖 `issue_token` 的短 TTL（建议 5 分钟）+ 拒绝再签发（见 §10） |
-| `delete_room` | `(room_id: str) -> None` | 房间结束时强制断开全部连接（`room.delete_room`） |
-| `list_participants` | `(room_id: str) -> list[str]` | 房间内在场的 identity 列表（派生相位 `in_session` 与演示取证） |
 
 ### 6.6 `app/schemas/rooms.py`（Pydantic v2）
 
@@ -275,8 +248,6 @@ backend/
 | --- | --- | --- |
 | `CreateRoomIn` | `topic: Literal[...]`, `topic_label: str`, `title: str`, `description: str = ""` | 长度约束与 §4 一致 |
 | `JoinRequestIn` | `message: str = ""` | ≤200 字 |
-| `InviteIn` | `ttl_minutes: int`, `max_uses: int = 8` | TTL ∈ [5,1440] |
-| `RoleIn` | `role: Literal["moderator","participant"]` | 改角色 |
 | `UserVO` / `MemberVO` / `RoomVO` / `RoomListItem` / `RoomDetail` / `JoinRequestVO` / `InviteVO` | 见架构页字段表 | 出参只暴露 VO，不吐库行 |
 
 ### 6.7 `app/api/routers/rooms.py` + `app/api/deps.py`
@@ -285,7 +256,6 @@ backend/
 | --- | --- | --- |
 | `deps.py` | `current_user_optional()`, `current_user()` | 从会话 Cookie/Bearer 解析用户（会话方案见架构页 §7 的分支决定） |
 | `deps.py` | `db_conn()` | 每请求一个连接（`with get_conn() as conn: yield conn`） |
-| `routers/rooms.py` | `list_rooms`, `create_room`, `get_room`, `create_join_request`, `list_join_requests`, `approve_request`, `reject_request`, `leave_room`, `end_room`, `create_invite`, `redeem_invite`, `kick_member`, `patch_member`, `transfer_host` | 每个 5–15 行：取依赖 → 调 service → `to_response`；异常由全局 handler 统一转信封 |
 
 ### 6.8 脚本
 
@@ -328,10 +298,8 @@ frontend/src/
 | 结束房间与批准并发 | 两者都先 `lock_room`；后到者看到 `status='ended'` → `ROOM_ENDED`，不会产生「已结束房间新增成员」 |
 | 8 人上限的三道闸 | ① 批准时应用层校验；② Token 内 `room_config.max_participants=8` 由 LiveKit 硬限；③ 客户端连接失败时前端显示「房间已满」 |
 | 房间码 / 邀请码冲突 | 生成后插入失败重试 3 次，仍失败返回 `INTERNAL` 并记日志 |
-| 邀请过期 / 用尽 | `expires_at < now()` 或用尽 → `INVITE_INVALID`；房间 `ended` 时邀请一律 `ROOM_ENDED`（不删邀请行） |
 | Host 想离开 | `HOST_CANNOT_LEAVE`，提示「先结束房间或移交 Host」（移交见 R-4） |
 | 重复结束房间 | 锁内检查 `status='active'` → `ROOM_ENDED`；不触发二次副作用（纪要 `UNIQUE(room_id)` 防重） |
-| 外部服务失败（M2 的 `delete_room`） | 数据库事务已提交，失败只记日志；房间状态不受影响（房间结束是用户意图） |
 | 数据库连接中断 | 连接池在借出前检测失效连接；`OperationalError` 映射 `INTERNAL` 并在响应中不回显 DSN |
 | 长文本与注入 | 描述/消息长度由 CHECK 与 Pydantic 双重约束；SQL 全参数化，禁止字符串拼 SQL |
 
@@ -350,16 +318,12 @@ frontend/src/
 
 | 编号 | 事项 | 选项 | 建议值 | 受哪项影响 |
 | --- | --- | --- | --- | --- |
-| B1 | 踢人后的 Token 失效方式 | Cloud：`revoke_token_ts` 立即失效 / 自建：短 TTL（5 分钟）+ 拒绝再签发 | 随 P3′ 定 | P3′ |
 | B2 | 数据层连接与迁移 | 连接串形态、迁移工具（手写 SQL + `schema_migrations` / Alembic） | 手写 SQL + 版本表 | P9、P10 |
 | B3 | 路由与会话中间件形态 | FastAPI `Depends` + Cookie / Bearer | FastAPI + Cookie（CORS + credentials） | P10、架构页 §7 |
 | R-1 | 列表与详情的刷新策略 | 轮询 5s / 手动刷新 / SSE | 详情页轮询 5s（M3 起房内状态改走 LiveKit data channel） | 影响前端复杂度 |
-| R-2 | 用邀请的落点 | ① 直接成为成员 ② 仍走等候室申请 | ②（与题面「进入房间前需经过等候室」一致） | 影响 M2 流程 |
-| R-3 | 被踢过的人能否再申请 | 允许（记 `kicked` 历史）/ 设冷静期 | 允许 | 影响规则表 |
-| R-4 | Host 移交 | 做（本文已给签名）/ 不做（Host 只能结束房间） | 做，归 M2 | 影响 M2 工作量 |
 
 ## What's next
 
 1. 用户复核本页（重点：§4 规则表、§6 函数签名、§8 并发项、§10 分支点）。
-2. 与 `docs/02-modules/r001-summaries.md`（纪要）、重写后的架构页、需求单一同转 `approved`。
+2. 与重写后的架构页、需求单一同转 `approved`（纪要/邀请/踢人等非本轮内容已在 `docs/99-archive/`）。
 3. 落实现：`cp-r001-1`（数据层）→ `cp-r001-2`（账户）→ `cp-r001-3`（房间与申请）→ `cp-r001-4`（页面与冒烟）。

@@ -1,16 +1,18 @@
 ---
-title: r001 纪要功能设计（功能页）
+title: r001 纪要功能设计（M4 设计预告，已归档）
 description: 讨论纪要的功能点、使用时机、界面状态、内容规格与格式示例、提示文案与演示脚本。
 type: reference
-status: draft
+status: backlog
 owner: 陀梓皓
 updated: 2026-09-17
 ---
 
 <!-- overview -->
 本页是**纪要功能「什么时候生成、生成什么、在哪看、失败怎么办」**的单一事实源。
-分工（避免双源）：触发链路的实现细节、数据表、函数签名 → `docs/02-modules/r001-summaries.md`；房间功能 → `docs/02-modules/r001-rooms-features.md`。
+分工（避免双源）：触发链路的实现细节、数据表、函数签名 → `docs/99-archive/r001-ahead-m4-summaries.md`；房间功能 → `docs/02-modules/r001-rooms-features.md`。
 命名说明：本文**出现轮次为 r001**，**实现落在 M4**。
+
+> ⚠ **已归档（2026-09-17）**：本文属 **M4** 范围，在 r001 阶段提前产出，按 `global-roadmap.md` §8.3 方案 B 归入 `docs/99-archive/`（`status: backlog`）。**不是本轮（r001）方案**；M4 立轮次时移回 `docs/02-modules/` 并按该轮号改名。
 
 ## 1. 使用者与使用时机
 

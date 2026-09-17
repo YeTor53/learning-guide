@@ -51,29 +51,30 @@ updated: 2026-09-16
 | M4 会后产出 · 交付 | LLM 纪要生成链路（输入含聊天记录 + 参与者 + 主题，落库，房间详情可查看）、冒烟脚本、设计说明 + README + `.env.example`、打包提交 | 冒烟脚本全绿并贴输出；设计说明各章齐全；提交物命名符合口径、AI 工具清单齐全 | M1~M3、LLM 凭据（已决 P4） | 2~3 |
 | M5 加分项（增量，按时间取舍） | 每项独立成轮、可单独开关，不影响 M1~M4 闭环：① 断线重连后举手/焦点状态恢复 ② 房间录制或旁路录音转写后再生成纪要 ③ Docker Compose 一键启动 ④ 简单管理后台 ⑤ 3–5 分钟演示录屏 | 每项做完即可单独演示；未做项在设计说明「未完成项」中如实登记 | M4（不阻塞交付） | 每项 0.5~1 |
 
-## 4. 已决事项（2026-09-16）
+## 4. 已决事项
 
 | 编号 | 事项 | 决定 | 说明 |
 | --- | --- | --- | --- |
 | P1 | 题目 | 题目 A（学习讨论室） | 本规划后续内容均按 A 展开 |
 | P2 | 工作区位置 | `G:\VSCODE\VS_items\LearningGuide-LiveKit` | 与本机 Web 项目同区，保持不动 |
-| P3 | LiveKit 来源 | **自建**：官方 `livekit-server` Windows 原生二进制（v1.13.7） | 偏离题面「LiveKit Cloud」建议，理由与代价见 ADR-0001 |
+| P3 | LiveKit 来源（初判） | 自建（Windows 原生二进制） | **已由 P3′ 取代**，见本表末行；原决策与理由见 ADR-0001（现降级为离线兜底方案） |
+| P3′ | LiveKit 来源（复评，2026-09-17） | **C：Cloud（Build 免费）为主 + 自建脚本留档** | 事实与对比见 ADR-0003；自建作为演示降级路径保留 |
 | P4 | 纪要 LLM | DeepSeek（OpenAI 兼容，`deepseek-chat`） | Key 只进本地 `.env`，不入库、不进前端 |
 | P5 | 数据库 | **PostgreSQL** | 题面优先项；落地方式见 P9 |
 | P6 | 技术栈 | **前端 React + 后端 Python（前后端分离）** | 取代初稿的 Next.js 一体仓；见 ADR-0002 |
 | P7 | 加分项 | 全部设计成**增量项**（M5），按剩余时间取舍 | 每项独立成轮/独立开关，不阻塞必做闭环 |
-| P8 | 提交方式 | **zip + GitHub 远程仓库 + npm 包**（2026-09-17 变更；原为「仅 zip」） | 细则见 P11 与 `docs/03-decisions/r001-adr-0004-submission-artifacts.md`；zip 命名口径不变 |
+| P8 | 提交方式 | **zip + GitHub 远程仓库 + npm 包**（2026-09-17 变更；原为「仅 zip」） | 细则见 P11 与 ADR-0004；zip 命名口径不变 |
+| P9 | PostgreSQL 落地方式（2026-09-17） | **A：本机安装** | 版本与安装方式（EDB 安装包 / 二进制 zip）待定；**安装前需用户批准** |
+| P10 | 后端框架与数据层工具 | 讨论中 → 见 `docs/03-decisions/r001-adr-0005-data-access-and-migrations.md` | 定后写入本表 |
 
-## 5. 待拍板项（P9 / P10 / P3′）
+## 5. 待拍板项（P10 / P11）
 
-P5、P6 已定（见 §4）；原 P5/P6 的选项表随拍板作废。
+P3′、P5、P6、P9 已定（见 §4）；对应旧选项表作废。
 
 | 编号 | 事项 | 选项 | 建议值 | 影响 |
 | --- | --- | --- | --- | --- |
-| P9 | PostgreSQL 落地方式 | ① 本机安装（Windows 安装包或免安装 zip）② Docker（本机无 Docker，WSL 无发行版、Hyper-V 未启用，需补装 + 重启）③ 仅交付 compose 文件、本机用 ① | ① 本机安装 | 决定 M1 数据层能否立刻跑通；②会吃掉 16 小时预算的一成以上 |
-| P10 | Python 后端框架与数据层工具 | 框架：FastAPI（建议）/ Flask / Django；SQL：手写 SQL + 轻量迁移脚本（建议，贴题面「可运行 SQL Schema」）/ SQLAlchemy + Alembic | FastAPI + 手写 SQL + 轻量迁移 | 决定后端目录与函数级实现路径，批准后不宜再改 |
-| P11 | 提交物细则（GitHub / npm） | ① npm 发布对象：抽包发布两个自定义能力 / 发别的 / 不发包仅用 npm 管依赖；② 仓库公开或私有、仓库名；③ zip 与远端的主次 | ① 抽包（举手+焦点）② 公开、名 `LearningGuide-LiveKit` ③ zip 为主、仓库补充 | 事实与前提见 `r001-ADR-0004`；影响工作量与公开仓库的密钥纪律 |
-| P3′ | LiveKit 来源复评 | A 改用 LiveKit Cloud（Build 免费） / B 维持自建（ADR-0001） / C Cloud 为主 + 自建脚本留档 | A | 事实、对比与代价见 `docs/03-decisions/r001-adr-0003-livekit-source-review.md`；影响 `.env`、踢人实现与设计说明叙事 |
+| P10 | 后端框架与数据层工具 | 框架：FastAPI（建议）/ Flask / Django；SQL：手写 SQL + 轻量版本表（建议）/ SQLAlchemy Core / SQLAlchemy ORM + Alembic | FastAPI + 手写 SQL + 轻量版本表 | 决定目录树、迁移脚本与验证命令；讨论见 ADR-0005 |
+| P11 | 提交物细则（GitHub / npm） | ① npm 发布对象：抽包发布两个自定义能力 / 发别的 / 不发包仅用 npm 管依赖；② 仓库公开或私有、仓库名；③ zip 与远端的主次 | ① 抽包（举手+焦点）② 公开、名 `LearningGuide-LiveKit` ③ zip 为主、仓库补充 | 事实与前提见 ADR-0004；影响工作量与公开仓库的密钥纪律 |
 
 ## 6. 风险与假设
 
@@ -135,3 +136,15 @@ P5、P6 已定（见 §4）；原 P5/P6 的选项表随拍板作废。
 
 结论：**P10、P9 一起定，总设计才能一次写对**；P3′ 可在总设计里留分支。
 
+
+### 8.5 方案 B 执行记录（2026-09-17）
+
+| 动作 | 结果 |
+| --- | --- |
+| 纪要两页归档 | `git mv` → `docs/99-archive/r001-ahead-m4-summaries.md`、`r001-ahead-m4-summaries-features.md`；两页 `status: backlog` + 顶部归位注记 |
+| 房间两页剥离 M2/M3 | 抽出 M2 内容 → `docs/99-archive/r001-ahead-m2-m3-rooms.md`（实现页 37 行：邀请/踢人/角色/移交/livekit 段；功能页 F-06/F-07/F-10/F-11 及按钮矩阵行、文案行、FQ-3/FQ-6） |
+| 引用同步 | README 索引、`r001-rooms.md`（2 处）、`r001-rooms-features.md`（1 处）改为归档路径；全库无指向旧路径的引用 |
+| 范围收敛 | r001 = M1：建房 / 列表 / 详情 / 申请 / 批准 / 拒绝 / 离开 / 结束（详情页只读展示最近 20 条消息；写入与实时收发属 M3） |
+| 决策入档 | P9=A（本机安装）、P3′=C（Cloud 为主 + 自建留档） |
+
+下一步：P10 拍板后**重写总设计** `docs/01-architecture/r001-app-architecture.md`。

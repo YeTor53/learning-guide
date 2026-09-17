@@ -25,8 +25,9 @@
 
 - 需求单：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
 - 设计页：`docs/01-architecture/r001-app-architecture.md`（待重写）
-- 功能设计（做什么）：`docs/02-modules/r001-rooms-features.md`（房间）、`docs/02-modules/r001-summaries-features.md`（纪要，实现于 M4）
-- 实现设计（怎么做）：`docs/02-modules/r001-rooms.md`、`docs/02-modules/r001-summaries.md`
+- 功能设计（做什么）：`docs/02-modules/r001-rooms-features.md`（房间，r001 范围）
+- 实现设计（怎么做）：`docs/02-modules/r001-rooms.md`（房间，r001 范围）
+- 归档（非本轮）：`docs/99-archive/r001-ahead-m2-m3-rooms.md`（房间 M2/M3 能力）、`docs/99-archive/r001-ahead-m4-summaries*.md`（纪要，M4）
 
 ## 怎么跑
 

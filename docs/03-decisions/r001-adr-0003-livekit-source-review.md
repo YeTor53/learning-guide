@@ -2,7 +2,7 @@
 title: r001-ADR-0003 LiveKit 来源复评（Cloud 托管 vs 本机自建）
 description: 把 LiveKit Cloud 的事实与自建逐项对比，作为 P3′ 的拍板依据；本文不改动 ADR-0001 的既定决定。
 type: adr
-status: proposed
+status: accepted
 owner: 陀梓皓
 updated: 2026-09-16
 ---
@@ -95,6 +95,14 @@ updated: 2026-09-16
 2. 能否接受演示环节依赖外网 + 注册一个 LiveKit Cloud 账号（免费、无需信用卡）？
 3. 有没有"必须完全离线可演示"的硬要求（例如现场无网或不希望注册/登录外部平台）？
 
+## 决定（2026-09-17 拍板）
+
+用户选择 **C：Cloud（Build 免费）为主 + 自建脚本留档**。
+
+- `.env` 的 `LIVEKIT_URL / API_KEY / API_SECRET` 用 Cloud 项目值（本机 `livekit.yaml` 与启动脚本仍随仓库交付，作为离线降级路径）。
+- 踢人采用 Cloud 的「移除参与者 + `revoke_token_ts` 立即失效 Token」；自建路径下改为「短 TTL + 拒绝再签发」，两条路径都需要在 M2 首轮实测。
+- 免费额度边界写进设计说明：额度用尽是失败而非计费。
+
 ## 影响
 
 - 选 A 时：`.env` 的 `LIVEKIT_URL/API_KEY/API_SECRET` 改为 Cloud 项目值；设计说明里写清"为何用托管"与免费额度边界（超额失败而非计费）。
@@ -113,3 +121,4 @@ updated: 2026-09-16
 ## 变更记录
 
 - 2026-09-16 建立（proposed，待拍板）。
+- 2026-09-17 拍板 C（Cloud 为主 + 自建留档），状态转 accepted。
