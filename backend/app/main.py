@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.errors import register_error_handlers
 from app.api.routers.auth import router as auth_router
+from app.api.routers.rooms import router as rooms_router
 from app.config import REPO_ROOT, load_settings, validate_startup
 from app.db.pool import close_pool, init_pool
 
@@ -37,7 +38,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def register_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix="/api")
-    # cp-r001-3 起追加：app.include_router(rooms_router, prefix="/api")
+    app.include_router(rooms_router, prefix="/api")
 
 
 def mount_spa(app: FastAPI, dist_dir: Path = FRONTEND_DIST) -> None:
