@@ -254,7 +254,7 @@ backend/
 
 | 文件 | 函数 | 职责 |
 | --- | --- | --- |
-| `deps.py` | `current_user_optional()`, `current_user()` | 从会话 Cookie/Bearer 解析用户（会话方案见架构页 §7 的分支决定） |
+| `deps.py` | `current_user_optional()`, `current_user()` | 从会话 Cookie 解析用户（会话方案已定：签名 Cookie + HttpOnly/SameSite=Lax，见架构页 §6） |
 | `deps.py` | `db_conn()` | 每请求一个连接（`with get_conn() as conn: yield conn`） |
 
 ### 6.8 脚本
@@ -318,8 +318,8 @@ frontend/src/
 
 | 编号 | 事项 | 选项 | 建议值 | 受哪项影响 |
 | --- | --- | --- | --- | --- |
-| B2 | 数据层连接与迁移 | 连接串形态、迁移工具（手写 SQL + `schema_migrations` / Alembic） | 手写 SQL + 版本表 | P9、P10 |
-| B3 | 路由与会话中间件形态 | FastAPI `Depends` + Cookie / Bearer | FastAPI + Cookie（CORS + credentials） | P10、架构页 §7 |
+| B2 | 数据层连接与迁移 | 已定：`psycopg` 连接池 + 手写 SQL + `schema_migrations` 版本表（ADR-0005 / 架构页 §7） | — | 已闭环 |
+| B3 | 路由与会话中间件形态 | 已定：FastAPI `Depends` + 签名 Cookie；开发与交付均走同源（Vite 代理 / 静态托管），不放开 CORS | — | 已闭环（架构页 §6） |
 | R-1 | 列表与详情的刷新策略 | 轮询 5s / 手动刷新 / SSE | 详情页轮询 5s（M3 起房内状态改走 LiveKit data channel） | 影响前端复杂度 |
 
 ## What's next

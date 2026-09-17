@@ -19,15 +19,15 @@
 
 ## 当前轮次
 
-`r001`（里程碑 M1：骨架 · 账户 · 房间）—— 需求单与设计页已起草，但因栈变更（`r001-ADR-0002`：React + Python + PostgreSQL 取代 Next.js + SQLite）**标为 superseded，待重写**；重写时机 = `global-roadmap.md` §5 的 P9/P10/P3′ 拍板后一次完成。
+`r001`（里程碑 M1：骨架 · 账户 · 房间）—— **总设计已重写完成，`status: draft` 待复核**；需求单待按总设计重写（顺序见 `docs/00-project/global-roadmap.md` §8）。
 
-已定：题目 A / 位置 / 数据库 PostgreSQL / 前端 React + 后端 Python / 纪要 DeepSeek / 加分项=增量项 / 提交物 = zip + GitHub 仓库 + npm 包（`r001-ADR-0004`，细则待 P11）。LiveKit 来源复评见 `r001-ADR-0003`。
+已定：题目 A / 位置 / 数据库 PostgreSQL（本机安装）/ 前端 React + 后端 Python（FastAPI）/ 数据层=手写 SQL + 轻量版本表 / LiveKit=Cloud 为主 + 自建留档 / 纪要=DeepSeek / 加分项=增量项 / 提交物 = zip + GitHub 仓库 + npm 包（细则待 P11）。
 
-- 需求单：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
-- 设计页：`docs/01-architecture/r001-app-architecture.md`（待重写）
-- 功能设计（做什么）：`docs/02-modules/r001-rooms-features.md`（房间，r001 范围）
-- 实现设计（怎么做）：`docs/02-modules/r001-rooms.md`（房间，r001 范围）
-- 归档（非本轮）：`docs/99-archive/r001-ahead-m2-m3-rooms.md`（房间 M2/M3 能力）、`docs/99-archive/r001-ahead-m4-summaries*.md`（纪要，M4）
+- 总设计（本轮，待复核）：`docs/01-architecture/r001-app-architecture.md`
+- 需求单：`docs/00-requirements/r001-skeleton-accounts-rooms.md`（superseded，待重写）
+- 模块功能设计：`docs/02-modules/r001-rooms-features.md`；模块实现设计：`docs/02-modules/r001-rooms.md`
+- 决策记录：`docs/03-decisions/`（ADR-0001~0005）
+- 归档（非本轮）：`docs/99-archive/`（房间 M2/M3 能力、纪要 M4）
 
 ## 怎么跑
 

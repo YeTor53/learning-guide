@@ -19,11 +19,16 @@
 - 不擅自增删依赖、改端口、改目录结构；需要时先在需求单登记并获批准。
 - 不采用 LiveKit Meet 默认页面；不使用来源不明的模板代码而不注明出处。
 
-## 提交前检查（`<check>`，随轮次回填具体命令）
+## 提交前检查（`<check>`，r001 口径，详见 `docs/01-architecture/r001-app-architecture.md` §11）
 
-- [ ] 冒烟脚本通过（M1 定义：创建用户 → 建房 → 签发 Token → 写聊天 → 生成纪要）
-- [ ] 文档已更新且与代码一致
-- [ ] `git status --porcelain` 为空
+在 `backend/`（已激活 `.venv`）与 `frontend/` 下依次执行，全绿才提交：
+
+- [ ] `python scripts/db_init.py --reset --seed`（打印各表行数）
+- [ ] `python -m pytest tests -q`（schema 断言 + 服务层 + 接口层）
+- [ ] `python scripts/smoke.py`（真实 HTTP 冒烟：注册 → 建房 → 申请 → 批准 → 离开 → 结束）
+- [ ] `cd frontend && npx tsc --noEmit && npm run build`
+- [ ] `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src`（除 `config.py` 变量名外无命中）
+- [ ] 文档已更新且与代码一致；`git status --porcelain` 为空
 
 ## 文档纪律
 

@@ -85,9 +85,10 @@ P3′、P5、P6、P9、P10 已定（见 §4）；对应旧选项表作废。
 
 ## 7. What's next
 
-1. 用户拍板 P9、P10、P3′。
-2. 按 `r001-ADR-0002`（栈变更）**重写** `r001` 需求单与设计页，重写后 `status: draft → approved`。
-3. 建 `req/r001-skeleton` 分支，按 cp-r001-1..4 增量实现（骨架与数据层 → 账户 → 房间与申请 → 页面与冒烟）。
+1. 用户复核**总设计** `docs/01-architecture/r001-app-architecture.md`（§2 选型落地、§3 分层、§6 会话与跨源、§9 骨架函数签名、§11 验证矩阵、§12 环境准备）。
+2. 总设计通过后**重写 r001 需求单**（`docs/00-requirements/`），与模块页（房间功能/实现）一并转 `approved`。
+3. 建 `req/r001-skeleton` 分支，按 cp-r001-1..4 增量实现（骨架与数据层 → 账户 → 房间与申请 → 前端页面与冒烟）。
+4. 待用户决定 P11（npm 发布对象 / 仓库公开性 / zip 主次）后，补 README 交付章节与可能的包目录。
 
 ## 8. 文档产出顺序与现状盘点（2026-09-17）
 
@@ -106,8 +107,8 @@ P3′、P5、P6、P9、P10 已定（见 §4）；对应旧选项表作废。
 | 文档 | 前缀 | 应有归属 | 现状 | 问题 |
 | --- | --- | --- | --- | --- |
 | `docs/00-project/global-roadmap.md` | global | 项目级 | draft，含已决/待拍板 | 正常（待 P3′/P9/P10/P11 拍板） |
-| `docs/01-architecture/r001-app-architecture.md` | r001 | r001 总设计 | **superseded**（栈变更作废） | **未重写**；它才是「总设计」，当前缺位 |
-| `docs/00-requirements/r001-skeleton-accounts-rooms.md` | r001 | r001 需求单 | superseded | 需随总设计重写 |
+| `docs/01-architecture/r001-app-architecture.md` | r001 | r001 总设计 | **已重写**（2026-09-17，draft 待复核） | 已补齐总设计，含分层/目录/会话/数据层/验证矩阵/环境准备 |
+| `docs/00-requirements/r001-skeleton-accounts-rooms.md` | r001 | r001 需求单 | superseded | **下一步待重写**（顺序：总设计定稿 → 需求单） |
 | `docs/02-modules/r001-rooms.md`（实现） | r001 | r001 | draft | 内容含 M2/M3 项（邀请、踢人、角色、移交），超出 r001 范围 |
 | `docs/02-modules/r001-rooms-features.md`（功能） | r001 | r001 | draft | 同上，F-06/F-07/F-10/F-11 属 M2 |
 | ~~`docs/02-modules/r001-summaries.md`~~ → `docs/99-archive/r001-ahead-m4-summaries.md` | r001 | **M4** | **已归档**（backlog） | 提前产出（属 M4），已按 §8.3 B 归位 |
@@ -130,11 +131,11 @@ P3′、P5、P6、P9、P10 已定（见 §4）；对应旧选项表作废。
 
 | 前置 | 状态 | 不定的后果 |
 | --- | --- | --- |
-| P10 后端框架与数据层工具（FastAPI？手写 SQL + 版本表还是 Alembic？） | 待拍板 | 目录树、分层、迁移脚本、验证命令全部受影响 |
-| P9 PostgreSQL 落地方式（本机安装 / Docker / 仅交 compose） | 待拍板 | 环境准备步骤与 README「怎么跑」受影响 |
-| P3′ LiveKit 来源（Cloud / 自建 / 主+备） | 待拍板（ADR-0003 已给对比） | 只影响 `.env` 与 livekit 模块两处分支，不阻塞总设计主体 |
+| P10 后端框架与数据层工具 | **已定：A（FastAPI + 手写 SQL + 版本表）** | 已落地在总设计 §2/§7/§9 |
+| P9 PostgreSQL 落地方式 | **已定：A 本机安装**（安装方式待选），步骤见总设计 §12 | 需用户批准后执行安装 |
+| P3′ LiveKit 来源 | **已定：C（Cloud 为主 + 自建留档）** | 总设计 §1/§5 已按 Cloud 写，M2 实现时接线 |
 
-结论：**P10、P9 一起定，总设计才能一次写对**；P3′ 可在总设计里留分支。
+结论（2026-09-17 更新）：P10、P9、P3′ **均已拍板**，总设计已据此重写完成（待复核）；剩余未决仅 P11（提交物细则）。
 
 
 ### 8.5 方案 B 执行记录（2026-09-17）
