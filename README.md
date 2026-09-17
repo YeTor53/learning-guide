@@ -24,7 +24,8 @@
 已定：题目 A / 位置 / 数据库 PostgreSQL / 前端 React + 后端 Python / 纪要 DeepSeek / 加分项=增量项 / 提交物 = zip + GitHub 仓库 + npm 包（`r001-ADR-0004`，细则待 P11）。LiveKit 来源复评见 `r001-ADR-0003`。
 
 - 需求单：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
-- 设计页：`docs/01-architecture/r001-app-architecture.md`
+- 设计页：`docs/01-architecture/r001-app-architecture.md`（待重写）
+- 模块详细设计：`docs/02-modules/r001-rooms.md`（房间）、`docs/02-modules/r001-summaries.md`（纪要，实现于 M4）
 
 ## 怎么跑
 
