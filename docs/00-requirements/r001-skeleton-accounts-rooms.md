@@ -1,89 +1,120 @@
 ---
-title: r001 骨架 · 账户 · 房间（里程碑 M1）
-description: M1 需求单：前后端骨架、SQL schema 与种子数据、注册/登录/登出、房间创建/列表/详情、加入申请的结构与流转。
+title: r001 需求单：骨架 · 账户 · 房间（里程碑 M1）
+description: r001 的目的、边界、验收清单、影响面、风险、文档产出与实施顺序（cp-r001-1..4）。
 type: requirement
-status: superseded
+status: draft
 owner: 陀梓皓
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 <!-- overview -->
-> ⚠ **本页已作废（2026-09-16）**：栈变更见 `docs/03-decisions/r001-adr-0002-stack-react-python-postgres.md`（React + Python + PostgreSQL 取代 Next.js + SQLite），本页方案部分待重写；重写时机 = P9/P10/P3′ 拍板后一次完成。
-
-本页只写「这一轮要做成什么、怎么算做完」；怎么做（表结构、函数、接口）见 `docs/01-architecture/r001-app-architecture.md`。项目方向、里程碑与已决事项见 `docs/00-project/global-roadmap.md`（不在此处重复）。
+本页只写「这一轮做成什么、怎么算做完、按什么顺序做」。怎么做（架构、分层、目录、接口信封、会话）见总设计 `docs/01-architecture/r001-app-architecture.md`；业务规则与函数签名见 `docs/02-modules/r001-rooms.md`（实现）与 `r001-rooms-features.md`（功能）；项目方向见 `docs/00-project/global-roadmap.md`。
+本页取代 2026-09-16 版（Next.js + SQLite 初稿，因 ADR-0002 栈变更作废）。
 
 ## 1. 目的
 
-搭出可运行的前后端骨架与数据层，把「账户 + 房间」这条业务骨架跑通：让评审能注册、登录、建房、看到房间列表与详情、提交加入申请并被批准，且数据全部落进 SQLite、可用一条命令重建。
+搭起可运行的前后端骨架与本机数据库，把「账户 + 房间 + 等候室申请」这条业务骨架跑通：评审能注册、登录、建房、看房间列表与详情、提交加入申请并被房主批准、离开与结束房间；数据全部落进本机 PostgreSQL，可用一条命令重建 + 种子复现。
 
 ## 2. 边界
 
-**做**
-- 仓库骨架：Next.js 16（App Router）+ TypeScript 一体仓，`npm run dev` 起全栈。
-- 数据层：手写 `schema.sql`（全部 7 张业务表一次建好，含索引/约束）+ `seed.sql`（演示账号、示例房间、历史消息、一条已结束房间的纪要）+ 初始化脚本，一条命令可 `--reset --seed`。
-- 账户：注册、登录、登出、当前用户查询；密码 scrypt 加盐哈希；会话走 HttpOnly 签名 Cookie。
-- 房间：创建（主题/标题/简介）、列表、详情；房间码生成；加入申请（提交/列表/批准/拒绝）；离开房间；结束房间。
-- 房间生命周期（设计页 §4 为唯一事实源）：存储态 `active → ended`（终态，不可重开）；离开/踢出/房间结束统一走 `room_members.status='inactive'` + `exit_reason`；结束房间时「房间置 ended + 成员批量转 `inactive(room_ended)` + 未决申请转 `cancelled`」在同一事务内完成。
-- 权限骨架：三角色数据模型 + 服务端校验函数（Host 才能批申请/结束房间；Moderator/Host 才能看申请列表）。
-- 冒烟脚本（M1 阶段）：`register → login → 建房 → 列表 → 申请 → 批准 → 离开` 走真实 HTTP。
+**做（M1）**
+- 仓库骨架：`backend/`（FastAPI + psycopg + 手写 SQL，见总设计 §2/§4）与 `frontend/`（React + TS + Vite），两进程开发、单源交付（uvicorn 托管 `dist`）。
+- 数据层：`001_schema.sql`（r001 所需表：`schema_migrations`、`users`、`rooms`、`room_members`、`join_requests`）+ `002_seed.sql`（演示账号、示例房间）+ `migrate.py`（`run_migrations`/`reset_schema`/`seed`/`table_counts`）+ `db_init.py`。
+- 账户：注册、登录、登出、当前用户；scrypt 口令哈希；签名 Cookie 会话。
+- 房间：创建（主题/标题/简介）、列表（状态/主题/我的筛选、分页）、详情（成员列表）；房间生命周期 `active → ended` 与本轮结束流程（房间置 ended + 活跃成员转 `inactive/room_ended` + 待批申请转 `cancelled`，同一事务）。
+- 加入申请：提交（五种拦截与提示）、列表（房主/协管可见）、批准、拒绝；容量校验（`ROOM_FULL`）。
+- 前端 5 个页面：`/`（房间列表）、`/login`、`/register`、`/rooms/new`、`/rooms/:id`。
+- 验证：`pytest`（schema 断言 + 服务层 + 接口层）、`smoke.py`（真实 HTTP 全链路）、密钥检索、文档同步。
 
-**不做（本轮明确不碰）**
-- LiveKit 相关一切（起服务、签 Token、音视频、屏幕共享、举手、焦点）→ M2/M3。
-- 文字群聊实时收发与拉取、LLM 纪要生成 → M3/M4（本轮只建表、只留种子里的历史消息）。
-- 邀请链接/邀请码的生成与校验 API → M2（本轮只建 `invites` 表、只实现房间码生成函数）。
-- 踢人、LiveKit 入房环节的「人数已满」拒绝提示 → M2。本轮已实现：批准申请时的容量校验（超过 `capacity` 返回 `ROOM_FULL`），保证成员数任何时候不超上限。
-- 阶段的派生相位 `active.in_session`（房内是否有人）→ M2（依赖 LiveKit 在场信息）；本轮 `deriveRoomPhase` 只区分 `active.idle` / `ended`。
-- 「移交 Host 后离开」→ 待拍板 R6；本轮 Host 不可离开（必须先结束房间）。
-- 公网部署、Docker Compose、录制、管理后台（→ M5 加分项，按时间取舍）。
+**不做（本轮不碰）**
+- LiveKit 一切（起服务、签 Token、音视频、屏幕共享）→ M2；邀请/踢人/角色任命/移交 → M2（已归档 `docs/99-archive/r001-ahead-m2-m3-rooms.md`）。
+- 文字群聊实时收发 → M3（本轮详情页只读展示种子里的最近 20 条消息）。
+- 举手 / 焦点发言 → M3；LLM 纪要 → M4（归档页已备设计）。
+- 公网部署、Docker/Compose、管理后台 → M5 加分项（按余力）。
+- npm 发包与 GitHub 远端 → 待 P11 拍板后另开一轮；本轮不做（zip 交付口径见 §6）。
 
-## 3. 验收清单
+## 3. 验收清单（逐条给证据）
 
-- [ ] `node scripts/db-init.mjs --reset --seed` 一条命令重建库并打印每张表的行数（真实输出）。
-- [ ] `npx tsc --noEmit` 通过。
-- [ ] `node scripts/smoke.mjs` 全绿，打印每步的 HTTP 状态与关键字段。
-- [ ] 未登录访问 `/rooms/new` 被引导到登录页；未登录调 `POST /api/rooms` 返回 401。
-- [ ] 注册 → 登录 → 登出 → 再访问受保护页面需重新登录。
-- [ ] 建房后 `/rooms` 列表与 `/rooms/<id>` 详情显示的是库里的真实数据（改库后刷新页面可见变化）。
-- [ ] 加入申请：同一人对同一房间重复提交返回 409（不产生第二条 pending）；非 Host/Moderator 调批准接口返回 403。
-- [ ] 结束房间后贴 SQL 输出证明三件事：`rooms.status='ended'` 且 `ended_at` 已写；原活跃成员全部 `status='inactive'`、`exit_reason='room_ended'`；`pending` 申请全部 `status='cancelled'`。
-- [ ] 已结束房间：再提交申请 / 再批准 / 再结束 均返回 409 `ROOM_ENDED`；同时列表、详情、历史消息仍可只读访问。
-- [ ] 结束房间的事务性：人为让事务中途失败一次（如临时违反约束）后核对库，房间仍是 `active`、成员仍 `active`（无半结束状态）。
-- [ ] 安全检索：`git grep -n "LIVEKIT_API_SECRET\|LIVEKIT_API_KEY"` 在 `src/` 下无命中代码（仅 `.env.example` 占位）。
-- [ ] 文档已更新：本页状态、`docs/01-architecture/r001-app-architecture.md`、`docs/02-modules/` 对应模块页、README 当前轮次。
+数据层
+- [ ] `python backend/scripts/db_init.py --reset --seed` 打印各表行数（`users≥3`、`rooms≥3`、`join_requests` 有种子数据）——贴真实输出
+- [ ] `pytest backend/tests/test_schema.py -q` 全绿：表/列/约束存在；**部分唯一索引真挡住重复 pending**；CHECK 真挡住「active 却带 exit_reason」这类非法组合
+
+账户
+- [ ] 注册 → 登录 → 登出 → 再访问受保护接口返回 401
+- [ ] 同邮箱重复注册返回 409 `EMAIL_TAKEN`；密码错误与邮箱不存在都返回 401 `INVALID_CREDENTIALS`（不区分）
+- [ ] 口令以 `scrypt$…` 形式入库（贴一条 `SELECT left(password_hash, 12)` 证据），库内无明文
+
+房间与申请
+- [ ] 未登录调 `POST /api/rooms` 返回 401；建房后创建者是该房间 `host`（贴 `room_members` 查询）
+- [ ] 列表/详情显示真实库数据（改库后刷新可见）；`total` 与分页可用
+- [ ] 申请五种拦截各有对应提示与错误码：未登录 / 房间已结束 `ROOM_ENDED` / 已是成员 `ALREADY_MEMBER` / 已有待批 `ALREADY_PENDING` / 满员 `ROOM_FULL`
+- [ ] 非房主/协管调批准接口返回 403 `FORBIDDEN`
+- [ ] 满员时批准被拒且申请仍为 `pending`（贴查询）
+- [ ] 房主离开返回 409 `HOST_CANNOT_LEAVE`；成员离开后 `status='inactive'`、`exit_reason='self_leave'`
+- [ ] 结束房间后贴 SQL 输出证明三件事：`rooms.status='ended'` 且 `ended_at` 非空；原活跃成员全部 `inactive/room_ended`；`pending` 申请全部 `cancelled`
+- [ ] 已结束房间：再申请/再批准/再结束均 409 `ROOM_ENDED`；列表、详情仍可只读访问
+- [ ] 并发用例：两个线程同时批准最后一个名额 → 恰好 1 成功、1 `ROOM_FULL`，活跃成员数 = `capacity`（`pytest tests/test_rooms_concurrency.py`）
+
+前端与端到端
+- [ ] `cd frontend && npx tsc --noEmit && npm run build` 全绿
+- [ ] 按 `r001-rooms-features.md` §6 的 9 步脚本双浏览器走通（申请→批准→离开→再申请→结束→只读）
+- [ ] 未登录访问 `/rooms/new` 被引导登录，登录后回到建房页
+
+安全与文档
+- [ ] `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` 除 `config.py` 变量名外无命中；`.env` 未入库；`.env.example` 无真实值
+- [ ] 文档同步：本页验收逐条勾选（带证据）、模块页回填实现位置、README「怎么跑」、roadmap 里程碑 M1 状态
+- [ ] `git status --porcelain` 为空，且每个 cp 都有对应提交与 tag
 
 ## 4. 影响面
 
-- 新增仓库骨架与源码树（`src/`、`scripts/`），不改动既有文件（当前仓库只有文档）。
-- 新增依赖：`next`、`react`、`react-dom`、`typescript`、`@types/*`（LiveKit 相关依赖推迟到 M2 加）。
-- 不涉及数据库迁移工具（手写 SQL + 版本表），不涉及外部服务。
+- 新增 `backend/`、`frontend/` 两棵源码树与配置（`.env.example` 已存在，本轮补 `DATABASE_URL`/`SESSION_SECRET` 说明）。
+- 新增依赖（**安装前需批准**）：后端 `fastapi`、`uvicorn[standard]`、`psycopg[binary,pool]`、`python-dotenv`、开发 `pytest`、`httpx`；前端 `react`、`react-dom`、`react-router-dom`、`@tanstack/react-query`、`vite`、`typescript`、`@vitejs/plugin-react`、`@types/*`。
+- 环境：本机 PostgreSQL 17.11 已就绪（服务 RUNNING、5432 可连、`lg_app` 与 `learning_guide` 已建）。
+- 不改动既有文档结构；归档页（`docs/99-archive/`）本轮不动。
 
 ## 5. 风险
 
-- `node:sqlite` 是实验性 API：本轮先用它（零安装），若在 Next 的 Node runtime 里不可用则改 `better-sqlite3`（接口差异封装在 `src/db/client.ts` 内）。
-- 依赖安装走 npmmirror：Next 16 的原生二进制（`@next/swc-win32-x64-msvc`）若取不到，需切官方 registry 重装（见设计页 §12）。
-- 16 小时预算偏紧：本轮若超时，优先保证「骨架 + 账户 + 房间列表/详情 + 申请批准」可演示，房间码/离开/结束可延后到 M2 的第一轮。
+| 风险 | 应对 |
+| --- | --- |
+| 依赖安装失败（镜像/网络） | npm 走 npmmirror（已配置）；Python 走清华镜像；失败先换源再报 |
+| 会话与同源：Vite 代理配置错会导致 Cookie 不生效 | cp-1 即验证 `/api/auth/me` 链路；总设计 §6 已固化同源策略 |
+| 事务/锁写错导致并发用例不稳 | 已在模块页固化「锁 rooms 行 + 部分唯一索引兜底」；cp-3 必须跑并发用例 |
+| 16 小时预算 | 严格按 cp 顺序推进；超时则砍前端细节（页面样式），保必做链路可演示 |
+| 密码管理 | `.env` 由用户自行填写密码，agent 不接触明文（见 §8） |
 
 ## 6. 归宿与口径
 
-- 产物归宿与命名口径见 `docs/00-project/global-roadmap.md` §1（单一事实源，不在此重复）。
+- 提交物与命名口径见 `global-roadmap.md` §1/§4（zip 命名 `AI管培生_陀梓皓_题目A_<日期>.zip`；GitHub/npm 细则待 P11）。
 - 本轮无外部系统导入导出，无字段口径对齐事项。
-- 密钥禁令：`.env` 不入库；`.env.example` 只放占位值。
+- 密钥禁令：`.env` 不入库；`.env.example` 只放占位；日志与错误响应不回显 Secret/DSN 密码。
 
-## 7. 文档产出（硬产出，与本轮代码同提交）
+## 7. 文档产出（硬产出，与代码同提交）
 
 | 文档 | 时机 |
 | --- | --- |
-| 本需求单（转 approved、验收逐条勾选） | 轮次开始与结束 |
-| `docs/01-architecture/r001-app-architecture.md`（转 approved） | 设计批准时 |
-| `docs/02-modules/r001-data-layer.md`、`r001-auth.md`、`r001-rooms.md`（职责/接口/关键逻辑/变更记录） | 每 cp 落一页 |
-| `README.md`（怎么跑 / 环境变量 / 演示路径回填）、`docs/00-project/global-roadmap.md`（里程碑 M1 状态回填） | 轮次结束 |
+| 本需求单：转 `approved` → 验收逐条勾选（带证据） | 轮次开始 / 结束 |
+| 总设计 `r001-app-architecture.md`：转 `approved`；实现偏差回填 | 批准时 / 结束 |
+| 模块页 `r001-rooms.md`（实现回填：设计 vs 实际 + 变更记录）、`r001-rooms-features.md`（功能核对） | 每 cp |
+| 教程页 `docs/tutorials/r001-postgres-setup.md`（已建，随实际卡点补充）；如新增运行步骤则加 `r001-run-and-demo.md` | 实现期 |
+| `README.md`「怎么跑」+ `AGENTS.md` 的 `<check>` 与实际命令核对 | 结束 |
+| `global-roadmap.md` §3 里程碑 M1 状态回填 | 结束 |
 
-## 8. 关联
+## 8. 人工步骤与凭证约定
 
-- 里程碑：M1（`global-roadmap.md` §3）
-- 设计页：`docs/01-architecture/r001-app-architecture.md`
-- 决策：`docs/03-decisions/global-adr-0001-selfhosted-livekit.md`（M2 生效，本轮不涉及）
+- `backend/.env` 由 agent 生成模板（含 `DATABASE_URL` 占位与随机 `SESSION_SECRET`），**`lg_app` 密码由用户自己填入**（agent 不接触明文）。
+- LiveKit Cloud 的 `LIVEKIT_*` 与 DeepSeek 的 `LLM_*` 本轮留空（M2/M4 前填）。
+
+## 9. 实施顺序（每个 cp 一提交一 tag）
+
+| cp | 内容 | 完成判据 |
+| --- | --- | --- |
+| cp-r001-1 | 骨架与数据层：`config.py`/`pool.py`/`migrate.py`/`sql/*.sql`、`db_init.py`、`test_schema.py`、`.env` 模板、`.gitignore` 核对 | `db_init --reset --seed` 有真实输出；schema 断言全绿 |
+| cp-r001-2 | 账户：`security/*`、`services/auth.py`、`repositories/users.py`、`api/routers/auth.py`、`schemas/auth.py`、`test_auth_service.py` | 注册/登录/登出/me 全链路 + 401/409 用例通过 |
+| cp-r001-3 | 房间与申请：`services/rooms.py`、`repositories/rooms.py`、`api/routers/rooms.py`、`schemas/rooms.py`、服务层与并发用例 | 验收清单中房间/申请全部条目可勾选；并发用例通过 |
+| cp-r001-4 | 前端页面与冒烟：`frontend/` 5 页 + `http.ts`/hooks + `smoke.py` + README「怎么跑」 | `tsc`/`build` 全绿；`smoke.py` PASS n/n；9 步演示脚本走通 |
 
 ## What's next
 
-设计页待批准（P5/P6 与设计页 §11 的 R1~R5 一起拍板）→ 转 approved → 开 `req/r001-*` 分支，按 cp-r001-1..N 增量实现。
+1. 用户批准总设计与本需求单（`status: draft → approved`）。
+2. 批准依赖安装（后端 pip、前端 npm）。
+3. 建分支 `req/r001-skeleton`，从 `cp-r001-1` 开始实现。
