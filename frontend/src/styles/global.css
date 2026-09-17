@@ -138,6 +138,21 @@ a:hover { color: var(--accent); }
 }
 .topbar .crumb { color: var(--text-mute); font-size: 13px; }
 .topbar .crumb .sep { opacity: 0.5; margin: 0 6px; }
+.topbar .top-actions { display: flex; align-items: center; gap: 18px; }
+
+/* 无边框文字链接（登录 / 注册入口，右上角） */
+.link-plain {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease);
+}
+.link-plain:hover { color: var(--accent); }
+.link-plain.strong { color: var(--text); }
 
 .layout { display: flex; align-items: flex-start; }
 .content { flex: 1 1 auto; min-width: 0; }
@@ -236,7 +251,15 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: var(--s-4); border-top: 1px solid var(--line-soft); }
+.side-spacer { flex: 1 1 auto; }
+.side-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line-soft);
+}
 .sidebar.collapsed .side-foot .side-item { justify-content: center; }
 
 /* ---------- 按钮 ---------- */

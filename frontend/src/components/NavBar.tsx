@@ -1,5 +1,5 @@
-import { Menu, UserRound } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { Menu } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { useSession } from '../hooks/useSession'
 
@@ -15,10 +15,14 @@ const CRUMBS: { test: (path: string) => boolean; label: string }[] = [
   { test: (path) => path.startsWith('/register'), label: '注册' },
 ]
 
-/** 顶栏：折叠开关 + 品牌 + 当前区块；导航与个人信息都在侧边栏（ADR-0007）。 */
+/**
+ * 顶栏：折叠开关 + 品牌 + 当前区块；**右上角是登录 / 注册入口（无边框文字，第一版的位置）**。
+ * 个人信息与登出在侧边栏左下角（ADR-0009）。
+ */
 export default function NavBar({ onToggleCollapsed }: Props) {
   const location = useLocation()
-  const { user } = useSession()
+  const navigate = useNavigate()
+  const { user, isLoading } = useSession()
   const crumb = CRUMBS.find((item) => item.test(location.pathname))?.label ?? '页面'
 
   return (
@@ -33,18 +37,29 @@ export default function NavBar({ onToggleCollapsed }: Props) {
         <span className="crumb">
           <span className="sep">/</span>
           {crumb}
-          {user && (
-            <>
-              <span className="sep">/</span>
-              <span style={{ color: 'var(--text-dim)' }}>{user.displayName}</span>
-            </>
-          )}
         </span>
       </div>
-      <span className="chip chip-quiet" title="作业题目 A：LiveKit 迷你产品">
-        <UserRound size={13} strokeWidth={1.75} />
-        题目 A
-      </span>
+
+      <div className="top-actions">
+        {isLoading ? (
+          <span className="dim" style={{ fontSize: 13 }}>
+            ·
+          </span>
+        ) : user ? (
+          <button className="link-plain strong" onClick={() => navigate('/?mine=1')} title="查看我的房间">
+            {user.displayName}
+          </button>
+        ) : (
+          <>
+            <Link className="link-plain" to="/login">
+              登录
+            </Link>
+            <Link className="link-plain" to="/register">
+              注册
+            </Link>
+          </>
+        )}
+      </div>
     </header>
   )
 }

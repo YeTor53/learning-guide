@@ -1,7 +1,8 @@
-import { AlertTriangle, CalendarX2, ChevronLeft, ChevronRight, Compass, Hash, Layers, Plus, RefreshCw, SearchX, Users } from 'lucide-react'
+import { AlertTriangle, CalendarX2, ChevronLeft, ChevronRight, Compass, Hash, Layers, Lock, Plus, RefreshCw, SearchX, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
+import { ApiError } from '../api/http'
 import { TOPIC_OPTIONS, type RoomStatus, type Topic } from '../api/rooms'
 import FlowField from '../components/FlowField'
 import RoomCard from '../components/RoomCard'
@@ -27,7 +28,7 @@ export default function RoomsPage() {
   const [page, setPage] = useState(0)
 
   const mine = params.get('mine') === '1'  // 与侧边栏「我的房间」同源，可直接分享 /?mine=1
-  const { data, isLoading, isError, refetch, isFetching } = useRooms({
+  const { data, isLoading, isError, error, refetch, isFetching } = useRooms({
     status,
     topic: topic || undefined,
     mine,
@@ -40,6 +41,9 @@ export default function RoomsPage() {
   const filtered = status !== 'active' || topic !== '' || mine
   const hasNext = (page + 1) * PAGE_SIZE < total
   const statusLabel = STATUS_TABS.find((tab) => tab.value === status)?.label ?? '进行中'
+  // 错误分三类呈现：未登录（401）/ 连不上后端 / 其它（见 docs/04-style/global-style.md 错误呈现规范）
+  const apiError = error instanceof ApiError ? error : null
+  const needLogin = apiError?.status === 401
 
   const toggleMine = () => {
     if (!user) {
@@ -154,11 +158,39 @@ export default function RoomsPage() {
         </div>
       )}
 
-      {isError && (
+      {isError && needLogin && (
+        <div className="empty">
+          <span className="icon-ring">
+            <Lock size={20} strokeWidth={1.75} />
+          </span>
+          <div>
+            <h3 style={{ fontSize: 18 }}>请先登录</h3>
+            <p className="muted" style={{ margin: '4px 0 0', fontSize: 14 }}>
+              「我的房间」需要登录后才能查看。
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-primary" onClick={() => navigate(`/login?returnTo=${encodeURIComponent('/?mine=1')}`)}>
+              去登录
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                setParams(new URLSearchParams())
+                setPage(0)
+              }}
+            >
+              看全部房间
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isError && !needLogin && (
         <div className="card">
           <div className="alert" role="alert">
             <AlertTriangle size={16} strokeWidth={1.75} style={{ marginTop: 2, flex: '0 0 16px' }} />
-            房间列表加载失败，请检查后端是否已启动。
+            连不上后端：{apiError?.message ?? '未知错误'}。请确认后端已启动（dev 形态见 README「怎么跑」）。
           </div>
           <button className="btn" style={{ marginTop: 12 }} onClick={() => refetch()}>
             <RefreshCw {...ICON} />

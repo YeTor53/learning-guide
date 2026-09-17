@@ -54,7 +54,7 @@ export default function RoomDetailPage() {
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const { data, isLoading, isError, refetch, isFetching, requests, requestJoin, withdraw, approve, reject, leave, end } =
+  const { data, isLoading, isError, error, refetch, isFetching, requests, requestJoin, withdraw, approve, reject, leave, end } =
     useRoomDetail(id)
 
   const flash = (location.state as { flash?: string } | null)?.flash
@@ -69,16 +69,25 @@ export default function RoomDetailPage() {
   }
 
   if (isError || !data) {
+    const detailError = error instanceof ApiError ? error : null
+    const notFound = detailError?.status === 404
     return (
       <div className="card">
         <div className="alert" role="alert">
           <AlertTriangle size={16} strokeWidth={1.75} style={{ marginTop: 2, flex: '0 0 16px' }} />
-          房间加载失败：可能房间不存在，或后端未启动。
+          {notFound ? '房间不存在或已被移除。' : `房间加载失败：${detailError?.message ?? '连不上后端'}。`}
         </div>
-        <button className="btn" style={{ marginTop: 12 }} onClick={() => refetch()}>
-          <RefreshCw {...ICON} />
-          重试
-        </button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          {!notFound && (
+            <button className="btn" onClick={() => refetch()}>
+              <RefreshCw {...ICON} />
+              重试
+            </button>
+          )}
+          <Link className="btn" to="/">
+            返回列表
+          </Link>
+        </div>
       </div>
     )
   }
