@@ -2,7 +2,7 @@
 title: r001 总体设计（架构页）
 description: r001（M1：骨架·账户·房间）的总体架构：分层、目录、配置、数据层机制、会话与鉴权、接口约定、验证矩阵与环境准备。
 type: reference
-status: draft
+status: approved
 owner: 陀梓皓
 updated: 2026-09-17
 ---

@@ -2,7 +2,7 @@
 title: r001 房间功能设计（功能页）
 description: 房间功能的功能点清单、操作流程、界面与交互状态、按钮矩阵、提示文案与端到端演示脚本。
 type: reference
-status: draft
+status: approved
 owner: 陀梓皓
 updated: 2026-09-17
 ---

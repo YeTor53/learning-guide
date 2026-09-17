@@ -2,7 +2,7 @@
 title: r001 房间功能详细设计（模块页）
 description: 房间的生命周期、业务规则、PostgreSQL 数据模型、接口、后端与前端函数级实现路径、并发边界与验证。
 type: reference
-status: draft
+status: approved
 owner: 陀梓皓
 updated: 2026-09-17
 ---

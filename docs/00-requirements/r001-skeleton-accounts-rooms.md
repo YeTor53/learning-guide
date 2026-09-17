@@ -2,7 +2,7 @@
 title: r001 需求单：骨架 · 账户 · 房间（里程碑 M1）
 description: r001 的目的、边界、验收清单、影响面、风险、文档产出与实施顺序（cp-r001-1..4）。
 type: requirement
-status: draft
+status: approved
 owner: 陀梓皓
 updated: 2026-09-17
 ---
