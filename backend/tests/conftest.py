@@ -43,3 +43,50 @@ def db(pool):
     with get_conn() as conn:
         with conn.transaction(force_rollback=True):
             yield conn
+
+
+@pytest.fixture()
+def client(db):
+    """TestClient：把 `db_conn` 依赖覆盖成测试事务里的那条连接。
+
+    这样接口层用例的写入也落在同一个「必定回滚」的事务里，不污染种子数据；
+    不使用 `with TestClient(...)` 是为了跳过 lifespan 的关闭钩子（否则会把会话级连接池关掉）。
+    """
+    from fastapi.testclient import TestClient
+
+    from app.api.deps import db_conn as real_db_conn
+    from app.main import create_app
+
+    app = create_app()
+    app.dependency_overrides[real_db_conn] = _override_with(db)
+    return TestClient(app)
+
+
+def _override_with(db):
+    """把依赖替换成"返回同一测试连接"的生成器函数。"""
+
+    def _dependency():
+        yield db
+
+    return _dependency
+
+
+@pytest.fixture()
+def protected(db):
+    """仅测试用的最小受保护路由：验证 401/放行两条路径（避免为测试往生产代码加路由）。"""
+    from fastapi import Depends, FastAPI
+    from fastapi.testclient import TestClient
+
+    from app.api.deps import current_user, db_conn
+    from app.api.envelope import ok
+    from app.api.errors import register_error_handlers
+
+    app = FastAPI()
+    register_error_handlers(app)
+
+    @app.get("/api/_protected")
+    def _protected(user=Depends(current_user)):
+        return ok({"uid": user.id})
+
+    app.dependency_overrides[db_conn] = _override_with(db)
+    return TestClient(app)

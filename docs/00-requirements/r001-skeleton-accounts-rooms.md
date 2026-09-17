@@ -110,7 +110,7 @@ updated: 2026-09-17
 | cp | 内容 | 完成判据 |
 | --- | --- | --- |
 | cp-r001-1 | 骨架与数据层：`config.py`/`pool.py`/`migrate.py`/`sql/*.sql`、`api/{errors,envelope}.py`（骨架：`AppError` + 信封，`config.py` 依赖）、`db_init.py`、`test_schema.py`、`requirements*.txt`（pip freeze）、`.env` 模板与 `.env.example`（按架构页 §5 键表） | `python backend/scripts/db_init.py --reset --seed` 有真实输出；`pytest backend/tests -q` 全绿 |
-| cp-r001-2 | 账户：`security/*`、`services/auth.py`、`repositories/users.py`、`api/routers/auth.py`、`schemas/auth.py`、`test_auth_service.py` | 注册/登录/登出/me 全链路 + 401/409 用例通过 |
+| cp-r001-2 | 账户：`security/{password,session,ids}.py`、`repositories/users.py`、`services/auth.py`、`schemas/{common,auth}.py`、`api/{deps.py,routers/auth.py}`、`app/main.py`（create_app/lifespan/静态托管占位）、`test_auth_service.py` | 注册/登录/登出/me 全链路 + 401/409 用例通过 |
 | cp-r001-3 | 房间与申请：`services/rooms.py`、`repositories/rooms.py`、`api/routers/rooms.py`、`schemas/rooms.py`、服务层与并发用例 | 验收清单中房间/申请全部条目可勾选；并发用例通过 |
 | cp-r001-4 | 前端页面与冒烟：`frontend/` 5 页 + `http.ts`/hooks + `smoke.py` + README「怎么跑」 | `tsc`/`build` 全绿；`smoke.py` PASS n/n；9 步演示脚本走通 |
 
