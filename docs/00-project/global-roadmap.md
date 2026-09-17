@@ -88,3 +88,50 @@ P5、P6 已定（见 §4）；原 P5/P6 的选项表随拍板作废。
 1. 用户拍板 P9、P10、P3′。
 2. 按 `r001-ADR-0002`（栈变更）**重写** `r001` 需求单与设计页，重写后 `status: draft → approved`。
 3. 建 `req/r001-skeleton` 分支，按 cp-r001-1..4 增量实现（骨架与数据层 → 账户 → 房间与申请 → 页面与冒烟）。
+
+## 8. 文档产出顺序与现状盘点（2026-09-17）
+
+### 8.1 应有的顺序（本项目约定）
+
+```
+总设计(架构页)  →  需求单(本轮范围)  →  模块功能设计(做什么)  →  模块实现设计(怎么做)  →  实现(cp)
+01-architecture/      00-requirements/      02-modules/*-features      02-modules/*        代码
+```
+
+- 上一环未定稿（如架构页仍 superseded）时，不应产出下面几环的定稿内容。
+- 每一页只承载**一个轮次**的内容：`rNNN-` 前缀 = 该轮产出，`global-` = 跨轮/项目级。
+
+### 8.2 现状盘点（2026-09-17）
+
+| 文档 | 前缀 | 应有归属 | 现状 | 问题 |
+| --- | --- | --- | --- | --- |
+| `docs/00-project/global-roadmap.md` | global | 项目级 | draft，含已决/待拍板 | 正常（待 P3′/P9/P10/P11 拍板） |
+| `docs/01-architecture/r001-app-architecture.md` | r001 | r001 总设计 | **superseded**（栈变更作废） | **未重写**；它才是「总设计」，当前缺位 |
+| `docs/00-requirements/r001-skeleton-accounts-rooms.md` | r001 | r001 需求单 | superseded | 需随总设计重写 |
+| `docs/02-modules/r001-rooms.md`（实现） | r001 | r001 | draft | 内容含 M2/M3 项（邀请、踢人、角色、移交），超出 r001 范围 |
+| `docs/02-modules/r001-rooms-features.md`（功能） | r001 | r001 | draft | 同上，F-06/F-07/F-10/F-11 属 M2 |
+| `docs/02-modules/r001-summaries.md`（实现） | r001 | **M4** | draft | **提前产出**：内容属 M4，却挂在 r001 名下 |
+| `docs/02-modules/r001-summaries-features.md`（功能） | r001 | **M4** | draft | 同上 |
+| `docs/03-decisions/` ADR-0001~0004 | 混合 | 决策记录 | 0001/0002 accepted，0003/0004 proposed | 正常 |
+
+**结论**：跳步发生在「总设计（架构页）仍作废未重写」的情况下先产出了模块级功能/实现设计，且把 M4 的纪要设计、M2/M3 的房间能力混进了 r001 命名空间。
+
+### 8.3 修正方案（二选一，待用户拍板）
+
+| 方案 | 内容 | 代价 | 结果 |
+| --- | --- | --- | --- |
+| **A 轻标注** | 文件不动；纪要两页标 `status: backlog` + 顶部注明「M4 设计预告，非本轮方案」；房间两页把 M2/M3 小节标为「M2 预告」 | 零搬迁；代价是「跨轮内容混页」长期存在，之后每轮都要读大页 | 快，但不符合「一页一轮次」 |
+| **B 彻底归位**（建议） | ① 纪要两页 `git mv` 到 `docs/99-archive/` 标 `status: backlog`（M4 立轮次时移回 `02-modules/` 并改名）；② 房间两页中 M2/M3 项（邀请/踢人/角色/移交）拆到 `docs/99-archive/r001-ahead-m2-m3-rooms.md`，r001 页只留 M1 项；③ 同步 README 与互链引用 | 一次搬迁 + 引用同步（当前引用仅 README、页面互链、本页，成本低） | 目录即真相：`01-architecture/` 只放本轮总设计、`02-modules/` 只放本轮模块，未开轮次的未来设计一律 `99-archive/` 标 backlog |
+
+拍板 B 后立即执行，然后**回到总设计**：重写 `docs/01-architecture/r001-app-architecture.md`（React + Python + PostgreSQL 的总体架构）。
+
+### 8.4 重写总设计的前置
+
+| 前置 | 状态 | 不定的后果 |
+| --- | --- | --- |
+| P10 后端框架与数据层工具（FastAPI？手写 SQL + 版本表还是 Alembic？） | 待拍板 | 目录树、分层、迁移脚本、验证命令全部受影响 |
+| P9 PostgreSQL 落地方式（本机安装 / Docker / 仅交 compose） | 待拍板 | 环境准备步骤与 README「怎么跑」受影响 |
+| P3′ LiveKit 来源（Cloud / 自建 / 主+备） | 待拍板（ADR-0003 已给对比） | 只影响 `.env` 与 livekit 模块两处分支，不阻塞总设计主体 |
+
+结论：**P10、P9 一起定，总设计才能一次写对**；P3′ 可在总设计里留分支。
+
