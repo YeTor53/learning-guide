@@ -347,3 +347,17 @@ frontend/src/
 1. 用户复核本页（重点：§4 规则表、§6 函数签名、§8 并发项、§10 分支点）。
 2. 与重写后的架构页、需求单一同转 `approved`（纪要/邀请/踢人等非本轮内容已在 `docs/99-archive/`）。
 3. 落实现：`cp-r001-1`（数据层）→ `cp-r001-2`（账户）→ `cp-r001-3`（房间与申请）→ `cp-r001-4`（页面与冒烟）。
+
+## 12. 实现回填（cp-r001-3，设计 vs 实际）
+
+| 项 | 本页设计 | 实际落地 | 说明 |
+| --- | --- | --- | --- |
+| 行映射 | `RoomRow` / `MemberRow` / `JoinRequestRow` 等 | 增加带显示名的包装类型 `RoomWithHost` / `MemberRowWithName` / `JoinRequestRowWithName` / `MessageRowWithName` | 列表与详情要显示人名，改用 JOIN 一次取回，避免列表 N+1 |
+| 列表聚合 | `room_aggregates` | 另加 `my_active_roles` / `my_pending_requests` | 我的角色与「已申请」徽标需要批量取，避免逐行查询 |
+| 申请列表可见性 | `assert_room_role(host, moderator)` | 另加 `assert_manager_role`（结束后放行房主与历史协管） | 与功能页 F-05「结束后仍可追溯查看」一致 |
+| 路由数量 | §5 列 9 条 | 实际 10 条（补 `withdraw`） | 功能页 F-04 的「撤回申请」按钮补齐 |
+| `pending_count` 可见性 | §4 只写「聚合」 | 非房主/协管服务端返回 0 | 用户 2026-09-17 拍板（FQ-4） |
+| `mine=1` 口径 | 「我参与或我建过」 | 「我建的 / 我参与过的 / 我有待批申请的」 | 卡片「已申请」徽标需要；已在 §4 与功能页 F-01 写实 |
+
+验证证据：`pytest backend/tests -q` → 72 passed；`smoke.py` → PASS 22/22（含结束房间后的成员退出原因与申请 `cancelled`）。
+实现期修掉的坑见架构页 §15.3（`AmbiguousColumn`、结束后 403、并发用例自身数据造错）。

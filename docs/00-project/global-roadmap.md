@@ -51,6 +51,10 @@ updated: 2026-09-17
 | M4 会后产出 · 交付 | LLM 纪要生成链路（输入含聊天记录 + 参与者 + 主题，落库，房间详情可查看）、冒烟脚本、设计说明 + README + `.env.example`、打包提交 | 冒烟脚本全绿并贴输出；设计说明各章齐全；提交物命名符合口径、AI 工具清单齐全 | M1~M3、LLM 凭据（已决 P4） | 2~3 |
 | M5 加分项（增量，按时间取舍） | 每项独立成轮、可单独开关，不影响 M1~M4 闭环：① 断线重连后举手/焦点状态恢复 ② 房间录制或旁路录音转写后再生成纪要 ③ Docker Compose 一键启动 ④ 简单管理后台 ⑤ 3–5 分钟演示录屏 | 每项做完即可单独演示；未做项在设计说明「未完成项」中如实登记 | M4（不阻塞交付） | 每项 0.5~1 |
 
+> **M1（r001）状态回填（2026-09-17）**：实现完成，`cp-r001-1`~`cp-r001-4` 四个 tag 齐备（骨架与数据层 → 账户 → 房间与申请 → 前端与冒烟）。
+> 实测：`db_init --reset --seed` 打印 7 表行数；`pytest backend/tests -q` 72 passed；`smoke.py` PASS 22/22；前端 `tsc --noEmit` + `npm run build` 全绿。
+> 剩余：人工双浏览器走一遍 9 步演示（需求单 §3 还有 2 项未勾）→ 人审通过后由人 `merge --no-ff` 并打 `round-r001-done`。
+
 ## 4. 已决事项
 
 | 编号 | 事项 | 决定 | 说明 |
@@ -88,10 +92,11 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 
 ## 7. What's next
 
-1. 用户复核**总设计** `docs/01-architecture/r001-app-architecture.md`（§2 选型落地、§3 分层、§6 会话与跨源、§9 骨架函数签名、§11 验证矩阵、§12 环境准备）与**需求单** `docs/00-requirements/r001-skeleton-accounts-rooms.md`。
-2. 两页转 `approved`，模块页（房间功能/实现）同步转 `approved`。
-3. 建 `req/r001-skeleton` 分支，按 cp-r001-1..4 增量实现（骨架与数据层 → 账户 → 房间与申请 → 前端页面与冒烟）。
-4. P11（npm 发布对象 / 仓库公开性 / zip 主次）**暂缓**（用户 2026-09-17 指示），实现期只按本地 zip 口径准备交付物；提交阶段再补 README 交付章节与可能的包目录。
+1. 人工复核 r001：按 README「怎么跑」起前后端，走 `docs/02-modules/r001-rooms-features.md` §6 的 9 步演示脚本（含未登录引导与回跳）；通过后把需求单 §3 余下 2 项勾上。
+2. 人审通过后由人合并（历史 append-only，不 rebase）：
+   `git checkout main && git merge --no-ff req/r001-skeleton && git tag -a round-r001-done -m "r001 完成（M1 骨架·账户·房间）"`
+3. 开 r002 = M2：LiveKit Cloud 接线（服务端签 Token、`RoomConfiguration.max_participants=8` 兜底、`RemoveParticipant` 踢人与 `LIVEKIT_MODE` 分支）、批准后真正进房、三角色权限矩阵落地、踢人。届时把 `docs/99-archive/r001-ahead-m2-m3-rooms.md` 移回 `docs/02-modules/` 并改为 `r002-` 前缀。
+4. P11（npm 发布对象 / 仓库公开性 / zip 主次）仍**暂缓**：达到提交阶段再拍，届时补 README 交付章节与可能的包目录。
 
 ## 8. 文档产出顺序与现状盘点（2026-09-17）
 
@@ -153,3 +158,19 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 决策入档 | P9=A（本机安装）、P3′=C（Cloud 为主 + 自建留档） |
 
 下一步（2026-09-17 接续核）：总设计与需求单**转 `approved`** 后建 `req/r001-skeleton`，按 cp-r001-1..4 实现；P11 暂缓不影响开工。
+
+## 9. 遗留台账（r001 收官，2026-09-17）
+
+| 项 | 类型 | 去向 |
+| --- | --- | --- |
+| 前端 9 步双浏览器演示（含未登录访问 `/rooms/new` 的引导与 `returnTo` 回跳） | 本轮唯一未完成的验收项（需人工） | 人工复核时执行；通过后勾上需求单 §3 余下 2 项 |
+| 列表分页 `limit/offset` 无专门用例（用例只验了 `total` 与筛选） | 测试欠账（低风险） | r002 顺手补一条分页用例 |
+| 房间码冲突重试 3 次的分支无用例（碰撞概率极低） | 测试欠账（低风险） | r002 用可注入的 `new_code` 打桩补一条 |
+| 房间结束后 `myRole` 为 `null`（历史角色不显示徽标，如「曾是协管」） | 行为待定 | r002 决定是否在只读视图显示历史角色 |
+| `pytest` 输出 Starlette/httpx 弃用告警（提示 `httpx2`） | 上游噪音 | 待 starlette 正式版；届时升 `httpx` |
+| LiveKit：Cloud 项目与 Token 签发、`max_participants` 兜底、踢人（Cloud 上移除即失效 vs 自建只能短 TTL）、角色任命/移交、邀请（`invites` 表已建未用） | M2 范围 | 开 r002 时从 `docs/99-archive/r001-ahead-m2-m3-rooms.md` 移回并改前缀 |
+| 群聊实时收发落库、举手、焦点发言、屏幕共享与「焦点 × 共享」优先级规则 | M3 范围 | 按 §3 里程碑表推进 |
+| LLM 纪要（触发链路、Prompt 契约、落库与重试） | M4 范围 | 设计与实现方案已在 `docs/99-archive/r001-ahead-m4-summaries*.md` |
+| 加分项：断线重连恢复、录制转写、Compose、管理后台、录屏 | M5 增量 | 按剩余时间取舍 |
+| 交付物（zip + GitHub + npm）细则 | P11 暂缓 | 提交阶段拍板后另开一轮 |
+

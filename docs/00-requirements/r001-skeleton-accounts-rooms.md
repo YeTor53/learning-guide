@@ -36,34 +36,54 @@ updated: 2026-09-17
 ## 3. 验收清单（逐条给证据）
 
 数据层
-- [ ] `python backend/scripts/db_init.py --reset --seed` 打印各表行数（`users≥3`、`rooms≥3`、`join_requests` 有种子数据）——贴真实输出
-- [ ] `pytest backend/tests/test_schema.py -q` 全绿：表/列/约束存在；**部分唯一索引真挡住重复 pending**；CHECK 真挡住「active 却带 exit_reason」这类非法组合
+- [x] `python backend/scripts/db_init.py --reset --seed` 打印各表行数（`users≥3`、`rooms≥3`、`join_requests` 有种子数据）——贴真实输出
+- [x] `pytest backend/tests/test_schema.py -q` 全绿：表/列/约束存在；**部分唯一索引真挡住重复 pending**；CHECK 真挡住「active 却带 exit_reason」这类非法组合
 
 账户
-- [ ] 注册 → 登录 → 登出 → 再访问受保护接口返回 401
-- [ ] 同邮箱重复注册返回 409 `EMAIL_TAKEN`；密码错误与邮箱不存在都返回 401 `INVALID_CREDENTIALS`（不区分）
-- [ ] 口令以 `scrypt$…` 形式入库（贴一条 `SELECT left(password_hash, 12)` 证据），库内无明文
+- [x] 注册 → 登录 → 登出 → 再访问受保护接口返回 401
+- [x] 同邮箱重复注册返回 409 `EMAIL_TAKEN`；密码错误与邮箱不存在都返回 401 `INVALID_CREDENTIALS`（不区分）
+- [x] 口令以 `scrypt$…` 形式入库（贴一条 `SELECT left(password_hash, 12)` 证据），库内无明文
 
 房间与申请
-- [ ] 未登录调 `POST /api/rooms` 返回 401；建房后创建者是该房间 `host`（贴 `room_members` 查询）
-- [ ] 列表/详情显示真实库数据（改库后刷新可见）；`total` 与分页可用
-- [ ] 申请五种拦截各有对应提示与错误码：未登录 / 房间已结束 `ROOM_ENDED` / 已是成员 `ALREADY_MEMBER` / 已有待批 `ALREADY_PENDING` / 满员 `ROOM_FULL`
-- [ ] 非房主/协管调批准接口返回 403 `FORBIDDEN`
-- [ ] 满员时批准被拒且申请仍为 `pending`（贴查询）
-- [ ] 房主离开返回 409 `HOST_CANNOT_LEAVE`；成员离开后 `status='inactive'`、`exit_reason='self_leave'`
-- [ ] 结束房间后贴 SQL 输出证明三件事：`rooms.status='ended'` 且 `ended_at` 非空；原活跃成员全部 `inactive/room_ended`；`pending` 申请全部 `cancelled`
-- [ ] 已结束房间：再申请/再批准/再结束均 409 `ROOM_ENDED`；列表、详情仍可只读访问
-- [ ] 并发用例：两个线程同时批准最后一个名额 → 恰好 1 成功、1 `ROOM_FULL`，活跃成员数 = `capacity`（`pytest tests/test_rooms_concurrency.py`）
+- [x] 未登录调 `POST /api/rooms` 返回 401；建房后创建者是该房间 `host`（贴 `room_members` 查询）
+- [x] 列表/详情显示真实库数据（改库后刷新可见）；`total` 与分页可用
+- [x] 申请五种拦截各有对应提示与错误码：未登录 / 房间已结束 `ROOM_ENDED` / 已是成员 `ALREADY_MEMBER` / 已有待批 `ALREADY_PENDING` / 满员 `ROOM_FULL`
+- [x] 非房主/协管调批准接口返回 403 `FORBIDDEN`
+- [x] 满员时批准被拒且申请仍为 `pending`（贴查询）
+- [x] 房主离开返回 409 `HOST_CANNOT_LEAVE`；成员离开后 `status='inactive'`、`exit_reason='self_leave'`
+- [x] 结束房间后贴 SQL 输出证明三件事：`rooms.status='ended'` 且 `ended_at` 非空；原活跃成员全部 `inactive/room_ended`；`pending` 申请全部 `cancelled`
+- [x] 已结束房间：再申请/再批准/再结束均 409 `ROOM_ENDED`；列表、详情仍可只读访问
+- [x] 并发用例：两个线程同时批准最后一个名额 → 恰好 1 成功、1 `ROOM_FULL`，活跃成员数 = `capacity`（`pytest tests/test_rooms_concurrency.py`）
 
 前端与端到端
-- [ ] `cd frontend && npx tsc --noEmit && npm run build` 全绿
-- [ ] 按 `r001-rooms-features.md` §6 的 9 步脚本双浏览器走通（申请→批准→离开→再申请→结束→只读）
-- [ ] 未登录访问 `/rooms/new` 被引导登录，登录后回到建房页
+- [x] `cd frontend && npx tsc --noEmit && npm run build` 全绿
+- [ ] 按 `r001-rooms-features.md` §6 的 9 步脚本双浏览器走通（申请→批准→离开→再申请→结束→只读） ← **待人工**（代码已就绪：路由守卫 + `returnTo`；需你点一遍）
+- [ ] 未登录访问 `/rooms/new` 被引导登录，登录后回到建房页 ← **待人工**（代码已就绪：路由守卫 + `returnTo`；需你点一遍）
 
 安全与文档
-- [ ] `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` 除 `config.py` 变量名外无命中；`.env` 未入库；`.env.example` 无真实值
-- [ ] 文档同步：本页验收逐条勾选（带证据）、模块页回填实现位置、README「怎么跑」、roadmap 里程碑 M1 状态
-- [ ] `git status --porcelain` 为空，且每个 cp 都有对应提交与 tag
+- [x] `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` 除 `config.py` 变量名外无命中；`.env` 未入库；`.env.example` 无真实值
+- [x] 文档同步：本页验收逐条勾选（带证据）、模块页回填实现位置、README「怎么跑」、roadmap 里程碑 M1 状态
+- [x] `git status --porcelain` 为空，且每个 cp 都有对应提交与 tag
+
+
+### 3.1 收官证据（2026-09-17 实测，全部可复跑）
+
+| 编号 | 命令 | 实测输出（摘要） |
+| --- | --- | --- |
+| E1 | `python backend/scripts/db_init.py --reset --seed` | `schema_migrations 2 / users 3 / rooms 3 / room_members 6 / join_requests 3 / invites 0 / chat_messages 12`；不带 `--seed` 复跑显示「本次应用版本：无（已是最新）」 |
+| E2 | `pytest backend/tests -q` | `72 passed`（schema 18 + 账户 19 + 房间 35，含并发抢名额用例） |
+| E3 | `python backend/scripts/smoke.py --base-url http://127.0.0.1:8000` | `PASS 22/22`（22 项逐条 OK，含未登录 401、重复申请 409、房主拒离 409、结束后 409 `ROOM_ENDED`、成员退出原因与申请 `cancelled`） |
+| E4 | `cd frontend && npx tsc --noEmit && npm run build` | 无类型错误；`dist/index.html` + `dist/assets/index-*.{js,css}`（js 228.04 kB / gzip 73.21 kB） |
+| E5 | `git grep -nE "API_SECRET\|API_KEY" -- backend/app frontend/src` | 仅 `backend/app/config.py` 的 3 处变量名命中（检查项允许）；`.env` 未入库（`git check-ignore` 命中 `.gitignore:12`） |
+| E6 | `git status --porcelain` + `git tag -n` | 工作区干净；`cp-r001-1`~`cp-r001-4` 四个 tag 齐备，每 cp 一提交 |
+| E7 | `psql "$DATABASE_URL" -c "SELECT left(password_hash,12), count(*) FROM users GROUP BY 1"` | `scrypt$16384` × 3（库内无明文口令） |
+| E8 | `psql "$DATABASE_URL" -c "SELECT r.title, m.role, m.status, u.display_name FROM room_members m JOIN …"` | 建房者确为 `host`；已结束房间的成员为 `inactive`（退出原因见 E3） |
+
+**收官状态分类**：§3 的 20 项里，18 项已由 E1~E8 的实测输出覆盖；2 项需人工双浏览器点一遍（已在上文标「待人工」）：
+① 前端 9 步演示脚本；② 未登录访问 `/rooms/new` 的引导与回跳。这两项涉及真实浏览器交互，脚本无法代替。
+
+代码位置对照：数据层 `backend/app/db/**`；账户 `backend/app/{security,services/auth.py,repositories/users.py,api/routers/auth.py}`；
+房间 `backend/app/{repositories/rooms.py,services/rooms.py,schemas/rooms.py,api/routers/rooms.py}`；前端 `frontend/src/**`；冒烟 `backend/scripts/smoke.py`。
 
 ## 4. 影响面
 
@@ -96,7 +116,7 @@ updated: 2026-09-17
 | 本需求单：转 `approved` → 验收逐条勾选（带证据） | 轮次开始 / 结束 |
 | 总设计 `r001-app-architecture.md`：转 `approved`；实现偏差回填 | 批准时 / 结束 |
 | 模块页 `r001-rooms.md`（实现回填：设计 vs 实际 + 变更记录）、`r001-rooms-features.md`（功能核对）；账户两页 `r001-accounts.md` / `r001-accounts-features.md`（cp-r001-2 后已回填，均 approved） | 每 cp |
-| 教程页 `docs/tutorials/r001-postgres-setup.md`（已建，随实际卡点补充）；如新增运行步骤则加 `r001-run-and-demo.md` | 实现期 |
+| 教程页 `docs/tutorials/r001-postgres-setup.md`（已建；cp-r001-1 按实测卡点补了 §4b 建表授权与人工清单项）。**运行步骤不另开教程页**：统一落 README「怎么跑」（单一事实源，避免双源） | 实现期 |
 | `README.md`「怎么跑」+ `AGENTS.md` 的 `<check>` 与实际命令核对 | 结束 |
 | `global-roadmap.md` §3 里程碑 M1 状态回填 | 结束 |
 

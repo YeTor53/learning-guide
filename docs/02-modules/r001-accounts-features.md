@@ -132,3 +132,16 @@ updated: 2026-09-17
 
 1. 本页转 `approved` 已随 cp-r001-2 完成；前端页面（`/login`、`/register`、`useSession`）在 cp-r001-4 落地，落地后回填「实际与偏差」。
 2. FQ-A1、FQ-A3 若改口径，同步改本页 §2/§5 与实现页 §3。
+
+## 8. 实现核对（cp-r001-2 / cp-r001-4）
+
+| 功能 | 落地情况 | 落点 |
+| --- | --- | --- |
+| F-A-01 注册 | 已落地：三字段表单 + 本地预检（邮箱格式、显示名 32 字、密码 ≥8）+ 服务端 409 文案呈现；注册成功即登录并跳转 | `components/RegisterForm.tsx`、`pages/RegisterPage.tsx` |
+| F-A-02 登录 | 已落地：错误统一显示服务端「邮箱或密码不正确」；演示账号提示写在页脚 | `components/LoginForm.tsx`、`pages/LoginPage.tsx` |
+| F-A-03 登出 | 已落地：导航栏按钮、点击即执行无确认、成功后回房间列表 | `components/NavBar.tsx` |
+| F-A-04 首屏会话恢复 | 已落地：`['me']` 查询驱动导航栏；加载中显示占位不闪「登录/注册」 | `hooks/useSession.ts` |
+| F-A-05 未登录引导 | 已落地：`returnTo` 只接受站内相对路径（`//` 与外部地址回落到首页） | `pages/LoginPage.tsx` 的 `safeReturnTo` |
+| F-A-06 表单校验与错误呈现 | 已落地：前端预检 + 服务端文案；错误只显示一条 | 两个表单组件 |
+
+**待人工**：未登录访问 `/rooms/new` 的引导与登录后回跳，需真实浏览器点一遍（代码路径：`NewRoomPage` 守卫 + `LoginPage` 的 `returnTo`）。

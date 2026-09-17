@@ -327,3 +327,47 @@ DATABASE_URL=postgresql://lg_app:你自己设的密码@127.0.0.1:5432/learning_g
 1. 用户复核本页（重点：§2 选型落地、§3 分层规则、§6 会话与跨源、§9 骨架函数签名、§11 验证矩阵、§12 环境准备）。
 2. 通过后：重写 `docs/00-requirements/r001-skeleton-accounts-rooms.md`（r001 需求单，含验收清单）→ 与之配套的模块页（房间两份已就绪）一并转 `approved`。
 3. 再开实现：分支 `req/r001-skeleton`，按 `cp-r001-1`（骨架与数据层）→ `cp-r001-2`（账户）→ `cp-r001-3`（房间与申请）→ `cp-r001-4`（前端页面与冒烟）推进；每 cp 一提交一 tag。
+
+## 15. 实现回填（r001，2026-09-17）
+
+> 口径：本节记录**实际落地**与本文设计的差异，以及实现期修掉的坑。状态：r001 四个 checkpoint（cp-r001-1..4）全部完成并打 tag。
+
+### 15.1 设计 vs 实际
+
+| 项 | 本文设计 | 实际落地 | 说明 |
+| --- | --- | --- | --- |
+| 目录树（§4） | 见 §4 | 一致，另加 `backend/tests/helpers.py`（用例公用小工具） | 生产代码未多出文件；`schemas/common.py` 在 cp-r001-2 即落地 |
+| 路由数量（§9.5 写「r001 共 13 个」） | 13 | **14 个**：账户 4 + 房间 10 | 多出的是 `POST /api/join-requests/{id}/withdraw`（撤回申请），补齐功能页 F-04 的按钮与接口清单缺口 |
+| 请求体字段命名 | §8 只给了信封形状 | 请求与响应**统一 camelCase**（`displayName` / `topicLabel`），内部字段仍 snake_case | `CamelModel` 放到 `schemas/common.py` 共用；请求体同时接受 snake_case 写法 |
+| 待批申请数 `pendingCount` | §8 未定可见性 | **服务端按角色收敛**：非房主/协管一律 `0` | 用户 2026-09-17 拍板（对应房间功能页 FQ-4） |
+| `current_user` 的位置（§9.4） | 列在 `security/*` | 落在 `api/deps.py`；`security/session.py` 只留纯函数 | 放 security 会造成 `security → repositories` 反向依赖，违反 §3 |
+| 会话 Cookie | §6 已定 | 与设计一致：`lg_session`，HMAC-SHA256，HttpOnly + SameSite=Lax + 7 天，demo 加 Secure | — |
+| 应用装配 | §9.2 `create_app()` | 一致，另有模块级 `app = create_app()` 供 `uvicorn app.main:app` | 缺 `.env` 事项启动即失败（§13 的设计意图） |
+| 静态托管 | §6「uvicorn 挂载 `frontend/dist`」 | `mount_spa`：`/assets` 静态 + `index.html` 兜底回退；`APP_ENV=demo` 才挂 | 开发期走 Vite 代理，后端不挂 SPA |
+
+### 15.2 验证矩阵的实现证据（§11 逐条）
+
+| 验证项 | 实测结果 |
+| --- | --- |
+| 数据层初始化 | `db_init --reset --seed` → `schema_migrations 2 / users 3 / rooms 3 / room_members 6 / join_requests 3 / invites 0 / chat_messages 12`；复跑幂等 |
+| 全部自动化用例 | `pytest backend/tests -q` → **72 passed**（schema 18 + 账户 19 + 房间 35） |
+| 冒烟（真实 HTTP） | `smoke.py` → **PASS 22/22** |
+| 前端类型与构建 | `npx tsc --noEmit` 无错误；`npm run build` 产出 `dist/`（js 228.04 kB / gzip 73.21 kB） |
+| 密钥检索 | 仅 `config.py` 的 3 处变量名命中；`.env` 未入库 |
+
+### 15.3 实现期修掉的坑
+
+| 现象 | 根因 | 修法 |
+| --- | --- | --- |
+| 迁移第一条 `CREATE TABLE` 报 `InsufficientPrivilege: 对模式 public 权限不够` | PostgreSQL 15+ 起 `public` 模式的建表权限不再默认授予普通角色，而库 owner 是 postgres | 教程新增 §4b：`GRANT CREATE, USAGE ON SCHEMA public TO lg_app;`；`db_init.py` 遇该错误打印同一句提示 |
+| 房间查询报 `AmbiguousColumn: 字段关联 "id" 是不明确的` | `SELECT id, …` 配 JOIN 时列名不带表别名 | 列名改为按表别名拼（`r.` / `m.` / `g.`） |
+| 房间结束后房主看申请列表返回 403 | `assert_room_role` 要求「活跃成员」，而结束后成员全部 `inactive` | 新增 `assert_manager_role`：结束后放行房主与历史协管（功能页 F-05 的追溯查看） |
+| 注册接口返回 400 | 请求体用了 camelCase 的 `displayName`，而 `RegisterIn` 当时是 snake_case 模型 | 请求/响应模型统一走 `CamelModel`（`populate_by_name=True`，两种写法都收） |
+| 并发用例两条申请都被 `ROOM_FULL` | **用例自身数据造错**：容量 2 却已放入 2 名成员 | 改为容量 3、2 名成员，真正留出「最后一个名额」 |
+| 冒烟第一次跑就暴露上面两条（400 与权限） | —— | 说明「一条命令跑通真链路」比单测更能抓到装配层问题 |
+
+### 15.4 本轮明确未做
+
+- LiveKit 相关全部（Token 签发、音视频、屏幕共享、踢人）→ M2；实时群聊 / 举手 / 焦点 → M3；LLM 纪要 → M4（归档页已备设计）。
+- 前端 9 步双浏览器演示脚本：**未人工执行**（代码与构建已就绪），需你点一遍。
+- `pytest` 输出两条 Starlette/httpx 弃用告警（上游提示 `httpx2`），不影响功能，本轮不追。
