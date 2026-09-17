@@ -7,7 +7,9 @@
 
 设计事实源：docs/01-architecture/r001-app-architecture.md §9.6；docs/02-modules/r001-rooms.md §6.8
 判据：每步状态码与关键字段符合预期，末尾打印 `PASS n/n`；任一步不符即以非 0 退出。
-注意：脚本会向库里写入两个账号与一个房间（每次邮箱随机），跑完可用 db_init --reset --seed 恢复演示数据。
+注意：① 脚本会向库里写入两个账号与一个房间（每次邮箱随机），跑完可用 db_init --reset --seed 恢复演示数据；
+      ② 本脚本要求后端以 `APP_ENV=dev`（默认）运行：`APP_ENV=demo` 时会话 Cookie 带 Secure，脚本客户端不会回传，
+         会出现「注册成功但下一步 401」——这是设计如此（演示形态用浏览器访问不受影响）。
 """
 from __future__ import annotations
 
@@ -69,6 +71,12 @@ def main(argv: list[str] | None = None) -> int:
         check("建房", created.status_code == 201 and room.get("myRole") == "host", f"→ {created.status_code} roomCode={room.get('roomCode')} myRole={room.get('myRole')}")
         room_id = room.get("id", "")
         if not room_id:
+            if created.status_code == 401 and a.status_code == 201:
+                print(
+                    "\n[HINT] 注册成功但后续请求 401：后端跑在 APP_ENV=demo 时，会话 Cookie 带 Secure 属性，"
+                    "浏览器对 http://127.0.0.1 视为安全上下文可用，但脚本客户端不会回传。"
+                    "请用 APP_ENV=dev（默认）的后端跑本脚本，或改用 https。"
+                )
             print("\n建房失败，后面步骤无法继续")
             return 1
 

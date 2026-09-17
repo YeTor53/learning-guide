@@ -1,3 +1,4 @@
+import { AlertTriangle, AlignLeft, ArrowRight, PenLine, Tag } from 'lucide-react'
 import { useState } from 'react'
 
 import { ApiError } from '../api/http'
@@ -9,7 +10,9 @@ interface Props {
   onSubmit: (body: CreateRoomBody) => void
 }
 
-/** 建房表单（功能页 F-02）：主题单选、标题 1–80、简介 ≤500。 */
+const ICON = { size: 14, strokeWidth: 1.75 } as const
+
+/** 建房表单（功能页 F-02）：主题（自定义需填主题名）、标题 1–80、简介 ≤500。 */
 export default function RoomForm({ submitting, error, onSubmit }: Props) {
   const [topic, setTopic] = useState<Topic>('epicureanism')
   const [topicLabel, setTopicLabel] = useState('伊壁鸠鲁主义')
@@ -20,8 +23,7 @@ export default function RoomForm({ submitting, error, onSubmit }: Props) {
   const pickTopic = (value: Topic) => {
     setTopic(value)
     const preset = TOPIC_OPTIONS.find((item) => item.value === value)
-    if (value !== 'custom' && preset) setTopicLabel(preset.label)
-    else if (value === 'custom') setTopicLabel('')
+    setTopicLabel(value === 'custom' ? '' : (preset?.label ?? ''))
   }
 
   const submit = (event: React.FormEvent) => {
@@ -37,42 +39,68 @@ export default function RoomForm({ submitting, error, onSubmit }: Props) {
   const message = localError ?? (error instanceof ApiError ? error.message : error ? '创建失败，请稍后重试' : null)
 
   return (
-    <form className="stack" onSubmit={submit}>
-      {message && <div className="errorbar">{message}</div>}
-      <div>
-        <label htmlFor="room-topic">学习主题</label>
-        <select id="room-topic" value={topic} onChange={(e) => pickTopic(e.target.value as Topic)}>
-          {TOPIC_OPTIONS.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <p className="muted" style={{ margin: '4px 0 0' }}>
-          主题决定房间的分类与展示标签
-        </p>
-      </div>
-      {topic === 'custom' && (
-        <div>
-          <label htmlFor="room-topic-label">主题名</label>
-          <input id="room-topic-label" value={topicLabel} onChange={(e) => setTopicLabel(e.target.value)} />
+    <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {message && (
+        <div className="alert" role="alert">
+          <AlertTriangle size={16} strokeWidth={1.75} style={{ marginTop: 2, flex: '0 0 16px' }} />
+          {message}
         </div>
       )}
-      <div>
-        <label htmlFor="room-title">标题</label>
-        <input id="room-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+
+      <div className="field">
+        <label>
+          <Tag {...ICON} style={{ verticalAlign: -2, marginRight: 6 }} />
+          学习主题
+        </label>
+        <div className="chipset" style={{ padding: 4 }}>
+          {TOPIC_OPTIONS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              className={topic === item.value ? 'on' : ''}
+              aria-pressed={topic === item.value}
+              onClick={() => pickTopic(item.value)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <span className="hint">主题决定房间的分类与展示标签</span>
       </div>
-      <div>
-        <label htmlFor="room-description">简介</label>
+
+      {topic === 'custom' && (
+        <div className="field">
+          <label htmlFor="room-topic-label">主题名</label>
+          <input id="room-topic-label" className="input" value={topicLabel} onChange={(e) => setTopicLabel(e.target.value)} placeholder="给你的主题起个名字" />
+        </div>
+      )}
+
+      <div className="field">
+        <label htmlFor="room-title">
+          <PenLine {...ICON} style={{ verticalAlign: -2, marginRight: 6 }} />
+          标题
+        </label>
+        <input id="room-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="这次想讨论什么" />
+        <span className="hint">{title.trim().length}/80 字</span>
+      </div>
+
+      <div className="field">
+        <label htmlFor="room-description">
+          <AlignLeft {...ICON} style={{ verticalAlign: -2, marginRight: 6 }} />
+          简介
+        </label>
         <textarea
           id="room-description"
-          rows={4}
+          className="textarea"
           value={description}
           placeholder="想讨论什么？打算怎么进行？留几句话给加入的人"
           onChange={(e) => setDescription(e.target.value)}
         />
+        <span className="hint">{description.length}/500 字</span>
       </div>
-      <button className="primary" type="submit" disabled={submitting}>
+
+      <button className="btn btn-primary" type="submit" disabled={submitting}>
+        <ArrowRight {...ICON} size={16} />
         {submitting ? '创建中…' : '创建房间'}
       </button>
     </form>

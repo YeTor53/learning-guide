@@ -1,3 +1,4 @@
+import { ArrowRight, LogIn } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import LoginForm from '../components/LoginForm'
@@ -16,21 +17,33 @@ export default function LoginPage() {
   const { login } = useSession()
 
   return (
-    <div className="card stack" style={{ maxWidth: 420, margin: '0 auto' }}>
-      <h2>登录</h2>
-      <LoginForm
-        submitting={login.isPending}
-        error={login.error}
-        onSubmit={(body) =>
-          login.mutate(body, {
-            onSuccess: () => navigate(returnTo),
-          })
-        }
-      />
-      <p className="muted">
-        还没有账号？<Link to={`/register?returnTo=${encodeURIComponent(returnTo)}`}>去注册</Link>
-      </p>
-      <p className="muted">演示账号：host@example.com / demo1234</p>
+    <div className="auth-wrap">
+      <div>
+        <span className="kicker">Welcome back</span>
+        <p className="auth-quote">
+          「房间不是会议室，<br />
+          是一起把一个问题想透的地方。」
+        </p>
+        <p className="dim" style={{ fontSize: 13, marginTop: 16 }}>
+          演示账号 host@example.com / demo1234
+        </p>
+      </div>
+      <div className="card">
+        <h2 style={{ fontSize: 26, marginBottom: 20 }}>登录</h2>
+        <LoginForm
+          submitting={login.isPending}
+          error={login.error}
+          onSubmit={(body) => login.mutate(body, { onSuccess: () => navigate(returnTo) })}
+        />
+        <p className="dim" style={{ fontSize: 13, marginTop: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <LogIn size={14} strokeWidth={1.75} />
+          还没有账号？
+          <Link to={`/register?returnTo=${encodeURIComponent(returnTo)}`} style={{ color: 'var(--accent)' }}>
+            去注册
+            <ArrowRight size={13} strokeWidth={1.75} style={{ verticalAlign: -2, marginLeft: 4 }} />
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }

@@ -1,3 +1,23 @@
+import {
+  AlertTriangle,
+  Archive,
+  AlignLeft,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
+  Crown,
+  DoorOpen,
+  Hash,
+  LogIn,
+  MessageSquare,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  Undo2,
+  UserRound,
+  Users,
+  X,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 
@@ -8,7 +28,15 @@ import MemberList from '../components/MemberList'
 import { useRoomDetail } from '../hooks/useRoomDetail'
 import { useSession } from '../hooks/useSession'
 
-function formatTime(value: string) {
+const ICON = { size: 14, strokeWidth: 1.75 } as const
+
+const ROLE_ICON = {
+  host: <Crown {...ICON} />,
+  moderator: <ShieldCheck {...ICON} />,
+  participant: <UserRound {...ICON} />,
+} as const
+
+function stamp(value: string) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false })
 }
 
@@ -16,6 +44,7 @@ function clock(value: string) {
   return new Date(value).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
+/** 房间详情（功能页 F-03~F-05、F-08、F-09、F-12）：头部 → 操作区 → 简介 → 成员 → 待批申请 → 最近消息。 */
 export default function RoomDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -25,28 +54,29 @@ export default function RoomDetailPage() {
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-    requests,
-    requestJoin,
-    withdraw,
-    approve,
-    reject,
-    leave,
-    end,
-  } = useRoomDetail(id)
+  const { data, isLoading, isError, refetch, isFetching, requests, requestJoin, withdraw, approve, reject, leave, end } =
+    useRoomDetail(id)
 
   const flash = (location.state as { flash?: string } | null)?.flash
 
-  if (isLoading) return <p className="muted">加载中…</p>
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="skeleton" style={{ height: 180 }} />
+        <div className="skeleton" style={{ height: 120 }} />
+      </div>
+    )
+  }
+
   if (isError || !data) {
     return (
       <div className="card">
-        <div className="errorbar">房间加载失败：可能房间不存在，或后端未启动</div>
-        <button style={{ marginTop: 8 }} onClick={() => refetch()}>
+        <div className="alert" role="alert">
+          <AlertTriangle size={16} strokeWidth={1.75} style={{ marginTop: 2, flex: '0 0 16px' }} />
+          房间加载失败：可能房间不存在，或后端未启动。
+        </div>
+        <button className="btn" style={{ marginTop: 12 }} onClick={() => refetch()}>
+          <RefreshCw {...ICON} />
           重试
         </button>
       </div>
@@ -55,10 +85,12 @@ export default function RoomDetailPage() {
 
   const { room, members, messages } = data
   const isManager = room.myRole === 'host' || room.myRole === 'moderator'
+  const ended = room.status === 'ended'
   const loginLink = `/login?returnTo=${encodeURIComponent(`/rooms/${room.id}`)}`
   const actionError = [requestJoin.error, withdraw.error, approve.error, reject.error, leave.error, end.error].find(
     (item) => item instanceof ApiError,
   )
+  const activeCount = members.filter((item) => item.status === 'active').length
 
   const doApprove = (requestId: string) => {
     setBusyId(requestId)
@@ -70,10 +102,7 @@ export default function RoomDetailPage() {
 
   const doReject = (requestId: string) => {
     setBusyId(requestId)
-    reject.mutate(requestId, {
-      onSettled: () => setBusyId(null),
-      onSuccess: () => window.alert('已拒绝该申请'),
-    })
+    reject.mutate(requestId, { onSettled: () => setBusyId(null), onSuccess: () => window.alert('已拒绝该申请') })
   }
 
   const doLeave = () => {
@@ -92,71 +121,114 @@ export default function RoomDetailPage() {
   }
 
   return (
-    <div className="stack">
-      {flash && <div className="card" style={{ background: '#eff6ff', borderColor: '#bfdbfe' }}>{flash}</div>}
+    <div>
+      <div className="detail-head">
+        {flash && (
+          <div className="alert alert-info" style={{ marginBottom: 12 }}>
+            <CheckCircle2 size={16} strokeWidth={1.75} style={{ marginTop: 2, flex: '0 0 16px' }} />
+            {flash}
+          </div>
+        )}
 
-      <section className="card stack">
-        <div className="row">
-          <span className="badge">{room.topicLabel}</span>
-          <span className={`badge ${room.status === 'ended' ? 'ended' : 'active'}`}>
-            {room.status === 'ended' ? '已结束' : room.phase === 'active.in_session' ? `讨论中 · ${room.memberCount} 人` : '进行中'}
+        <div className="badges">
+          <span className="chip chip-quiet">
+            <Hash {...ICON} />
+            {room.topicLabel}
           </span>
-          {room.myRole && <span className="badge me">我的角色：{ROLE_LABEL[room.myRole]}</span>}
-        </div>
-        <h1 style={{ margin: 0 }}>{room.title}</h1>
-        <div className="muted">
-          房主 {room.hostName} · 创建于 {formatTime(room.createdAt)} · 房间码 {room.roomCode}
-          {room.endedAt && <> · 结束于 {formatTime(room.endedAt)}</>}
+          {ended ? (
+            <span className="chip chip-quiet">
+              <Archive {...ICON} />
+              已结束
+            </span>
+          ) : (
+            <span className="chip chip-accent">{room.phase === 'active.in_session' ? `讨论中 · ${activeCount} 人` : '进行中'}</span>
+          )}
+          {room.myRole && (
+            <span className="chip chip-accent">
+              {ROLE_ICON[room.myRole]}
+              {ROLE_LABEL[room.myRole]}
+            </span>
+          )}
         </div>
 
-        {actionError instanceof ApiError && <div className="errorbar">{actionError.message}</div>}
+        <h1 className="detail-title">{room.title}</h1>
 
-        <div className="row" style={{ flexWrap: 'wrap' }}>
-          {room.status === 'ended' ? (
-            <span className="muted">房间已结束，仅可查看历史内容</span>
+        <div className="meta-row">
+          <span className="item">
+            <Crown {...ICON} />
+            房主 {room.hostName}
+          </span>
+          <span className="item">
+            <CalendarClock {...ICON} />
+            创建于 {stamp(room.createdAt)}
+          </span>
+          <span className="item mono">{room.roomCode}</span>
+          <span className="item">
+            <Users {...ICON} />
+            {activeCount}/{room.capacity}
+          </span>
+          {room.endedAt && (
+            <span className="item">
+              <Archive {...ICON} />
+              结束于 {stamp(room.endedAt)}
+            </span>
+          )}
+        </div>
+
+        <div className="actions" style={{ marginTop: 16 }}>
+          {ended ? (
+            <span className="dim" style={{ fontSize: 13 }}>
+              房间已结束，仅可查看历史内容
+            </span>
           ) : !user ? (
-            <button className="primary" onClick={() => navigate(loginLink)}>
+            <button className="btn btn-primary" onClick={() => navigate(loginLink)}>
+              <LogIn {...ICON} size={16} />
               登录后加入
             </button>
           ) : room.myRole === 'participant' || room.myRole === 'moderator' ? (
             <>
-              <span className="muted">你已在房间中</span>
-              <button onClick={doLeave} disabled={leave.isPending}>
+              <span className="chip chip-accent">你已在房间中</span>
+              <button className="btn" onClick={doLeave} disabled={leave.isPending}>
+                <DoorOpen {...ICON} />
                 离开房间
               </button>
             </>
           ) : room.myRole === 'host' ? (
             <>
-              <span className="muted">你是房主</span>
-              <button className="danger" onClick={doEnd} disabled={end.isPending}>
+              <span className="chip chip-accent">你是房主</span>
+              <button className="btn btn-danger" onClick={doEnd} disabled={end.isPending}>
+                <X {...ICON} />
                 {end.isPending ? '结束中…' : '结束房间'}
               </button>
             </>
           ) : room.myRequestStatus === 'pending' ? (
             <>
-              <span className="badge me">等待批准</span>
+              <span className="chip chip-warn">等待批准</span>
               <button
+                className="btn"
+                disabled={withdraw.isPending}
                 onClick={() => {
                   const pending = requests.find((item) => item.userId === user.id)
                   if (pending) withdraw.mutate(pending.id, { onSuccess: () => window.alert('已撤回申请') })
                   else window.alert('撤回失败：找不到待批申请，请刷新后再试')
                 }}
-                disabled={withdraw.isPending}
               >
+                <Undo2 {...ICON} />
                 撤回申请
               </button>
             </>
           ) : showJoinForm ? (
-            <div className="stack" style={{ width: '100%' }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
               <textarea
-                rows={2}
+                className="textarea"
+                style={{ minHeight: 72 }}
                 placeholder="简单介绍一下你的兴趣方向（可选）"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
               />
-              <div className="row">
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button
-                  className="primary"
+                  className="btn btn-primary"
                   disabled={requestJoin.isPending}
                   onClick={() =>
                     requestJoin.mutate(message, {
@@ -167,59 +239,102 @@ export default function RoomDetailPage() {
                     })
                   }
                 >
+                  <Send {...ICON} />
                   {requestJoin.isPending ? '提交中…' : '提交申请'}
                 </button>
-                <button onClick={() => setShowJoinForm(false)}>取消</button>
+                <button className="btn btn-ghost" onClick={() => setShowJoinForm(false)}>
+                  取消
+                </button>
               </div>
             </div>
           ) : (
-            <button className="primary" onClick={() => setShowJoinForm(true)}>
+            <button className="btn btn-primary" onClick={() => setShowJoinForm(true)}>
+              <LogIn {...ICON} size={16} />
               申请加入
             </button>
           )}
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-ghost btn-sm" onClick={() => refetch()} disabled={isFetching} title="手动刷新（每 5 秒自动刷新）">
+            <RefreshCw {...ICON} size={13} />
+            刷新
+          </button>
         </div>
-      </section>
 
-      <section className="card">
-        <h3>简介</h3>
-        <p style={{ whiteSpace: 'pre-wrap' }}>{room.description || <span className="muted">房主没有写简介</span>}</p>
-      </section>
-
-      <section className="card">
-        <h3>成员（{members.filter((item) => item.status === 'active').length}/{room.capacity}）</h3>
-        <MemberList members={members} />
-      </section>
-
-      {isManager && (
-        <section className="card">
-          <h3>
-            待处理申请 {room.pendingCount > 0 && <span className="badge me">{room.pendingCount}</span>}
-          </h3>
-          <JoinRequestList requests={requests} busyId={busyId} onApprove={doApprove} onReject={doReject} pendingOnly />
-        </section>
-      )}
-
-      <section className="card">
-        <h3>最近消息（最近 20 条）</h3>
-        {messages.length === 0 ? (
-          <p className="muted">还没有人发言</p>
-        ) : (
-          <div className="messages">
-            {messages.map((item) => (
-              <div className="msg" key={item.id}>
-                <span className="time">[{clock(item.createdAt)}]</span>
-                <span>
-                  <strong>{item.displayName}：</strong>
-                  {item.body}
-                </span>
-              </div>
-            ))}
+        {actionError instanceof ApiError && (
+          <div className="alert" role="alert" style={{ marginTop: 12 }}>
+            <AlertTriangle size={16} strokeWidth={1.75} style={{ marginTop: 2, flex: '0 0 16px' }} />
+            {actionError.message}
           </div>
         )}
-        <p className="muted" style={{ marginTop: 8 }}>
-          房间内实时收发消息属 M3；本轮只读展示历史消息。<Link to="/">返回列表</Link>
-        </p>
-      </section>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <section className="panel">
+          <div className="panel-title">
+            <AlignLeft {...ICON} size={16} />
+            简介
+          </div>
+          {room.description ? (
+            <p style={{ whiteSpace: 'pre-wrap', margin: 0, color: 'var(--text-dim)' }}>{room.description}</p>
+          ) : (
+            <p className="dim" style={{ margin: 0 }}>
+              房主没有写简介
+            </p>
+          )}
+        </section>
+
+        <section className="panel">
+          <div className="panel-title">
+            <Users {...ICON} size={16} />
+            成员（{activeCount}/{room.capacity}）
+          </div>
+          <MemberList members={members} />
+        </section>
+
+        {isManager && (
+          <section className="panel">
+            <div className="panel-title">
+              <ClipboardList {...ICON} size={16} />
+              待处理申请
+              {room.pendingCount > 0 && <span className="chip chip-warn">{room.pendingCount}</span>}
+            </div>
+            <JoinRequestList requests={requests} busyId={busyId} onApprove={doApprove} onReject={doReject} pendingOnly />
+          </section>
+        )}
+
+        <section className="panel">
+          <div className="panel-title">
+            <MessageSquare {...ICON} size={16} />
+            最近消息
+            <span className="dim" style={{ fontSize: 12, fontWeight: 400 }}>
+              最近 20 条 · 只读
+            </span>
+          </div>
+          {messages.length === 0 ? (
+            <p className="dim" style={{ margin: 0 }}>
+              还没有人发言
+            </p>
+          ) : (
+            <div className="timeline">
+              {messages.map((item) => (
+                <div className="msg" key={item.id}>
+                  <span className="time">{clock(item.createdAt)}</span>
+                  <span>
+                    <span className="who">{item.displayName}</span>
+                    <span className="muted">：{item.body}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="dim" style={{ marginTop: 16, marginBottom: 0, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            房间内实时收发消息属 M3；本轮只读展示历史消息。
+            <Link to="/" style={{ color: 'var(--accent)' }}>
+              返回列表
+            </Link>
+          </p>
+        </section>
+      </div>
     </div>
   )
 }

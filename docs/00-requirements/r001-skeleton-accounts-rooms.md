@@ -23,7 +23,7 @@ updated: 2026-09-17
 - 账户：注册、登录、登出、当前用户；scrypt 口令哈希；签名 Cookie 会话。
 - 房间：创建（主题/标题/简介）、列表（状态/主题/我的筛选、分页）、详情（成员列表）；房间生命周期 `active → ended` 与本轮结束流程（房间置 ended + 活跃成员转 `inactive/room_ended` + 待批申请转 `cancelled`，同一事务）。
 - 加入申请：提交（五种拦截与提示）、列表（房主/协管可见）、批准、拒绝、**撤回**（申请人本人，撤回后可立即再申请）；容量校验（`ROOM_FULL`）；待批申请数对非管理者服务端返回 0。
-- 前端 5 个页面：`/`（房间列表）、`/login`、`/register`、`/rooms/new`、`/rooms/:id`。
+- 前端 5 个页面：`/`（房间列表）、`/login`、`/register`、`/rooms/new`、`/rooms/:id`；外壳为「顶栏 + 左侧边栏」（导航 / 个人信息 / 会话操作，ADR-0007），视觉体系见 ADR-0008 与 `docs/04-style/global-style.md`。
 - 验证：`pytest`（schema 断言 + 服务层 + 接口层）、`smoke.py`（真实 HTTP 全链路）、密钥检索、文档同步。
 
 **不做（本轮不碰）**
@@ -89,7 +89,7 @@ updated: 2026-09-17
 
 - 新增 `backend/`、`frontend/` 两棵源码树与配置（`.env.example` 已存在，本轮补 `DATABASE_URL`/`SESSION_SECRET` 说明）。
 - 后端运行环境：**conda 环境 `learningguide`（Python 3.11.16）已建，后端依赖已装齐**（ADR-0006）；`requirements*.txt` 由 cp-r001-1 用 `pip freeze` 生成。
-- 前端依赖（**安装前需批准**）：`react`、`react-dom`、`react-router-dom`、`@tanstack/react-query`、`vite`、`typescript`、`@vitejs/plugin-react`、`@types/*`（装在 `frontend/node_modules`）。
+- 前端依赖（**安装前需批准**）：`react`、`react-dom`、`react-router-dom`、`@tanstack/react-query`、`lucide-react`（图标唯一来源，ADR-0008）、`vite`、`typescript`、`@vitejs/plugin-react`、`@types/*`（装在 `frontend/node_modules`）。
 - 环境：本机 PostgreSQL 17.11 已就绪（服务 RUNNING、5432 可连、`lg_app` 与 `learning_guide` 已建）。
 - 不改动既有文档结构；归档页（`docs/99-archive/`）本轮不动。
 

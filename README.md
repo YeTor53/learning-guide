@@ -13,7 +13,7 @@
 | `docs/01-architecture/` | 总体架构、模块图、数据流 |
 | `docs/02-modules/` | 每个模块一份：设计 + 实现 |
 | `docs/03-decisions/` | ADR：为什么这么设计、改了什么约定 |
-| `docs/04-style/` | 风格指南 |
+| `docs/04-style/` | 风格指南：命名 / 提交约定 + 前端设计系统（色板、排版、动效令牌、图标与可达性） |
 | `docs/glossary.md` | 术语表 |
 | `AGENTS.md` | 给 AI 的项目规则（禁区、验证命令、提交规范） |
 

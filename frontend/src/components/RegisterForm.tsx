@@ -1,3 +1,4 @@
+import { AlertTriangle, AtSign, Lock, PenLine, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 
 import { ApiError } from '../api/http'
@@ -8,7 +9,9 @@ interface Props {
   onSubmit: (body: { email: string; displayName: string; password: string }) => void
 }
 
-/** 注册表单（文案与拦截顺序见功能页 F-A-01）。 */
+const ICON = { size: 14, strokeWidth: 1.75 } as const
+
+/** 注册表单（拦截顺序与文案见功能页 F-A-01）。 */
 export default function RegisterForm({ submitting, error, onSubmit }: Props) {
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -29,27 +32,44 @@ export default function RegisterForm({ submitting, error, onSubmit }: Props) {
   const message = localError ?? (error instanceof ApiError ? error.message : error ? '注册失败，请稍后重试' : null)
 
   return (
-    <form className="stack" onSubmit={submit}>
-      {message && <div className="errorbar">{message}</div>}
-      <div>
-        <label htmlFor="register-email">邮箱</label>
-        <input id="register-email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+    <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {message && (
+        <div className="alert" role="alert">
+          <AlertTriangle size={16} strokeWidth={1.75} style={{ marginTop: 2, flex: '0 0 16px' }} />
+          {message}
+        </div>
+      )}
+      <div className="field">
+        <label htmlFor="register-email">
+          <AtSign {...ICON} style={{ verticalAlign: -2, marginRight: 6 }} />
+          邮箱
+        </label>
+        <input id="register-email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="you@example.com" />
       </div>
-      <div>
-        <label htmlFor="register-name">显示名</label>
-        <input id="register-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+      <div className="field">
+        <label htmlFor="register-name">
+          <PenLine {...ICON} style={{ verticalAlign: -2, marginRight: 6 }} />
+          显示名
+        </label>
+        <input id="register-name" className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="房间里显示的名字" />
       </div>
-      <div>
-        <label htmlFor="register-password">密码</label>
+      <div className="field">
+        <label htmlFor="register-password">
+          <Lock {...ICON} style={{ verticalAlign: -2, marginRight: 6 }} />
+          密码
+        </label>
         <input
           id="register-password"
+          className="input"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
+          placeholder="至少 8 位"
         />
       </div>
-      <button className="primary" type="submit" disabled={submitting}>
+      <button className="btn btn-primary" type="submit" disabled={submitting}>
+        <UserPlus {...ICON} size={16} />
         {submitting ? '注册中…' : '注册'}
       </button>
     </form>

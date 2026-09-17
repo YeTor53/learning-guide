@@ -358,6 +358,7 @@ frontend/src/
 | 路由数量 | §5 列 9 条 | 实际 10 条（补 `withdraw`） | 功能页 F-04 的「撤回申请」按钮补齐 |
 | `pending_count` 可见性 | §4 只写「聚合」 | 非房主/协管服务端返回 0 | 用户 2026-09-17 拍板（FQ-4） |
 | `mine=1` 口径 | 「我参与或我建过」 | 「我建的 / 我参与过的 / 我有待批申请的」 | 卡片「已申请」徽标需要；已在 §4 与功能页 F-01 写实 |
+| 前端外壳 | 顶部导航（架构页 §9.7） | 「顶栏 + 左侧边栏」（新增 `components/SideBar.tsx`、`components/FlowField.tsx`；`mine` 改读 URL 参数） | 用户指示加侧边栏 + 视觉体系升级（ADR-0007 / ADR-0008） |
 
 验证证据：`pytest backend/tests -q` → 72 passed；`smoke.py` → PASS 22/22（含结束房间后的成员退出原因与申请 `cancelled`）。
 实现期修掉的坑见架构页 §15.3（`AmbiguousColumn`、结束后 403、并发用例自身数据造错）。
