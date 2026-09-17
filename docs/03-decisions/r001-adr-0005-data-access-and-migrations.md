@@ -2,7 +2,7 @@
 title: r001-ADR-0005 数据访问层与迁移方式（手写 SQL vs SQLAlchemy/各类 ORM）
 description: P10 的讨论与建议：手写 SQL + 轻量版本表（含与 SQLAlchemy Core/ORM+Alembic 的逐维度对比与代价）。
 type: adr
-status: proposed
+status: accepted
 owner: 陀梓皓
 updated: 2026-09-17
 ---
@@ -159,10 +159,11 @@ P10 决定「后端怎么碰数据库、怎么做迁移」。本文给逐维度�
 
 | 编号 | 事项 | 选项 | 建议值 |
 | --- | --- | --- | --- |
-| P10 | 数据访问层与迁移 | A 手写 SQL + 版本表 / B SQLAlchemy Core + Alembic / C ORM + Alembic / D 手写 + Alembic 迁移 / **A+ 手写 SQL + 自研 Alembic 风格 CLI** | **A+**（见 §8.4；A 的写法 + 版本链 + 可选回滚，零新依赖） |
+| P10 | 数据访问层与迁移 | A / A+ / B / C / D | **已拍板：A**（手写 SQL + 轻量版本表；不做 Alembic 风格回滚 CLI） |
 
 ## 变更记录
 
 - 2026-09-17 建立（proposed，待拍板）。
+- 2026-09-17 **拍板 A**（FastAPI + 手写 SQL + `psycopg` 连接池 + 轻量版本表；迁移前进式 + `--reset` 重建），状态转 accepted；A+/B/C/D 未采纳。
 - 2026-09-17 追加 §8：方案 D（Alembic）的复杂度核算与 A+ 替代（脚手架产物、依赖、autogenerate 前提、首次成本 2~3 倍）。
 - 2026-09-17 追加 §7：CRUD 速度的成本结构、本机实测数字与折算结论（速度不是决策依据；待装环境后补真库对比）。
