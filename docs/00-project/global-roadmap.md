@@ -23,7 +23,7 @@ updated: 2026-09-16
   - 本机 Python/OpenSSL 读系统证书库报 `ASN1: NOT_ENOUGH_DATA`（本机证书库损坏），自动化脚本一律用不校验上下文；浏览器侧不受影响。
 - **可复用资产**：无。题面明确不得直接使用 LiveKit Meet 默认页面，须基于 LiveKit SDK / Components 自行实现。
 - **外部归宿与口径**：
-  - 交付给 First Light Tech 评审；**提交形态 = 仅 zip**（不建远端仓库），命名 `AI管培生_陀梓皓_题目A_<日期>.zip`。
+  - 交付给 First Light Tech 评审；**提交形态 = zip + GitHub 仓库链接 + npm 包**（2026-09-17 变更），zip 命名 `AI管培生_陀梓皓_题目A_<日期>.zip`。
   - 必须声明所用 AI 工具与模型；使用开源模板须注明来源并说明自己新增与修改的部分。
   - 提交时注明所选题目与实际投入小时数。
 
@@ -62,7 +62,7 @@ updated: 2026-09-16
 | P5 | 数据库 | **PostgreSQL** | 题面优先项；落地方式见 P9 |
 | P6 | 技术栈 | **前端 React + 后端 Python（前后端分离）** | 取代初稿的 Next.js 一体仓；见 ADR-0002 |
 | P7 | 加分项 | 全部设计成**增量项**（M5），按剩余时间取舍 | 每项独立成轮/独立开关，不阻塞必做闭环 |
-| P8 | 提交方式 | 仅 zip（不建远端仓库） | 命名 `AI管培生_陀梓皓_题目A_<日期>.zip` |
+| P8 | 提交方式 | **zip + GitHub 远程仓库 + npm 包**（2026-09-17 变更；原为「仅 zip」） | 细则见 P11 与 `docs/03-decisions/r001-adr-0004-submission-artifacts.md`；zip 命名口径不变 |
 
 ## 5. 待拍板项（P9 / P10 / P3′）
 
@@ -72,6 +72,7 @@ P5、P6 已定（见 §4）；原 P5/P6 的选项表随拍板作废。
 | --- | --- | --- | --- | --- |
 | P9 | PostgreSQL 落地方式 | ① 本机安装（Windows 安装包或免安装 zip）② Docker（本机无 Docker，WSL 无发行版、Hyper-V 未启用，需补装 + 重启）③ 仅交付 compose 文件、本机用 ① | ① 本机安装 | 决定 M1 数据层能否立刻跑通；②会吃掉 16 小时预算的一成以上 |
 | P10 | Python 后端框架与数据层工具 | 框架：FastAPI（建议）/ Flask / Django；SQL：手写 SQL + 轻量迁移脚本（建议，贴题面「可运行 SQL Schema」）/ SQLAlchemy + Alembic | FastAPI + 手写 SQL + 轻量迁移 | 决定后端目录与函数级实现路径，批准后不宜再改 |
+| P11 | 提交物细则（GitHub / npm） | ① npm 发布对象：抽包发布两个自定义能力 / 发别的 / 不发包仅用 npm 管依赖；② 仓库公开或私有、仓库名；③ zip 与远端的主次 | ① 抽包（举手+焦点）② 公开、名 `LearningGuide-LiveKit` ③ zip 为主、仓库补充 | 事实与前提见 `r001-ADR-0004`；影响工作量与公开仓库的密钥纪律 |
 | P3′ | LiveKit 来源复评 | A 改用 LiveKit Cloud（Build 免费） / B 维持自建（ADR-0001） / C Cloud 为主 + 自建脚本留档 | A | 事实、对比与代价见 `docs/03-decisions/r001-adr-0003-livekit-source-review.md`；影响 `.env`、踢人实现与设计说明叙事 |
 
 ## 6. 风险与假设
