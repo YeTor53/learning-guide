@@ -2,7 +2,7 @@
 title: r001 应用架构与实现路径（M1 骨架 · 账户 · 房间）
 description: M1 的架构、目录树、数据模型、权限矩阵、API 契约与逐文件函数级实现路径。
 type: reference
-status: draft
+status: superseded
 owner: 陀梓皓
 updated: 2026-09-16
 ---
@@ -11,7 +11,7 @@ updated: 2026-09-16
 本轮怎么实现：技术栈、目录树、表结构、接口契约、每个文件里要写哪些函数（签名 + 职责 + 返回）。
 需求与验收见 `docs/00-requirements/r001-skeleton-accounts-rooms.md`；方向与里程碑见 `docs/00-project/global-roadmap.md`。
 
-> **起草假设**：本文按 `global-roadmap.md` §5 的**建议值 P5=A（SQLite）/ P6=A（Next.js 16 一体仓）**起草；若拍板改为 B/C，本文整体重写。
+> ⚠ **本页已作废（2026-09-16）**：用户拍板 **React 前端 + Python 后端 + PostgreSQL**，见 `docs/03-decisions/r001-adr-0002-stack-react-python-postgres.md`。本文的目录树、函数签名、会话方案、验证矩阵均需重写（生命周期 §4、API 信封 §5 的思路保留）；重写时机 = P9/P10/P3′ 拍板后一次完成。
 
 ## 1. 架构与运行拓扑（M1）
 
@@ -107,13 +107,16 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 CREATE TABLE IF NOT EXISTS room_members (
-  id        TEXT PRIMARY KEY,
-  room_id   TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-  user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role      TEXT NOT NULL CHECK (role IN ('host','moderator','participant')),
-  status    TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','left','kicked')),
-  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
-  left_at   TEXT
+  id          TEXT PRIMARY KEY,
+  room_id     TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role        TEXT NOT NULL CHECK (role IN ('host','moderator','participant')),
+  status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive')),
+  exit_reason TEXT CHECK (exit_reason IN ('self_leave','kicked','room_ended')),
+  joined_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  left_at     TEXT,
+  CHECK ((status = 'active'   AND exit_reason IS NULL     AND left_at IS NULL)
+      OR (status = 'inactive' AND exit_reason IS NOT NULL AND left_at IS NOT NULL))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ux_room_members_active
   ON room_members(room_id, user_id) WHERE status = 'active';
@@ -123,7 +126,7 @@ CREATE TABLE IF NOT EXISTS join_requests (
   room_id    TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
   user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   status     TEXT NOT NULL DEFAULT 'pending'
-             CHECK (status IN ('pending','approved','rejected','withdrawn')),
+             CHECK (status IN ('pending','approved','rejected','withdrawn','cancelled')),
   message    TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   decided_at TEXT,
@@ -176,36 +179,95 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 | 关系 | 说明 |
 | --- | --- |
 | `users 1—N rooms` | `rooms.host_id`（房主） |
-| `rooms 1—N room_members N—1 users` | 成员关系带 `role` 与 `status`；`status='left'/'kicked'` 保留历史，活跃成员唯一索引保证同一人同时只有一条活跃记录 |
-| `rooms 1—N join_requests N—1 users` | 同一人对同一房间同时只允许一条 `pending`（部分唯一索引承担并发防重） |
+| `rooms 1—N room_members N—1 users` | 成员关系带 `role`、`status`(`active`/`inactive`) 与 `exit_reason`(`self_leave`/`kicked`/`room_ended`)；退出记录保留历史，部分唯一索引保证同一人同时只有一条活跃记录 |
+| `rooms 1—N join_requests N—1 users` | 同一人对同一房间同时只允许一条 `pending`（部分唯一索引承担并发防重）；房间结束时未决申请转 `cancelled`（见 §4） |
 | `rooms 1—N invites` | 邀请码限定房间 + 过期时间 + 使用上限（M2 用） |
 | `rooms 1—N chat_messages` | 消息落库，按 (room_id, created_at DESC) 取最近 N 条（M3 用） |
 | `rooms 1—1 session_summaries` | 一房一纪要（`UNIQUE(room_id)`），失败也留行并记 `error_message`（M4 用） |
 
-## 4. 权限矩阵（M1 实现部分）
+## 4. 房间生命周期（存储态 + 派生相位）
 
-| 能力 | 未登录 | Participant | Moderator | Host |
+### 4.1 状态定义
+
+**存储态**（`rooms.status`，唯一事实源）：
+
+| 值 | 含义 | 进入条件 | 终态 |
+| --- | --- | --- | --- |
+| `active` | 开放：可申请、可批准、可加入、可发消息、可邀请 | 建房成功即进入（建房与写 Host 成员在同一事务） | 否 |
+| `ended` | 结束：只读（详情 / 历史消息 / 纪要仍可查），一切变更操作被拒 | 仅 Host 调 `endRoom` | **是**（不可重开，见 §4.6） |
+
+**派生相位**（不落库，按需算出，避免双源）：
+
+| 相位 | 计算方式 | 用途 |
+| --- | --- | --- |
+| `active.idle` | `status='active'` 且房内无人（LiveKit room 未创建或已空） | 列表显示「可加入」 |
+| `active.in_session` | `status='active'` 且 LiveKit room 内至少 1 人 | 列表显示「讨论中 · N 人」 |
+| `ended` | `status='ended'` | 列表显示「已结束」+ 纪要入口 |
+
+M1 只用到存储态（`deriveRoomPhase` 返回 `active.idle | ended`）；`in_session` 依赖 LiveKit 在场信息，M2 补齐同一函数的实现，签名不变。
+
+### 4.2 状态转移
+
+```
+房间      —建房—> active —endRoom(仅Host)—> ended（终态）
+成员      active —leave(本人)—> inactive(self_leave)   |  M2: —kick—> inactive(kicked)
+                                                    |  —房间结束—> inactive(room_ended)
+申请      —提交—> pending —approve—> approved（同时生成 active 成员）
+                        |—reject—> rejected
+                        |—房间结束—> cancelled
+```
+
+| 转移 | 触发者 | 前置条件 | 副作用（同一事务） | 失败错误码 |
 | --- | --- | --- | --- | --- |
-| 注册/登录/登出 | ✅ | ✅ | ✅ | ✅ |
-| 看房间列表/详情 | ✅（只读） | ✅ | ✅ | ✅ |
-| 创建房间 | ❌ 401 | ✅ | ✅ | ✅ |
-| 提交加入申请 | ❌ 401 | ✅ | ✅ | ✅ |
-| 看申请列表 | ❌ 401 | ❌ 403 | ✅ | ✅ |
-| 批准/拒绝申请 | ❌ 401 | ❌ 403 | ✅ | ✅ |
-| 离开房间 | ❌ 401 | ✅ | ✅ | ❌ 409（Host 需先结束房间） |
-| 结束房间 | ❌ 401 | ❌ 403 | ❌ 403 | ✅ |
+| `— → active` | 任意登录用户 | 主题合法、标题 1–80 字、简介 ≤500 字 | 写 `rooms`（含 `room_code`）+ 写 `room_members(role='host', status='active')` | `VALIDATION` |
+| `active → ended` | 仅 Host | `status='active'` | ① `rooms.status='ended'`、`ended_at=now`；② 全部 `status='active'` 成员 → `inactive`/`exit_reason='room_ended'`/`left_at=now`；③ 全部 `pending` 申请 → `status='cancelled'`、`decided_at=now`、`decided_by=NULL`（NULL 表示系统自动）；④ M2 追加：`RoomService.deleteRoom` 强制断开全部连接；⑤ M4 追加：触发纪要生成 | 非 Host → `FORBIDDEN`；已结束 → `ROOM_ENDED` |
+| `— → pending` | 任意登录用户 | 房间 `active`、非活跃成员、无待批申请 | 写 `join_requests` | `ROOM_ENDED` / `ALREADY_MEMBER` / `ALREADY_PENDING` |
+| `pending → approved` | Host / Moderator | 房间 `active`、申请仍为 `pending`、活跃成员数 < `capacity` | 写 `room_members(role='participant', status='active')` + 更新申请（`decided_by=actor`） | `FORBIDDEN` / `ROOM_ENDED` / `ALREADY_MEMBER` / `ROOM_FULL` / `CONFLICT` |
+| `pending → rejected` | Host / Moderator | 房间 `active`、申请为 `pending` | 更新申请（`decided_by=actor`） | `FORBIDDEN` / `ROOM_ENDED` / `CONFLICT` |
+| `pending → cancelled` | 系统（房间结束时） | — | 见 `active → ended` ③ | — |
+| 成员 `active → inactive(self_leave)` | 本人 | 是活跃成员且 `role ≠ 'host'` | `exit_reason='self_leave'`、`left_at=now` | `NOT_MEMBER` / `HOST_CANNOT_LEAVE` / `ROOM_ENDED` |
+| 成员 `active → inactive(kicked)` | Host / Moderator（M2） | 目标为活跃成员且非 Host | 同上，`exit_reason='kicked'`；M2 追加：调 LiveKit 移除参与者并强制断开 | `FORBIDDEN` |
+| 成员 `active → inactive(room_ended)` | 系统（房间结束时） | — | 见 `active → ended` ② | — |
+| 角色 `participant → moderator` | Host（M2） | 目标为活跃成员 | 更新 `role` | `FORBIDDEN` |
+| Host 移交（M2，见 R6） | Host | 目标为活跃成员 | 原 Host 与新 Host 的 `role` 互换 | `FORBIDDEN` |
 
-M2 追加：踢人（Host/Moderator）、8 人上限检查、邀请码使用、Moderator 任命。
+### 4.3 生命周期 × 能力矩阵
 
-**状态机**
+| 能力 | 未登录 | 非成员已登录 | Participant | Moderator | Host | 房间 `ended`（任何角色） |
+| --- | --- | --- | --- | --- | --- | --- |
+| 看列表 / 详情 / 历史消息 | ✅（只读） | ✅ | ✅ | ✅ | ✅ | ✅（只读 + 「已结束」标识） |
+| 创建房间 | ❌ `UNAUTHORIZED` | ✅ | ✅ | ✅ | ✅ | —（与该房间无关） |
+| 提交加入申请 | ❌ `UNAUTHORIZED` | ✅ | ❌ `ALREADY_MEMBER` | ❌ `ALREADY_MEMBER` | ❌ `ALREADY_MEMBER` | ❌ `ROOM_ENDED` |
+| 看申请列表 | ❌ `UNAUTHORIZED` | ❌ `FORBIDDEN` | ❌ `FORBIDDEN` | ✅ | ✅ | ✅（只读，供追溯） |
+| 批准 / 拒绝申请 | ❌ `UNAUTHORIZED` | ❌ `FORBIDDEN` | ❌ `FORBIDDEN` | ✅ | ✅ | ❌ `ROOM_ENDED` |
+| 离开房间 | ❌ `UNAUTHORIZED` | ❌ `NOT_MEMBER` | ✅ | ✅ | ❌ `HOST_CANNOT_LEAVE` | ❌（已是 `inactive`） |
+| 结束房间 | ❌ `UNAUTHORIZED` | ❌ `FORBIDDEN` | ❌ `FORBIDDEN` | ❌ `FORBIDDEN` | ✅ | ❌ `ROOM_ENDED` |
+| 查看纪要 | ❌ `UNAUTHORIZED` | ✅ | ✅ | ✅ | ✅ | ✅（M4；生成在结束流程内，失败可重试） |
+| 踢人（M2） | ❌ `UNAUTHORIZED` | ❌ `FORBIDDEN` | ❌ `FORBIDDEN` | ✅ | ✅ | ❌ `ROOM_ENDED` |
 
-```
-房间      active ──end(仅Host)──> ended          （ended 为终态，不接受申请/加入）
-加入申请  pending ──approve──> approved ──> 生成 active 成员
-                 └─reject───> rejected
-成员      active ──leave(本人)──> left
-                 └─kick(服务端,M2)─> kicked
-```
+### 4.4 结束房间的实现约束
+
+- **单入口**：`endRoom` 是唯一能把房间置为 `ended` 的函数；M2 的「踢最后一人」「Host 掉线」「全员离开」都**不得**隐式结束房间。
+- **事务边界**：§4.2 中 `active → ended` 的 ①②③ 必须在同一个 SQLite 事务内完成，失败整体回滚——不允许出现「房间已 ended 但成员仍 active」或「成员已 inactive 但房间仍 active」。
+- **外部副作用的顺序（M2/M4）**：先提交数据库事务，再调 LiveKit `deleteRoom` 与纪要生成；外部调用失败只记日志与状态（纪要置 `status='failed'` + `error_message`），**不回滚**房间结束——房间结束是用户意图，不应被外部服务可用性阻塞。
+- **幂等**：重复调 `endRoom` 返回 409 `ROOM_ENDED`，不产生二次副作用；纪要靠 `session_summaries.UNIQUE(room_id)` 防重。
+
+### 4.5 生命周期 × 其它表
+
+| 表 | 房间结束时 | 结束后的可见性 |
+| --- | --- | --- |
+| `room_members` | 活跃行 → `inactive(room_ended)` | 详情页展示历史成员与退出原因 |
+| `join_requests` | `pending` → `cancelled` | Host/Moderator 仍可查看，作审计线索 |
+| `invites` | 不删不改；校验时统一要求房间 `active` | 邀请链接自然失效（提示「房间已结束」） |
+| `chat_messages` | 全部保留（纪要输入 + 追溯） | 详情页只读展示 |
+| `session_summaries` | 触发一次生成（M4），`UNIQUE(room_id)` 防重 | 详情页可查看；失败行保留 `error_message` |
+
+### 4.6 明确不做（生命周期边界）
+
+- **不自动结束**：房间空置不触发结束，必须 Host 显式结束（本轮保持行为可预测，不做定时空房回收）。
+- **不可重开**：`ended` 是终态，不提供 `reopen`；同一主题要再讨论就新建房间（避免消息与纪要历史被改写）。
+- **不删除房间**：不提供删除接口；`ended` 房间保留只读可查。
+- **不做定时邀请清理**：过期邀请不移除行，靠 `expires_at` 与房间状态共同判定。
 
 ## 5. API 契约
 
@@ -227,9 +289,9 @@ M2 追加：踢人（Host/Moderator）、8 人上限检查、邀请码使用、M
 | GET | `/api/rooms/:id` | 公开 | — | 200 `RoomDetail` | `NOT_FOUND` |
 | POST | `/api/rooms/:id/join-requests` | 登录 | `{message?}` | 201 `{request}` | `NOT_FOUND`、`ROOM_ENDED`、`ALREADY_MEMBER`、`ALREADY_PENDING` |
 | GET | `/api/rooms/:id/join-requests` | Host/Moderator | `?status=pending` | 200 `{requests}` | `FORBIDDEN` |
-| POST | `/api/join-requests/:id/approve` | Host/Moderator | — | 200 `{request, member}` | `FORBIDDEN`、`ROOM_FULL`、`ALREADY_MEMBER` |
+| POST | `/api/join-requests/:id/approve` | Host/Moderator | — | 200 `{request, member}` | `FORBIDDEN`、`ROOM_ENDED`、`ROOM_FULL`、`ALREADY_MEMBER`、`CONFLICT`（申请已非 pending） |
 | POST | `/api/join-requests/:id/reject` | Host/Moderator | — | 200 `{request}` | `FORBIDDEN` |
-| POST | `/api/rooms/:id/leave` | 登录成员 | — | 200 `{}` | `NOT_MEMBER`、`HOST_CANNOT_LEAVE` |
+| POST | `/api/rooms/:id/leave` | 登录成员 | — | 200 `{}`（成员转 `inactive/self_leave`） | `NOT_MEMBER`、`HOST_CANNOT_LEAVE`、`ROOM_ENDED` |
 | POST | `/api/rooms/:id/end` | Host | — | 200 `{room}` | `FORBIDDEN`、`ROOM_ENDED` |
 
 视图对象（服务端裁剪后返回，不直接吐库行）：
@@ -241,9 +303,10 @@ type RoomVO         = { id: string; topic: string; topicLabel: string; title: st
                         host: { id: string; displayName: string }; createdAt: string; endedAt: string|null }
 type RoomListItem   = RoomVO & { memberCount: number; pendingCount: number; myRole: Role|null; myRequest: 'pending'|'approved'|'rejected'|null }
 type RoomDetail     = RoomListItem & { members: MemberVO[]; recentMessages: MessageVO[] }
-type MemberVO       = { userId: string; displayName: string; role: Role; joinedAt: string }
+type MemberVO       = { userId: string; displayName: string; role: Role; joinedAt: string;
+                        status: 'active'|'inactive'; exitReason: 'self_leave'|'kicked'|'room_ended'|null }
 type JoinRequestVO  = { id: string; roomId: string; user: { id: string; displayName: string };
-                        status: 'pending'|'approved'|'rejected'|'withdrawn'; message: string;
+                        status: 'pending'|'approved'|'rejected'|'withdrawn'|'cancelled'; message: string;
                         createdAt: string; decidedAt: string|null; decidedBy: string|null }
 ```
 
@@ -319,13 +382,14 @@ type JoinRequestVO  = { id: string; roomId: string; user: { id: string; displayN
 | `insertMember` | `(db, row: MemberRow): void` | 写成员（host 建房时 / 批准时） |
 | `findActiveMember` | `(db, roomId: string, userId: string): MemberRow \| undefined` | 权限判定 |
 | `countActiveMembers` | `(db, roomId: string): number` | 成员数（M2 上限校验、列表展示） |
-| `markMemberLeft` | `(db, roomId: string, userId: string): void` | 置 `status='left'`、`left_at` |
-| `listMembers` | `(db, roomId: string): MemberRow[]` | 详情页成员列表 |
+| `markMemberInactive` | `(db, roomId: string, userId: string, reason: 'self_leave'\|'kicked'\|'room_ended', at: string): void` | 置 `status='inactive'`、`exit_reason`、`left_at`（`room_ended` 走批量路径） |
+| `listMembers` | `(db, roomId: string, opts?: {includeInactive?: boolean}): MemberRow[]` | 详情页成员列表（默认只活跃；`includeInactive` 用于已结束房间的历史展示） |
 | `insertJoinRequest` | `(db, row: JoinRequestRow): void` | 写申请（唯一索引兜底防重） |
 | `findJoinRequestById` | `(db, id: string): JoinRequestRow \| undefined` | 批准/拒绝 |
 | `findPendingRequest` | `(db, roomId: string, userId: string): JoinRequestRow \| undefined` | 重复提交判定 |
 | `listJoinRequests` | `(db, roomId: string, status?: string): JoinRequestRow[]` | 申请列表 |
 | `decideJoinRequest` | `(db, id: string, status: 'approved'\|'rejected', decidedBy: string, decidedAt: string): void` | 落决定 |
+| `closeRoomGraph` | `(db, roomId: string, at: string): {membersClosed: number; requestsCancelled: number}` | 结束房间的连带写入：成员批量 `inactive(room_ended)` + `pending` 申请批量 `cancelled`（单条 SQL 各自的批量 UPDATE，供 `endRoom` 事务调用） |
 | `countPendingRequests` | `(db, roomId: string): number` | 列表徽标 |
 | `listRecentMessages` | `(db, roomId: string, limit: number): MessageRow[]` | 详情页历史消息（M3 复用） |
 
@@ -346,11 +410,13 @@ type JoinRequestVO  = { id: string; roomId: string; user: { id: string; displayN
 | `getRoomDetail` | `(db, actor: UserVO \| null, roomId: string): RoomDetail` | 房间 + 成员列表（按角色、加入时间排序）+ 最近 20 条消息；不存在抛 `NOT_FOUND` |
 | `requestJoin` | `(db, actor: UserVO, roomId: string, message?: string): JoinRequestVO` | 校验：房间存在且 `active`（否则 `ROOM_ENDED`）、非活跃成员（否则 `ALREADY_MEMBER`）、无 pending（否则 `ALREADY_PENDING`）→ 写申请 |
 | `listJoinRequests` | `(db, actor: UserVO, roomId: string, status?: string): JoinRequestVO[]` | 先 `assertRoomRole(db, actor, roomId, ['host','moderator'])` |
-| `approveJoinRequest` | `(db, actor: UserVO, requestId: string): {request: JoinRequestVO; member: MemberVO}` | 事务：`assertRoomRole` → 申请须为 `pending`（否则 `ALREADY_MEMBER`/`CONFLICT`）→ 容量二次校验（M2 起生效，M1 记 TODO 但不阻断）→ `insertMember(role='participant')` + `decideJoinRequest('approved')` |
+| `approveJoinRequest` | `(db, actor: UserVO, requestId: string): {request: JoinRequestVO; member: MemberVO}` | 事务：`assertRoomRole` → **房间须 `active`**（否则 `ROOM_ENDED`）→ 申请须为 `pending`（否则 `ALREADY_MEMBER`/`CONFLICT`）→ 活跃成员数 `< capacity`（否则 `ROOM_FULL`）→ `insertMember(role='participant')` + `decideJoinRequest('approved')` |
 | `rejectJoinRequest` | `(db, actor: UserVO, requestId: string): JoinRequestVO` | `assertRoomRole` → `decideJoinRequest('rejected')` |
-| `leaveRoom` | `(db, actor: UserVO, roomId: string): void` | 成员存在否则 `NOT_MEMBER`；`role='host'` 抛 `HOST_CANNOT_LEAVE`；否则 `markMemberLeft` |
-| `endRoom` | `(db, actor: UserVO, roomId: string): RoomVO` | `assertRoomRole(db, actor, roomId, ['host'])`；已结束抛 `ROOM_ENDED`；`updateRoomStatus('ended', now)` |
-| `assertRoomRole`（内部） | `(db, actor: UserVO \| null, roomId: string, allowed: Role[]): MemberRow` | 未登录 `UNAUTHORIZED`；非成员 `FORBIDDEN`；角色不符 `FORBIDDEN` |
+| `leaveRoom` | `(db, actor: UserVO, roomId: string): void` | 房间须 `active`（否则 `ROOM_ENDED`）→ 活跃成员存在否则 `NOT_MEMBER` → `role='host'` 抛 `HOST_CANNOT_LEAVE` → `markMemberInactive(..., 'self_leave', now)` |
+| `endRoom` | `(db, actor: UserVO, roomId: string): RoomVO` | `assertRoomRole(db, actor, roomId, ['host'])`；已结束抛 `ROOM_ENDED`；**单事务**执行 `updateRoomStatus('ended', now)` + `closeRoomGraph(db, roomId, now)`（见 §4.2/§4.4，M2 起在事务提交后追加 `deleteRoom`，M4 追加纪要生成） |
+| `deriveRoomPhase` | `(db, roomId: string): 'active.idle'\|'active.in_session'\|'ended'` | 派生相位（不落库）：M1 只区分 `active.idle` / `ended`；M2 接 LiveKit 在场信息补 `in_session` |
+| `assertRoomActive`（内部） | `(db, roomId: string): RoomRow` | 房间存在（否则 `NOT_FOUND`）且 `status='active'`（否则 `ROOM_ENDED`）；所有变更型函数的第一步 |
+| `assertRoomRole`（内部） | `(db, actor: UserVO \| null, roomId: string, allowed: Role[]): MemberRow` | 未登录 `UNAUTHORIZED`；非活跃成员 `FORBIDDEN`；角色不符 `FORBIDDEN` |
 
 ### 6.10 路由处理器（薄壳，每个文件 5~15 行）
 
@@ -423,6 +489,10 @@ type JoinRequestVO  = { id: string; roomId: string; user: { id: string; displayN
 | 建房标题为空或超长 | 400 `VALIDATION`（标题 1–80 字、简介 ≤500 字） |
 | 数据库文件目录不存在 | `openDb` 自动创建 `data/` |
 | 同一房间被两人同时批准导致并发写 | 事务 + 部分唯一索引；冲突时返回 409 而非 500 |
+| 已结束房间：申请 / 批准 / 离开 / 再次结束 | 一律 409 `ROOM_ENDED`（列表、详情、历史消息、纪要仍可只读） |
+| 结束房间时数据库事务失败 | 整体回滚，房间保持 `active`；不出现「房间已结束但成员仍 active」的半状态 |
+| 结束后重复结束 | 409 `ROOM_ENDED`，且不重复触发纪要生成 |
+| 结束房间时外部服务（LiveKit / LLM）失败 | 房间结束照常生效（事务已提交）；失败只记日志与 `session_summaries.status='failed'`，可在详情页重试 |
 
 ## 9. 验证矩阵（M1）
 
@@ -451,6 +521,8 @@ type JoinRequestVO  = { id: string; roomId: string; user: { id: string; displayN
 | R3 | `invites` 表与邀请 API 时机 | 表随 r001 建、API 归 M2（本文假设）/ M1 一起做完 | 表随 r001 建、API 归 M2 | 影响 r001 工作量与 M2 起点 |
 | R4 | 建表策略 | 一次建全部 7 表（本文假设）/ 只建 M1 用到的表、后续加迁移 | 一次建全部 | 影响后续是否要写迁移脚本 |
 | R5 | 冒烟脚本形态 | 走真实 HTTP（本文假设，贴题面「集成测试」）/ 直连 `src/server/*`（快但偏单测） | 走真实 HTTP | 影响 `smoke.mjs` 与启动依赖 |
+| R6 | Host 退出方式 | ① 禁止 Host 离开，必须先结束房间（本文假设）② 增加「移交 Host」后可离开（M2 实现 `transferHost`） | ① | 影响「房主换人继续开会」是否可用；② 多一个函数 + 页面入口 |
+| R7 | 房间结束时未决申请 | 置 `cancelled` 并记 `decided_at`（本文假设）/ 保持 `pending` 不动 | `cancelled` | 影响已结束房间申请列表的语义与审计 |
 
 ## 12. What's next
 

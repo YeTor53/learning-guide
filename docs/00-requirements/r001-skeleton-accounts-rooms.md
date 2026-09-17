@@ -2,12 +2,14 @@
 title: r001 骨架 · 账户 · 房间（里程碑 M1）
 description: M1 需求单：前后端骨架、SQL schema 与种子数据、注册/登录/登出、房间创建/列表/详情、加入申请的结构与流转。
 type: requirement
-status: draft
+status: superseded
 owner: 陀梓皓
 updated: 2026-09-16
 ---
 
 <!-- overview -->
+> ⚠ **本页已作废（2026-09-16）**：栈变更见 `docs/03-decisions/r001-adr-0002-stack-react-python-postgres.md`（React + Python + PostgreSQL 取代 Next.js + SQLite），本页方案部分待重写；重写时机 = P9/P10/P3′ 拍板后一次完成。
+
 本页只写「这一轮要做成什么、怎么算做完」；怎么做（表结构、函数、接口）见 `docs/01-architecture/r001-app-architecture.md`。项目方向、里程碑与已决事项见 `docs/00-project/global-roadmap.md`（不在此处重复）。
 
 ## 1. 目的
@@ -21,6 +23,7 @@ updated: 2026-09-16
 - 数据层：手写 `schema.sql`（全部 7 张业务表一次建好，含索引/约束）+ `seed.sql`（演示账号、示例房间、历史消息、一条已结束房间的纪要）+ 初始化脚本，一条命令可 `--reset --seed`。
 - 账户：注册、登录、登出、当前用户查询；密码 scrypt 加盐哈希；会话走 HttpOnly 签名 Cookie。
 - 房间：创建（主题/标题/简介）、列表、详情；房间码生成；加入申请（提交/列表/批准/拒绝）；离开房间；结束房间。
+- 房间生命周期（设计页 §4 为唯一事实源）：存储态 `active → ended`（终态，不可重开）；离开/踢出/房间结束统一走 `room_members.status='inactive'` + `exit_reason`；结束房间时「房间置 ended + 成员批量转 `inactive(room_ended)` + 未决申请转 `cancelled`」在同一事务内完成。
 - 权限骨架：三角色数据模型 + 服务端校验函数（Host 才能批申请/结束房间；Moderator/Host 才能看申请列表）。
 - 冒烟脚本（M1 阶段）：`register → login → 建房 → 列表 → 申请 → 批准 → 离开` 走真实 HTTP。
 
@@ -28,7 +31,9 @@ updated: 2026-09-16
 - LiveKit 相关一切（起服务、签 Token、音视频、屏幕共享、举手、焦点）→ M2/M3。
 - 文字群聊实时收发与拉取、LLM 纪要生成 → M3/M4（本轮只建表、只留种子里的历史消息）。
 - 邀请链接/邀请码的生成与校验 API → M2（本轮只建 `invites` 表、只实现房间码生成函数）。
-- 踢人、8 人上限拒绝提示 → M2（本轮建房时写入 `capacity`，不做人数校验的对外行为）。
+- 踢人、LiveKit 入房环节的「人数已满」拒绝提示 → M2。本轮已实现：批准申请时的容量校验（超过 `capacity` 返回 `ROOM_FULL`），保证成员数任何时候不超上限。
+- 阶段的派生相位 `active.in_session`（房内是否有人）→ M2（依赖 LiveKit 在场信息）；本轮 `deriveRoomPhase` 只区分 `active.idle` / `ended`。
+- 「移交 Host 后离开」→ 待拍板 R6；本轮 Host 不可离开（必须先结束房间）。
 - 公网部署、Docker Compose、录制、管理后台（→ M5 加分项，按时间取舍）。
 
 ## 3. 验收清单
@@ -40,7 +45,9 @@ updated: 2026-09-16
 - [ ] 注册 → 登录 → 登出 → 再访问受保护页面需重新登录。
 - [ ] 建房后 `/rooms` 列表与 `/rooms/<id>` 详情显示的是库里的真实数据（改库后刷新页面可见变化）。
 - [ ] 加入申请：同一人对同一房间重复提交返回 409（不产生第二条 pending）；非 Host/Moderator 调批准接口返回 403。
-- [ ] 结束房间后该房间不可再提交申请（返回 409），列表状态显示为已结束。
+- [ ] 结束房间后贴 SQL 输出证明三件事：`rooms.status='ended'` 且 `ended_at` 已写；原活跃成员全部 `status='inactive'`、`exit_reason='room_ended'`；`pending` 申请全部 `status='cancelled'`。
+- [ ] 已结束房间：再提交申请 / 再批准 / 再结束 均返回 409 `ROOM_ENDED`；同时列表、详情、历史消息仍可只读访问。
+- [ ] 结束房间的事务性：人为让事务中途失败一次（如临时违反约束）后核对库，房间仍是 `active`、成员仍 `active`（无半结束状态）。
 - [ ] 安全检索：`git grep -n "LIVEKIT_API_SECRET\|LIVEKIT_API_KEY"` 在 `src/` 下无命中代码（仅 `.env.example` 占位）。
 - [ ] 文档已更新：本页状态、`docs/01-architecture/r001-app-architecture.md`、`docs/02-modules/` 对应模块页、README 当前轮次。
 

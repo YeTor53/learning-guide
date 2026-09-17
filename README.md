@@ -19,7 +19,9 @@
 
 ## 当前轮次
 
-`r001`（里程碑 M1：骨架 · 账户 · 房间）—— 需求单与设计页已起草，`status: draft`，待复核拍板（含设计页 §11 的 R1~R5）。此前初始化轮次（建仓 + 文档树 + 规划草稿）已提交。
+`r001`（里程碑 M1：骨架 · 账户 · 房间）—— 需求单与设计页已起草，但因栈变更（`r001-ADR-0002`：React + Python + PostgreSQL 取代 Next.js + SQLite）**标为 superseded，待重写**；重写时机 = `global-roadmap.md` §5 的 P9/P10/P3′ 拍板后一次完成。
+
+已定：题目 A / 位置 / 数据库 PostgreSQL / 前端 React + 后端 Python / 纪要 DeepSeek / 加分项=增量项 / 仅交 zip。LiveKit 来源复评见 `r001-ADR-0003`。
 
 - 需求单：`docs/00-requirements/r001-skeleton-accounts-rooms.md`
 - 设计页：`docs/01-architecture/r001-app-architecture.md`
