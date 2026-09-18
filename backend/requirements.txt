@@ -1,0 +1,23 @@
+# 运行依赖（conda 环境 learningguide，pip freeze 结果，2026-09-17）
+# 安装：conda activate learningguide && pip install -r backend/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+annotated-types==0.8.0
+anyio==4.15.1
+certifi==2026.7.22
+click==8.5.0
+colorama==0.4.6
+fastapi==0.141.1
+h11==0.16.0
+httptools==0.8.0
+idna==3.19
+psycopg==3.3.5
+psycopg-binary==3.3.5
+psycopg-pool==3.3.1
+pydantic==2.13.5
+pydantic_core==2.46.3
+python-dotenv==1.2.3
+starlette==1.6.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+uvicorn==0.53.0
+watchfiles==1.2.0
+websockets==17.1

@@ -8,24 +8,24 @@ updated: 2026-09-17
 ---
 
 <!-- overview -->
-面向深度学习主题的多人音视频讨论室（作业题目 A）的**项目级规划**。本文件只定方向与验收点，不写实现细节（细节归 `docs/01-architecture/`、`docs/02-modules/`）；里程碑只定方向，不承诺日期。
+面向深度学习主题的多人音视频讨论室（本项目）的**项目级规划**。本文件只定方向与验收点，不写实现细节（细节归 `docs/01-architecture/`、`docs/02-modules/`）；里程碑只定方向，不承诺日期。
 
 ## 1. 起点现状（2026-09-16 实测）
 
-- **项目性质**：全新项目；作业两题中选**题目 A：Learning Guide 学习讨论室**。
+- **项目性质**：全新项目；产品形态为 **Learning Guide 学习讨论室**（围绕一个学习主题的多人音视频讨论）。
 - **交付形态**：可演示的迷你产品网站（完整前端 + 服务端 + SQL 设计 + 设计说明）；通过后会被追问实现细节、边界情况与取舍。
-- **时间与人力**：单人；作业要求收到后 4 个自然日内提交，约 16 小时专注工作量。
+- **时间与人力**：单人；交付窗口为收到需求起 4 个自然日，约 16 小时专注工作量。
 - **本机环境实测**：
   - 可用：`node v22.19.0`、`npm 10.9.3`（registry 指向 npmmirror）、`git 2.51.0`。
   - 依赖包可取：`next 16.3.5`、`@livekit/components-react 2.9.24`、`livekit-client 2.22.3`、`livekit-server-sdk 2.19.0`。
   - **LiveKit 自建可行且不需要 Docker**：官方 `livekit-server v1.13.7` 发布物含 `livekit_1.13.7_windows_amd64.zip`（18.9 MB）。
   - Docker 路径代价高：本机无 Docker；WSL 无已安装发行版、Hyper-V 未启用（需补 WSL2/发行版 + 重启）；Docker Desktop 安装包已在 `G:\Downloads`。
   - 本机 Python/OpenSSL 读系统证书库报 `ASN1: NOT_ENOUGH_DATA`（本机证书库损坏），自动化脚本一律用不校验上下文；浏览器侧不受影响。
-- **可复用资产**：无。题面明确不得直接使用 LiveKit Meet 默认页面，须基于 LiveKit SDK / Components 自行实现。
+- **可复用资产**：无。交付要求明确不得直接使用 LiveKit Meet 默认页面，须基于 LiveKit SDK / Components 自行实现。
 - **外部归宿与口径**：
-  - 交付给 First Light Tech 评审；**提交形态 = zip + GitHub 仓库链接 + npm 包**（2026-09-17 变更），zip 命名 `AI管培生_陀梓皓_题目A_<日期>.zip`。
+  - 交付评审方为 First Light Tech；**提交形态 = zip + GitHub 仓库链接 + npm 包**（2026-09-17 变更），zip 命名口径 `AI管培生_陀梓皓_题目A_<日期>.zip`（命名由交付方指定，原样保留）。
   - 必须声明所用 AI 工具与模型；使用开源模板须注明来源并说明自己新增与修改的部分。
-  - 提交时注明所选题目与实际投入小时数。
+  - 提交时注明项目名称与实际投入小时数。
 
 ## 2. 终局目的
 
@@ -51,16 +51,20 @@ updated: 2026-09-17
 | M4 会后产出 · 交付 | LLM 纪要生成链路（输入含聊天记录 + 参与者 + 主题，落库，房间详情可查看）、冒烟脚本、设计说明 + README + `.env.example`、打包提交 | 冒烟脚本全绿并贴输出；设计说明各章齐全；提交物命名符合口径、AI 工具清单齐全 | M1~M3、LLM 凭据（已决 P4） | 2~3 |
 | M5 加分项（增量，按时间取舍） | 每项独立成轮、可单独开关，不影响 M1~M4 闭环：① 断线重连后举手/焦点状态恢复 ② 房间录制或旁路录音转写后再生成纪要 ③ Docker Compose 一键启动 ④ 简单管理后台 ⑤ 3–5 分钟演示录屏 | 每项做完即可单独演示；未做项在设计说明「未完成项」中如实登记 | M4（不阻塞交付） | 每项 0.5~1 |
 
+> **M1（r001）状态回填（2026-09-18 定稿）**：轮次已关闭（需求单 `status: closed`）。实现共 13 个 checkpoint（`cp-r001-1`~`cp-r001-13`，含侧边栏与视觉体系、首屏图版等轮内增量）。
+> 实测：`db_init --reset --seed` 打印 7 表行数；`pytest backend/tests -q` 72 passed；`smoke.py` PASS 22/22；前端 `tsc --noEmit` + `npm run build` 全绿；9 步浏览器实操与未登录引导均已跑通（E9/E10）。需求单 §3 的 20 项验收**全部闭合**。
+> 剩余：由人 `merge --no-ff` 并打 `round-r001-done`（AGENTS 硬规矩 4）。轮次档案见 `docs/rounds/r001-skeleton/`。
+
 ## 4. 已决事项
 
 | 编号 | 事项 | 决定 | 说明 |
 | --- | --- | --- | --- |
-| P1 | 题目 | 题目 A（学习讨论室） | 本规划后续内容均按 A 展开 |
+| P1 | 产品形态 | Learning Guide 学习讨论室 | 本规划后续内容均围绕它展开 |
 | P2 | 工作区位置 | `G:\VSCODE\VS_items\LearningGuide-LiveKit` | 与本机 Web 项目同区，保持不动 |
 | P3 | LiveKit 来源（初判） | 自建（Windows 原生二进制） | **已由 P3′ 取代**，见本表末行；原决策与理由见 ADR-0001（现降级为离线兜底方案） |
 | P3′ | LiveKit 来源（复评，2026-09-17） | **C：Cloud（Build 免费）为主 + 自建脚本留档** | 事实与对比见 ADR-0003；自建作为演示降级路径保留 |
 | P4 | 纪要 LLM | DeepSeek（OpenAI 兼容，`deepseek-chat`） | Key 只进本地 `.env`，不入库、不进前端 |
-| P5 | 数据库 | **PostgreSQL** | 题面优先项；落地方式见 P9 |
+| P5 | 数据库 | **PostgreSQL** | 交付要求优先项；落地方式见 P9 |
 | P6 | 技术栈 | **前端 React + 后端 Python（前后端分离）** | 取代初稿的 Next.js 一体仓；见 ADR-0002 |
 | P7 | 加分项 | 全部设计成**增量项**（M5），按剩余时间取舍 | 每项独立成轮/独立开关，不阻塞必做闭环 |
 | P8 | 提交方式 | **zip + GitHub 远程仓库 + npm 包**（2026-09-17 变更；原为「仅 zip」） | 细则见 P11 与 ADR-0004；zip 命名口径不变 |
@@ -88,10 +92,11 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 
 ## 7. What's next
 
-1. 用户复核**总设计** `docs/01-architecture/r001-app-architecture.md`（§2 选型落地、§3 分层、§6 会话与跨源、§9 骨架函数签名、§11 验证矩阵、§12 环境准备）与**需求单** `docs/00-requirements/r001-skeleton-accounts-rooms.md`。
-2. 两页转 `approved`，模块页（房间功能/实现）同步转 `approved`。
-3. 建 `req/r001-skeleton` 分支，按 cp-r001-1..4 增量实现（骨架与数据层 → 账户 → 房间与申请 → 前端页面与冒烟）。
-4. P11（npm 发布对象 / 仓库公开性 / zip 主次）**暂缓**（用户 2026-09-17 指示），实现期只按本地 zip 口径准备交付物；提交阶段再补 README 交付章节与可能的包目录。
+1. 人工复核 r001：按 README「怎么跑」起前后端，走 `docs/02-modules/r001-rooms-features.md` §6 的 9 步演示脚本（含未登录引导与回跳）；通过后把需求单 §3 余下 2 项勾上。
+2. 人审通过后由人合并（历史 append-only，不 rebase）：
+   `git checkout main && git merge --no-ff req/r001-skeleton && git tag -a round-r001-done -m "r001 完成（M1 骨架·账户·房间）"`
+3. 开 r002 = M2：LiveKit Cloud 接线（服务端签 Token、`RoomConfiguration.max_participants=8` 兜底、`RemoveParticipant` 踢人与 `LIVEKIT_MODE` 分支）、批准后真正进房、三角色权限矩阵落地、踢人。届时把 `docs/99-archive/r001-ahead-m2-m3-rooms.md` 移回 `docs/02-modules/` 并改为 `r002-` 前缀。
+4. P11（npm 发布对象 / 仓库公开性 / zip 主次）仍**暂缓**：达到提交阶段再拍，届时补 README 交付章节与可能的包目录。
 
 ## 8. 文档产出顺序与现状盘点（2026-09-17）
 
@@ -110,13 +115,14 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 文档 | 前缀 | 应有归属 | 现状 | 问题 |
 | --- | --- | --- | --- | --- |
 | `docs/00-project/global-roadmap.md` | global | 项目级 | draft，含已决/待拍板 | 正常（P3′/P9/P10/P12 已定；P11 暂缓） |
-| `docs/01-architecture/r001-app-architecture.md` | r001 | r001 总设计 | **已重写**（2026-09-17，draft 待复核） | 已补齐总设计，含分层/目录/会话/数据层/验证矩阵/环境准备 |
-| `docs/00-requirements/r001-skeleton-accounts-rooms.md` | r001 | r001 需求单 | **已重写**（2026-09-17，draft 待批准） | 正常（与总设计、模块页口径一致） |
-| `docs/02-modules/r001-rooms.md`（实现） | r001 | r001 | draft（**已剥离 M2/M3**，只含 M1） | 正常 |
-| `docs/02-modules/r001-rooms-features.md`（功能） | r001 | r001 | draft（**已剥离 M2/M3**，只含 M1） | 正常 |
+| `docs/01-architecture/r001-app-architecture.md` | r001 | r001 总设计 | **已重写并 approved**（2026-09-17） | 含分层/目录/会话/数据层/验证矩阵/环境准备 |
+| `docs/00-requirements/r001-skeleton-accounts-rooms.md` | r001 | r001 需求单 | **已重写并 approved**（2026-09-17） | 正常（与总设计、模块页口径一致） |
+| `docs/02-modules/r001-rooms.md`（实现） | r001 | r001 | approved（**已剥离 M2/M3**，只含 M1） | 正常 |
+| `docs/02-modules/r001-rooms-features.md`（功能） | r001 | r001 | approved（**已剥离 M2/M3**，只含 M1） | 正常 |
+| `docs/02-modules/r001-accounts.md`（实现） | r001 | r001 | **已新建**（approved，cp-r001-2 后按代码回填） | 补齐账户模块的接口/函数签名事实源 |
+| `docs/02-modules/r001-accounts-features.md`（功能） | r001 | r001 | **已新建**（approved） | 补齐账户模块的行为与文案事实源 |
 | ~~`docs/02-modules/r001-summaries.md`~~ → `docs/99-archive/r001-ahead-m4-summaries.md` | r001 | **M4** | **已归档**（backlog） | 提前产出（属 M4），已按 §8.3 B 归位 |
 | ~~`docs/02-modules/r001-summaries-features.md`~~ → `docs/99-archive/r001-ahead-m4-summaries-features.md` | r001 | **M4** | **已归档**（backlog） | 同上 |
-| `docs/02-modules/r001-rooms.md` / `-features.md` | r001 | r001 | draft | **已剥离 M2/M3 项** → `docs/99-archive/r001-ahead-m2-m3-rooms.md`（backlog）；r001 页现只含 M1 |
 | `docs/03-decisions/` ADR-0001~0006 | 混合 | 决策记录 | 0001~0003/0005/0006 accepted；0004 proposed（P11 暂缓） | 正常 |
 
 **结论**：跳步发生在「总设计（架构页）仍作废未重写」的情况下先产出了模块级功能/实现设计，且把 M4 的纪要设计、M2/M3 的房间能力混进了 r001 命名空间。
@@ -152,3 +158,28 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 决策入档 | P9=A（本机安装）、P3′=C（Cloud 为主 + 自建留档） |
 
 下一步（2026-09-17 接续核）：总设计与需求单**转 `approved`** 后建 `req/r001-skeleton`，按 cp-r001-1..4 实现；P11 暂缓不影响开工。
+
+## 9. 遗留台账（r001 收官，2026-09-17）
+
+| 项 | 类型 | 去向 |
+| --- | --- | --- |
+| ~~前端 9 步演示（含未登录访问 `/rooms/new` 的引导与 `returnTo` 回跳）~~ | ~~本轮未完成的验收项~~ | **2026-09-18 已闭合并取证（需求单 §3.1 的 E9 / E10）** |
+| 列表分页 `limit/offset` 无专门用例（用例只验了 `total` 与筛选） | 测试欠账（低风险） | r002 顺手补一条分页用例 |
+| 房间码冲突重试 3 次的分支无用例（碰撞概率极低） | 测试欠账（低风险） | r002 用可注入的 `new_code` 打桩补一条 |
+| 房间结束后 `myRole` 为 `null`（历史角色不显示徽标，如「曾是协管」） | 行为待定 | r002 决定是否在只读视图显示历史角色 |
+| `pytest` 输出 Starlette/httpx 弃用告警（提示 `httpx2`） | 上游噪音 | 待 starlette 正式版；届时升 `httpx` |
+| LiveKit：Cloud 项目与 Token 签发、`max_participants` 兜底、踢人（Cloud 上移除即失效 vs 自建只能短 TTL）、角色任命/移交、邀请（`invites` 表已建未用） | M2 范围 | 开 r002 时从 `docs/99-archive/r001-ahead-m2-m3-rooms.md` 移回并改前缀 |
+| 群聊实时收发落库、举手、焦点发言、屏幕共享与「焦点 × 共享」优先级规则 | M3 范围 | 按 §3 里程碑表推进 |
+| LLM 纪要（触发链路、Prompt 契约、落库与重试） | M4 范围 | 设计与实现方案已在 `docs/99-archive/r001-ahead-m4-summaries*.md` |
+| 加分项：断线重连恢复、录制转写、Compose、管理后台、录屏 | M5 增量 | 按剩余时间取舍 |
+| 交付物（zip + GitHub + npm）细则 | P11 暂缓 | 提交阶段拍板后另开一轮 |
+
+### 9.1 暂留（2026-09-18 讨论，均未拍板、未排期）
+
+| 项 | 讨论结论（留档，避免重复论证） | 状态 |
+| --- | --- | --- |
+| 跨房间「在场唯一」约束（一人同时只能在 1 个房间） | **不做硬约束**：误拦的代价远大于漏拦的收益（在场状态本就不可靠：关标签页/断网/切后台/LiveKit 超时判定都要十几秒）；物理层已天然限制（一个麦一个摄像头，双开互相抢占）；跨房间占位**没有受害者**（名额按房间独立计算，与 §4 的「同房间唯一活跃身份」不同）；而成本要落在签发 Token 的热路径上（跨房间查在场 + 多实例需共享状态）。若要覆盖「用户忘了关」这一小类，只做**软提示**：进 B 房时提示「你似乎还在《A》房间」+ 一键离开，决定权交用户 | 暂留 |
+| 外部同类项目的可抄条目（仅作设计参考，不写入正文文档） | ① 拒绝/踢人后保留决定记录当**封禁名单**且房主可解除（Air）；② 申请/进房接口**限流**（meet，防脚本刷申请）；③ 「**等待中的参与者**」显式队列展示（meet）；④ 进房 **session 表**（在场 + 时长统计基础，LiveClass-Lite）；⑤ 成员**一行一角色、就地更新**（meet，可替代多行历史） | 暂留 |
+| 实现缺口一：非管理者申请人撤不回自己的申请 | `RoomVO` 只给 `myRequestStatus`，没有 request id；`GET /api/rooms/{id}/join-requests` 对非管理者返回 403（实测 `part@example.com` 复现），前端「撤回申请」按钮找不到 id 只会弹「撤回失败」。修法：VO 加 `myRequestId`，或新增 `GET /api/join-requests/mine` | 暂留（原建议本轮顺手修，暂缓） |
+| 实现缺口二：同房间「加入→离开→再批准」累积多条 inactive 成员行 | `approve_join_request` 是新插一行而非复活旧行；活跃唯一索引兜住了「当前状态」，但成员历史会出现同一人多条记录。修法：批准时优先复活该房间最早的 inactive 行 | 暂留（原建议本轮顺手修，暂缓） |
+

@@ -2,9 +2,10 @@
 title: r001 教程：本机装 PostgreSQL 并建好项目库（含 Stack Builder 处置）
 description: 从 EDB 安装向导逐页选择到建角色建库、连接自检与写入 .env 的手工步骤清单。
 type: tutorial
-status: draft
+status: approved
 owner: 陀梓皓
-updated: 2026-09-17
+rounds: [r001]
+updated: 2026-09-18
 ---
 
 <!-- overview -->
@@ -72,6 +73,27 @@ SELECT rolname, rolcanlogin FROM pg_roles WHERE rolname = 'lg_app';
 & "C:\Program Files\PostgreSQL\17\bin\psql.exe" "postgresql://lg_app:<你自己设的密码>@127.0.0.1:5432/learning_guide" -c "select current_user, current_database();"
 ```
 
+### 4b. 给 `lg_app` 建表权限（PostgreSQL 15+ 必做；本机已踩过）
+
+PostgreSQL 15 起，`public` 模式的建表权限**不再默认授予普通角色**：连接串和密码都对，但应用第一次建表就会报
+`InsufficientPrivilege: 对模式 public 权限不够`。除 §4 之外，还要在 `learning_guide` 库里补一条授权。
+
+仍在 pgAdmin Query Tool（用 postgres 登录，**确认当前库是 `learning_guide`**）执行：
+
+```sql
+GRANT CREATE, USAGE ON SCHEMA public TO lg_app;
+```
+
+自检（应返回 `t`）：
+
+```sql
+SELECT has_schema_privilege('lg_app', 'public', 'CREATE') AS can_create;
+```
+
+> 若当初建库时 owner 不是 `lg_app`（例如用 pgAdmin 图形界面建库，owner 会默认成 postgres），也可以用
+> `ALTER DATABASE learning_guide OWNER TO lg_app;` + `ALTER SCHEMA public OWNER TO lg_app;` 两条替代；
+> 上面那条 `GRANT` 代价更小、两种情况都管用，本项目按 `GRANT` 走。
+
 ## 5. 写进本机 `.env`（等后端骨架落地时由我生成，你只需确认）
 
 ```
@@ -89,6 +111,7 @@ SESSION_SECRET=<我会用随机值生成>
 - [ ] §3 的三条自检命令都有正常输出（服务在跑、psql 有版本、能连上）
 - [ ] §4 的两条 SQL 执行成功，两条验证查询有结果
 - [ ] 用 `lg_app` 连接测试返回一行 `current_user = lg_app`
+- [ ] §4b 的 `GRANT CREATE, USAGE ON SCHEMA public TO lg_app;` 执行成功，自检查询返回 `can_create = t`（PG 15+ 必做，否则迁移第一条 `CREATE TABLE` 就报「对模式 public 权限不够」）
 - [ ] 告诉我三件事：**端口**（默认 5432？）、**pgAdmin 能否打开**、**是否愿意让我执行建库脚本**（不愿意的话就按 §4 自己跑）
 
 ## 7. 能用 postgres 超级用户直接跑应用吗（FAQ）
@@ -97,7 +120,7 @@ SESSION_SECRET=<我会用随机值生成>
 
 | 维度 | 用 postgres（超级用户） | 用 lg_app（应用角色，本章做法） |
 | --- | --- | --- |
-| 功能可行性 | 完全可行（无权限障碍） | 可行：`CREATE DATABASE ... OWNER lg_app` 后，`lg_app` 是该库 owner，可在库内建表/索引/读写 |
+| 功能可行性 | 完全可行（无权限障碍） | 可行：`CREATE DATABASE ... OWNER lg_app`（或用 §4b 的 `GRANT` 补权限）后，`lg_app` 可在库内建表/索引/读写 |
 | 泄漏后果 | 连接串一旦外泄（日志/误提交/截图），等于交出整个实例（可 DROP 任何库、改系统表） | 最坏只影响 `learning_guide` 一个库 |
 | 交付与评审 | 设计说明的「安全」一节要解释为什么应用用超级用户，属明显扣分项 | 最小权限原则，安全一节一句话讲清 |
 | 日常管理 | 无差别 | 手工维护（建库/备份）仍用 postgres，两者互不影响 |
@@ -115,9 +138,12 @@ pgAdmin 里"注册服务器（Register Server）"用 postgres 登录是**标准�
 | 端口被占用（安装时提示换端口） | 记下实际端口，本教程所有命令与 `.env` 都用该端口 |
 | 服务没启动 | 服务管理器里启动 `postgresql-x64-17`；后端报 `OperationalError` 时先查服务 |
 | 中文乱码 | 建库时必须带 `ENCODING 'UTF8'`（§4 已含） |
+| **`InsufficientPrivilege: 对模式 public 权限不够`**（迁移第一条 `CREATE TABLE` 就报） | PostgreSQL 15+ 起 `public` 模式的建表权限不再默认授予普通角色：用 postgres 连到 `learning_guide` 执行 §4b 的 `GRANT CREATE, USAGE ON SCHEMA public TO lg_app;`；`db_init.py` 遇到该错误会打印同一句提示 |
 | **`CREATE DATABASE 无法在事务块中运行`（SQL state 25001）** | pgAdmin 的 Query Tool **Auto-commit 默认关闭** → 语句被包在事务里，而 `CREATE DATABASE` 按 PostgreSQL 规定不允许在事务块内执行（与 SQL 写法无关）。两条解法：① Query Tool 工具栏把 **Auto-commit** 打开，再**单独**执行这一条；② 改用 psql（默认自动提交）：`psql -U postgres -h 127.0.0.1 -p 5432 -c "CREATE DATABASE ..."` 或 `createdb -U postgres -O lg_app -E UTF8 -T template0 learning_guide`。同类的"不能进事务块"语句还有 `CREATE INDEX CONCURRENTLY`、`VACUUM`、`ALTER SYSTEM` |
 | Query Tool 是灰的/点不动 | pgAdmin 的 Query Tool 走 Tools 菜单或对象浏览器**某些节点的右键菜单**（官方文档口径）；必须先**连上服务器**（双击 `Servers > PostgreSQL 17` 输密码）并在树里选到 **数据库或更下面的节点**（如 `Databases > postgres`）|
 
 ## What's next
 
-装好并在 §6 打勾后：我按 §4 的角色/库执行迁移与种子（`python backend/scripts/db_init.py --reset --seed`，待骨架落地），并回填 README「怎么跑」。
+装好并在 §6 打勾后：我按 §4/§4b 的角色、库与权限执行迁移与种子（`python backend/scripts/db_init.py --reset --seed`），并回填 README「怎么跑」。
+
+> 状态更新（2026-09-17）：骨架与数据层已落地（`cp-r001-1`）。首次真机执行时正是 §4b 的权限问题挡住了迁移 —— 已把它补成教程步骤与人工清单项。

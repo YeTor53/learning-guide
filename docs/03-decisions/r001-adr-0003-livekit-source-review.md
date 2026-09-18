@@ -32,7 +32,7 @@ updated: 2026-09-16
 **鉴权与管控（两种来源共用的应用层 API）**
 - 客户端凭 Access Token 连接，Token 是 JWT，用 API Secret 签名，内含参与者 identity、房间名、TTL 与 grants（`roomJoin`、`canPublish`、`canPublishData`、`canPublishSources` 等）。
 - Python 服务端：`livekit-api` 包，`api.AccessToken(...).with_identity(...).with_grants(api.VideoGrants(...)).to_jwt()`；房间/参与者管控走 `api.LiveKitAPI`。
-- **房间人数上限**可写进 Token 的 `RoomConfiguration.max_participants` → 由 LiveKit 侧硬限，正好给题面「单房间 8 人」做兜底。
+- **房间人数上限**可写进 Token 的 `RoomConfiguration.max_participants` → 由 LiveKit 侧硬限，正好给交付要求「单房间 8 人」做兜底。
 - **踢人/撤销**：`RemoveParticipant`，可带 `revoke_token_ts` 拒绝其重入。
 
 **关键差异（直接影响我们的踢人设计）**
@@ -47,7 +47,7 @@ updated: 2026-09-16
 
 | 选项 | 内容 | 建议 |
 | --- | --- | --- |
-| P3′-A | 改用 LiveKit Cloud（Build 免费） | **建议**：额度过剩（双浏览器演示按参与者分钟计），运营成本为零；踢人能真正"失效 Token"，更贴题面「移除 Token 权限并强制断开」；区域可选亚太。 |
+| P3′-A | 改用 LiveKit Cloud（Build 免费） | **建议**：额度过剩（双浏览器演示按参与者分钟计），运营成本为零；踢人能真正"失效 Token"，更贴交付要求「移除 Token 权限并强制断开」；区域可选亚太。 |
 | P3′-B | 维持自建（ADR-0001） | 零外部依赖、演示不依赖网络；代价是踢人只能"断开 + 短 TTL"，且需自管进程与端口。 |
 | P3′-C | Cloud 为主 + 自建脚本留档 | 交付里给一条本地自建命令作降级方案；多出一点文档与配置成本。 |
 
@@ -83,8 +83,8 @@ updated: 2026-09-16
 倾向 **C（Cloud 为主 + 自建脚本留档）**：
 
 1. 同一套 SDK，切换只是三个环境变量，成本近零，但把"演示当天网络/账号出问题"这个最大单点风险对冲掉。
-2. 题面那句「移除参与者 Token 权限并强制断开（不可只做前端假踢）」在 Cloud 上能做到"Token 真失效"，面试追问实现与边界时最好解释。
-3. 免费额度（5,000 WebRTC 分钟/100 并发）远超作业需要；超额是失败而非计费。
+2. 交付要求那句「移除参与者 Token 权限并强制断开（不可只做前端假踢）」在 Cloud 上能做到"Token 真失效"，面试追问实现与边界时最好解释。
+3. 免费额度（5,000 WebRTC 分钟/100 并发）远超本项目需要；超额是失败而非计费。
 4. 真设备入镜（手机扫码进房）对"多人讨论室"演示的说服力明显强于三个浏览器标签页。
 
 若更看重"零外部依赖、完全自己掌控"，**B 也完全站得住**，代价是踢人只能讲"断开 + 短 TTL"，真设备演示要额外配 TLS。
