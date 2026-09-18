@@ -202,6 +202,8 @@ updated: 2026-09-18
 | 收尾 | 旧分享链接 `/rooms/:id` 不再落空页 → 路由级 `<Navigate to="/" replace />` 重定向回列表；无匹配路由的兜底 404 给「回列表」出口；`NavBar` 面包屑细分（`/rooms/:id/live` → 房间交流、`/rooms/:id/wait` → 房间等待室，其余 `/rooms/*` → 房间） |
 | 实测 | `npx tsc --noEmit` 全绿、`npm run build` 成功（构建产物不含已删页面）；浏览器复看：旧 URL `/rooms/room_d80fe9ff594f7f17` 落到房间列表（面包屑「房间列表」），列表页卡片出现「申请加入」按钮且标题不再是外链 |
 
+| `docs/00-project/global-roadmap.md` | 遗留台账新增「`ended` 房间的回看载体（历史 + 纪要）」 | 实现期（`redirect-06` 删除管理页后暴露） | 登记为代办 | **M4 之前不做** | 现状列表页对 `ended` 房间无入口；回访与纪要归 M4，届时新开 `/rooms/:id/summary` 或只读面板 |
+
 ## 无文档变更的提交（若有）
 
 （实现期若某步确实无对外行为变化，在此登记一行并说明原因。）
