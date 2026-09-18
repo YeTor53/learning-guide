@@ -1,4 +1,6 @@
-/** 舞台：单焦点布局（说话者主格 + 其余沿右侧竖排的窄缩格）。
+/** 舞台：单焦点布局（焦点主格 + 其余沿右侧竖排的窄缩格）。
+ *
+ * 焦点优先级（为 M3 屏幕共享预留，本轮不出现共享按钮）：**屏幕共享 > 说话者 > 自己**。
  *
  * 设计事实源：docs/02-modules/r002-livekit-features.md §4.1、§4.7（专注感的四个来源）。
  * 专注感的三条实现：① 一个人占主格、其余降权退到边上；② 空态给出「在等谁 + 今天聊什么 + 房间码」而非纯黑；
@@ -18,12 +20,19 @@ interface Props {
 }
 
 export default function LiveStage({ room, members, speakerIdentity, localIdentity }: Props) {
-  const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }], { onlySubscribed: false })
+  const tracks = useTracks(
+    [{ source: Track.Source.ScreenShare, withPlaceholder: false }, { source: Track.Source.Camera, withPlaceholder: true }],
+    { onlySubscribed: false },
+  )
   const byIdentity = new Map(members.map((member) => [member.userId, member]))
 
-  const focusIdentity = speakerIdentity ?? localIdentity
-  const focus = tracks.find((item) => item.participant.identity === focusIdentity) ?? tracks[0]
-  const rail = tracks.filter((item) => item.participant.identity !== focus?.participant.identity)
+  // 焦点优先级：屏幕共享 > 说话者 > 自己（M3 共享功能落地时无需改这里）
+  const screenShare = tracks.find((item) => item.source === Track.Source.ScreenShare && !item.publication?.isMuted)
+  const focusIdentity = screenShare?.participant.identity ?? speakerIdentity ?? localIdentity
+  const focus = tracks.find((item) => item.participant.identity === focusIdentity && item.source !== Track.Source.ScreenShare) ?? screenShare ?? tracks[0]
+  const rail = tracks.filter(
+    (item) => item !== focus && item.participant.identity !== focus?.participant.identity && item.source !== Track.Source.ScreenShare,
+  )
   const roleOf = (identity: string): Role | null => byIdentity.get(identity)?.role ?? null
 
   if (tracks.length === 0) {

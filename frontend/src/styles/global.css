@@ -599,6 +599,8 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   --live-tint: rgba(124, 240, 196, 0.05);   /* 顶部主题色光带：给房间一点「这里」 */
   --live-focus-glow: rgba(124, 240, 196, 0.16);
   --live-rail-width: 176px;
+  --live-focus-ratio: 16 / 9;               /* 焦点格比例（共享屏幕时同样按这个框做 letterbox） */
+  --live-focus-max-height: calc(100vh - 250px); /* 焦点格高度上限：留出状态条/控制坞/提示的空间 */
 }
 
 /* ---------- 通用小组件（r002 起复用）---------- */
@@ -761,7 +763,9 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .live-stage {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;     /* 焦点在左、竖排缩格条在右 */
+  align-items: center;     /* 焦点格垂直居中，不再被拉伸到占满 */
+  justify-content: center;
   gap: var(--live-stage-gap);
   min-height: 0;
 }
@@ -789,10 +793,23 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   transition: filter var(--t-slow) var(--ease), box-shadow var(--t-base) var(--ease);
 }
 .live-tile > video { width: 100%; height: 100%; object-fit: cover; }
+.live-tile { min-height: 0; }
+/* 焦点格：按比例限幅居中（上限由视口高推出），画面 contain 不裁切也不撑爆 */
+/* 焦点格：撑满可用宽、但高度被封顶（视口高推出）+ 按比例限宽，画面 contain 不裁切也不撑爆 */
 .live-tile-focus {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: min(100%, calc((100vh - 250px) * 16 / 9));
+  max-height: var(--live-focus-max-height);
+  aspect-ratio: var(--live-focus-ratio);
+  margin: 0 auto;
   box-shadow: inset 0 2px 0 0 var(--accent); /* 焦点格上缘 2px 强调线 */
+}
+.live-tile-focus > video { object-fit: contain; }
+/* 窄窗口下让位给右侧缩格条 */
+@media (max-width: 900px) {
+  .live-tile-focus { max-width: 100%; }
 }
 /* 非焦点格降权：降饱和 + 降亮（--live-focus-dim 单点可调） */
 .live-tile:not(.live-tile-focus) {
