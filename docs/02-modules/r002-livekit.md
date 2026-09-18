@@ -17,7 +17,8 @@ updated: 2026-09-18
 | 项 | 轮次 | 说明 |
 | --- | --- | --- |
 | LiveKit 接入（签 Token、移除参与者、删除房间、在场列表） | **r002（本文）** | 模块 `app/services/livekit.py`（§6.4） |
-| 进房（获批成员取 Token 连上音视频） | **r002（本文）** | 新路由 `POST /api/rooms/{room_id}/token` + 前端房内页 |
+| 进房（获批成员取 Token 连上音视频） | **r002（本文）** | 新路由 `POST /api/rooms/{room_id}/token` + **交流页**（`/rooms/:id/live`） |
+| **页面职责三分**（`redirect-04`）：房间管理页（`/rooms/:id`，口径调整）/ 交流页（专注感）/ 等待页（温暖感） | **r002（本文）** | 管理页复用 r001 页面只改口径与入口；交流页与等待页为新增页（§7） |
 | 踢人 / 任命协管 / 移交房主 | **r002（本文）** | 承接 r001 期间从房间设计页剥离、存在 `docs/99-archive/` 的 M2 归档内容（2026-09-18 随 r002 移回本页并改写） |
 | 邀请（限时链接 / 房间码） | 延后 | `docs/99-archive/r002-ahead-invites.md`（`status: backlog`），`invites` 表本轮不使用 |
 | 群聊实时收发、举手、焦点发言、屏幕共享 | M3 | 不在本文 |
@@ -179,13 +180,16 @@ backend/app/
 | `src/hooks/useRoomConnection.ts` | `useRoomConnection(tokenInfo)` | 建 `Room` 实例、`connect(url, token)`、`disconnect()`；维护连接状态机 `connecting → connected → reconnecting → closed`；监听 `Reconnecting` / `Reconnected` / `Disconnected(reason)`（归因见 §8.4、重连见 §8.9） |
 | `src/hooks/useLocalDeviceState.ts` | `useLocalDeviceState(room)` | 记麦克风/摄像头开关（React state，不落 storage）；`Reconnected` 后按记忆值重放（§8.10） |
 | `src/hooks/useLiveParticipants.ts` | `useLiveParticipants(room)` | `useTracks([{source:'camera'},{source:'microphone'},{source:'screen_share'}])` → 与库成员列表按 `identity == user_id` 求交，产出 `{member, tracks, isOnline}` 列表 |
-| `src/pages/RoomLivePage.tsx` | `RoomLivePage` | 路由 `/rooms/:id/live`；装配 `RoomContext`、布局、连接状态徽标（已连接 / 正在重连… / 已断开）、错误态（未获批 / 房间已结束 / 实时服务不可用） |
-| `src/components/live/LiveStage.tsx` | `LiveStage` | 视频格网格（1 人铺满、2 人并排、≥3 人自动网格）；焦点/共享的布局切换属 M3 |
+| `src/pages/RoomLivePage.tsx` | `RoomLivePage`（**交流页**） | 路由 `/rooms/:id/live`；专注布局：44px 状态条 + 舞台 + 悬浮控制条 + 管理抽屉（默认收起）；连接状态徽标（已连接 / 正在重连… / 已断开）；**未获批 → 重定向到等待页**；错误态（已结束 / 实时服务不可用 / 连接断开） |
+| `src/components/live/LiveStage.tsx` | `LiveStage` | **单焦点舞台**：说话者/共享者主格 + 其余窄缩格；非焦点格降饱和 `--live-focus-dim`、亮度 −12%；焦点格上缘 2px 强调线；只有自己时居中显示空态；手动焦点/共享切换属 M3 |
 | `src/components/live/ParticipantTile.tsx` | `ParticipantTile` | 单个格子：视频或（无摄像头时）姓名首字头像块、麦克风静音徽标、角色徽标、行内「移出房间 / 设为协管 / 取消协管 / 移交房主」（按角色显示） |
 | `src/components/live/DeviceBar.tsx` | `DeviceBar` | 麦克风开关、摄像头开关、「离开房间」；`prejoin` 一律不做，进页面即连接 |
-| `src/components/live/RoomSidePanel.tsx` | `RoomSidePanel` | 成员列表（在线/离线分组，来自 §7 的求交结果）+ 待批申请入口（复用 r001 的 `JoinRequestList`）+ 房间信息 |
-| `src/App.tsx` | 路由 | 新增 `/rooms/:id/live` |
-| `src/pages/RoomDetailPage.tsx` | 按钮 | 成员/房主在 `active` 且获批时显示「进入房间」→ 跳 `/rooms/:id/live`；保留 r001 的申请/批准/离开/结束 |
+| `src/components/live/RoomSidePanel.tsx` | `RoomSidePanel`（管理抽屉） | 默认收起；成员列表（在线/离线分组，来自求交结果）+ 待批申请区块（复用 r001 的 `JoinRequestList`）+ 房间信息；管理动作（移出 / 设为协管 / 取消协管 / 移交房主）按角色显示 |
+| `src/hooks/useChromeIdle.ts` | `useChromeIdle(seconds)` | 静默计时（指针移动 / 键盘聚焦 / 有人说话即重置），返回 `{idle}`；供交流页把状态条与控制条淡至 `--live-chrome-idle-opacity`（§8.11） |
+| `src/pages/WaitingPage.tsx` | `WaitingPage`（**等待页**） | 路由 `/rooms/:id/wait`；暖色呼吸光 + 三步状态时间线 + 房间卡 + 主题简介 + 撤回/返回 + 「获批后自动进入」开关；5s 轮询 `GET /api/rooms/{id}`，获批 → 1.5s 后跳交流页（§8.12） |
+| `src/components/WaitTimeline.tsx` | `WaitTimeline` | 三步时间线（已提交 / 等待房主批准 / 进入房间）：当前步暖色微亮、后续步灰；被拒或房间结束时整体转中性 |
+| `src/App.tsx` | 路由 | 新增 `/rooms/:id/live`（交流页）与 `/rooms/:id/wait`（等待页）；**交流页隐藏全局侧边栏**（专注感），管理页与等待页保留 |
+| `src/pages/RoomDetailPage.tsx` | 按钮（**房间管理页**口径） | 活跃成员且 `active` 时显示「进入房间」→ `/rooms/:id/live`；我有 `pending` 申请时显示「去等待页」→ `/rooms/:id/wait`；保留 r001 的申请/批准/离开/结束 |
 
 依赖（**安装前需你批准**，见需求单 §9）：`livekit-client`、`@livekit/components-react`。
 
@@ -194,7 +198,9 @@ backend/app/
 1. **不引 `@livekit/components-styles`**：只用 SDK 与 hooks（`useTracks`/`VideoTrack`/`RoomAudioRenderer`），样式按 `docs/04-style/global-style.md` 自绘（暗色编辑风、Lucide 图标、零 emoji）。理由：默认主题与 ADR-0008 的视觉体系冲突，且交付要求「不得直接用 LiveKit 默认页面」。
 2. **`RoomAudioRenderer` 必须挂**（组件库提供的远端音频播放器），否则别人说话听不见——这是最容易被漏掉的一步。
 3. **断开归因以 SDK 的 `DisconnectReason` 为准**（§8.4），「再取一次 Token」只作兜底：不引入 Webhook、不加推送通道；网络真断时本来也取不到 Token，所以不能把它当主路径。
-4. 房内页**不做轮询**：成员与在场由 SDK 事件驱动；待批申请仍用 r001 的 5s 轮询（M3 再统一）。
+4. 交流页**不做轮询**：成员与在场由 SDK 事件驱动；管理抽屉里的待批申请仍用 r001 的 5s 轮询。**唯一例外是等待页**：它还没连 LiveKit，靠 5s 轮询 `GET /api/rooms/{id}` 感知「已获批」并自动进入（§8.12）。
+5. **交流页零装饰**：不加载列表页的 Canvas 流场、网格质感层与《思想者》图版（ADR-0008 的装饰清单在交流页显式不适用）；底色再暗一档以贴合专注感。
+6. **两页的情绪靠令牌而非新体系**：专注/温暖两组参数全部写进 `global.css` 参数区（单点可调），不引第三方动效或 UI 库。
 
 ## 8. 并发、边界与失败
 
@@ -207,9 +213,11 @@ backend/app/
 | 8.5 | 重入与 Token 复用 | 每次连接现签 Token；`cloud` 模式下被踢者的旧 Token 因 `revoke_token_ts` 失效（刷新页面也回不来，除再次获批）；`self` 模式下靠 5 分钟 TTL + 成员校验拦「已不是成员」的签发请求 |
 | 8.6 | 关标签页 / 断网 | 库侧**不自动置 inactive**（判定留 M5）：成员仍在名单里但显示「离线」；房主可对其「移出房间」清位 |
 | 8.7 | 一人多开（同账号） | **不做真双开**：identity 用 `user_id`，同一账号在第二个窗口进入同一房间时，LiveKit 按 `DUPLICATE_IDENTITY` **把先进的那条连接踢掉**（先进窗口提示「同一账号已在别处进入本房间」）。跨房间的「在场唯一」约束仍按 r001 §9.1 不做 |
+| 8.8 | 移交后原 Host 的 `room_admin` | Token 内 `room_admin` 只在签发时确定：原 Host 手里的旧 Token 仍是 `room_admin`（LiveKit 侧权限），但**应用层按钮与服务端判定立即按新角色**（库为准）。属已知取舍：真实项目可配 `UpdateParticipant` 同步权限，本项目不引入（避免更多外部调用） |
 | 8.9 | **断线重连（连接层）** | 网络抖动：SDK 自动先做 ICE restart（通常无感）；需要全量重连时触发 `Reconnecting` → 房内页显示「正在重连…」且**不退出页面** → `Reconnected` 后回到「已连接」。对房内他人的表现是该成员「离开又回来」（`ParticipantDisconnected` → `ParticipantConnected`），**库侧全程不变**（不写成员状态）。只有彻底失败才走 §8.4 的闭线流程与提示 |
 | 8.10 | **设备状态保持（设备层）** | 麦克风/摄像头开关记在 `useLocalDeviceState`（React state）；`Reconnected` 后按记忆值重放。**待实测（C-3）**：官方文档只写明「已发布的本地轨道会被重新发布」，未说明「已关闭（未发布）」状态的恢复行为 → cp-r002-3 实测两种情形（关摄像头后重连、静音后重连）并把结论写回本行；实测前不写结论 |
-| 8.8 | 移交后原 Host 的 `room_admin` | Token 内 `room_admin` 只在签发时确定：原 Host 手里的旧 Token 仍是 `room_admin`（LiveKit 侧权限），但**应用层按钮与服务端判定立即按新角色**（库为准）。属已知取舍：真实项目可配 `UpdateParticipant` 同步权限，本项目不引入（避免更多外部调用） |
+| 8.11 | **交流页专注态与降级** | 静默 `--live-chrome-idle-seconds`（默认 30）后状态条/控制条淡至 `--live-chrome-idle-opacity`（0.45）；指针移动、键盘聚焦、任何人开始说话即重置。`prefers-reduced-motion` 下取消一切位移与呼吸，只保留不透明度变化；焦点切格过渡改为瞬时 |
+| 8.12 | **等待页轮询与自动进入** | 等待页 5s 轮询 `GET /api/rooms/{id}`：`pending` → 保持等待；成为活跃成员 → 暖色转强调色、文案「可以进去了」，`--wait-autoenter-delay`（1.5s）后跳交流页；`rejected`/`withdrawn` → 转中性并给「重新申请」；房间 `ended` → 提示房间已结束并回管理页。页面隐藏时暂停轮询（`document.visibilityState`），切回立刻拉一次 |
 
 ## 9. 验证矩阵（本模块）
 
@@ -220,6 +228,9 @@ backend/app/
 | 冒烟（真实 HTTP） | `python backend/scripts/smoke.py` | 新增步骤：成员取 Token 200 且 JWT 可解析 → 非成员取 Token 403 → 踢人后目标再取 Token 403 → 结束后取 Token 409；末尾仍 `PASS n/n` |
 | 密钥检索 | `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` | 除 `config.py` 变量名外无命中；前端产物内无 Secret（`npm run build` 后再检索一次 `dist/`） |
 | 前端类型与构建 | `cd frontend && npx tsc --noEmit && npm run build` | 无类型错误；`dist/` 产出 |
+| 交流页专注态（人工） | 交流页里鼠标静止 30 秒后移动；两人以上说话 | UI 淡至 45% 且指针一移即恢复；说话者格放大、其余格降权与焦点强调线肉眼可见；页面中无装饰层（`document.querySelectorAll('canvas')` 长度 0） |
+| 等待页链路（人工） | 未获批账号打开 `/rooms/:id/live` → 房主批准 | 被送到等待页（无错误卡片）；时间线当前步高亮；获批后 1.5s 自动进入交流页；撤回后再申请可复用同一页 |
+| 降级（人工） | 系统开启「减少动效」后打开两页 | 无位移与呼吸，只剩不透明度变化 |
 | 断线重连（人工） | 双浏览器进房后，一端断网 5~10 秒再恢复 | 自动回到房间（无需点按钮）、声画恢复、期间「正在重连…」可见；`room_members` 无新记录；关摄像头者回来仍关闭（C-3 的实测结论在此记录） |
 | 人工（双浏览器，§功能页 §6） | 两个浏览器 / 一台手机扫 Cloud 链接 | 声画互通；第 N+1 人被拒并提示「房间已满」；Host 踢人后对方页面立刻断开并显示「你已被移出房间」；结束房间后所有端断开并显示「房间已结束」；被踢者再申请可获批重进 |
 
@@ -236,4 +247,5 @@ backend/app/
 ## 11. 变更记录
 
 - 2026-09-18 建立（`status: draft`）：由 r001 的 M2 归档页移回并按 r002 重写；剥离邀请（→ `docs/99-archive/r002-ahead-invites.md`），新增进房 Token、在场口径、断开归因、前端房内页与「实时调用不回滚业务状态」等 r002 设计。
+- 2026-09-18 按 `redirect-04`（批复「这项加入 r002 任务中」）：页面职责三分落地——§1 范围表、§7 文件表（新增 `WaitingPage`/`WaitTimeline`/`useChromeIdle`，交流页与管理抽屉改专注布局，新增两页路由，管理页口径与「去等待页」入口）、关键取舍新增 5/6（零装饰、情绪令牌）、§8 重排并新增 8.11/8.12、§9 加三条人工验收。
 - 2026-09-18 按 `redirect-01`（批复「设计进行」）：§8.4 改为 **SDK `DisconnectReason` 优先**、取 Token 兜底；§8.7 同账号双开改为「后进踢掉先进 + 提示」；新增 §8.9 断线重连（连接层）与 §8.10 设备状态保持（设备层，含待实测项 C-3）；§7 增 `useLocalDeviceState` 与连接状态徽标；§9 加断网重连验收行。
