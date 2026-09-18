@@ -8,6 +8,7 @@ import NewRoomPage from './pages/NewRoomPage'
 import RegisterPage from './pages/RegisterPage'
 import RoomDetailPage from './pages/RoomDetailPage'
 import RoomLivePage from './pages/RoomLivePage'
+import WaitingPage from './pages/WaitingPage'
 import RoomsPage from './pages/RoomsPage'
 
 /** 六条路由（架构页 §9.7 + r002 交流页）：/ 、/login、/register、/rooms/new、/rooms/:id、/rooms/:id/live
@@ -28,6 +29,7 @@ export default function App() {
       <Route path="/rooms/new" element={<NewRoomPage />} />
       <Route path="/rooms/:id" element={<RoomDetailPage />} />
       <Route path="/rooms/:id/live" element={<RoomLivePage />} />
+      <Route path="/rooms/:id/wait" element={<WaitingPage />} />
       <Route path="*" element={<p className="muted">页面不存在</p>} />
     </Routes>
   )

@@ -155,6 +155,28 @@ updated: 2026-09-18
 
 | `redirect-05.md` | 用户新意见（房间是否过度持久化） | 实现期，用户提「这样房间是不是更持久化了，跟初衷相互违背……这种持久化的方案和一次性会议式的方案都想一下，然后对比」 | A（**本轮口径变更**，按 L3 看待：动容量规则与验收表述；不改 schema） | **proposed（待批复）** | 定位 4 处病灶（容量按名册、界面主角错位、"成员"用词、房间不老化）；对比「一次性讨论（A）/ 常设小组（B）/ 现状混合（C）」；建议 A，列出 A-1~A-4 改动与 4 条待拍板口径 |
 
+### cp-r002-4（等待室 + 申请/批准/取票三段口径落地，完成）
+
+| 文件 | 内容 |
+| --- | --- |
+| `backend/app/services/rooms.py` | 删 `request_join` 与 `approve_join_request` 的容量拦截（ADR-0012 修订 D2/D3）；`issue_room_token` 增**在场口径**容量闸（D5）：`在场（不含自己）>= capacity` → 409 `ROOM_FULL`；LiveKit 查询失败降级放行，由 Token `max_participants` 兜底 |
+| `backend/tests/test_rooms_service.py` | 两条用例改为新口径：`test_request_join_allowed_when_full`、`test_approve_allowed_when_full` |
+| `backend/tests/test_rooms_concurrency.py` | 并发用例改为「同一申请并发批准只成功一次」（`CONFLICT` + `ok`），不再断言容量拦截 |
+| `backend/tests/test_rooms_members_api.py` | 目标口径用例**转正**（原 xfail 去掉）：申请可提交 → 批准不拦 → 取票满员 409 → 有人离场后取票 200 |
+| `src/hooks/useWaitingRoom.ts`、`src/components/WaitTimeline.tsx`、`src/pages/WaitingPage.tsx`（新增） | 等待室：状态机 + 三步时间线 + 温暖感卡片；**获批自动进入**（1.5s）不点按钮；失败/结束停留数秒**自动回主界面** |
+| `src/pages/RoomDetailPage.tsx` | 按钮口径：在册成员「回到讨论」（重进）、待批者「去等待室」、申请成功**直接跳等待室**（加入流程无手动步骤） |
+| `src/pages/RoomLivePage.tsx` | 403 `NOT_MEMBER` → 送等待室（不再当错误）；`ROOM_FULL` → 显示服务端原因 4 秒后自动回主界面 |
+| `src/App.tsx` | 新增 `/rooms/:id/wait` 路由（等待室保留全局侧边栏） |
+| `src/styles/global.css` | 等待室样式与温暖令牌（`--wait-warm` / `--wait-warm-soft` / `--wait-breathe-duration` / `--wait-autoenter-delay`）；`prefers-reduced-motion` 下呼吸光静止 |
+
+**实测证据（2026-09-18）**
+
+- `pytest backend/tests -q` → **95 passed**（含转正用例；r001 基线 72）
+- `npx tsc --noEmit` 全绿
+- 浏览器复看 `/rooms/room_demo_epicurus/wait`（访客态）：暖色卡片 + 三步时间线 + 房间信息（主题 / 房主 / 上限 8 人）+ 短句「这个房间还需要先申请」+ 操作「重新申请 / 回房间页」；未申请时时间线为中性色（不误点亮暖色）
+
+**未完成（继续）**：cp-r002-5 冒烟 + 两篇教学页 + README/AGENTS/roadmap 回填 + 双浏览器人工验收（含单焦点切换、声波、踢人真断、满员第 N+1 人被拒、重连）。
+
 ## 无文档变更的提交（若有）
 
 （实现期若某步确实无对外行为变化，在此登记一行并说明原因。）

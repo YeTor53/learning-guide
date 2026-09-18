@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CheckCircle2,
   ClipboardList,
+  Clock,
   Crown,
   DoorOpen,
   Hash,
@@ -208,7 +209,7 @@ export default function RoomDetailPage() {
               <span className="chip chip-accent">你已在房间中</span>
               <button className="btn btn-primary" onClick={() => navigate(`/rooms/${room.id}/live`)}>
                 <Radio {...ICON} />
-                进入房间
+                回到讨论
               </button>
               <button className="btn" onClick={doLeave} disabled={leave.isPending}>
                 <DoorOpen {...ICON} />
@@ -220,7 +221,7 @@ export default function RoomDetailPage() {
               <span className="chip chip-accent">你是房主</span>
               <button className="btn btn-primary" onClick={() => navigate(`/rooms/${room.id}/live`)}>
                 <Radio {...ICON} />
-                进入房间
+                回到讨论
               </button>
               <button className="btn btn-danger" onClick={doEnd} disabled={end.isPending}>
                 <X {...ICON} />
@@ -230,6 +231,10 @@ export default function RoomDetailPage() {
           ) : room.myRequestStatus === 'pending' ? (
             <>
               <span className="chip chip-warn">等待批准</span>
+              <button className="btn btn-primary" onClick={() => navigate(`/rooms/${room.id}/wait`)}>
+                <Clock {...ICON} />
+                去等待室
+              </button>
               <button
                 className="btn"
                 disabled={withdraw.isPending}
@@ -261,6 +266,8 @@ export default function RoomDetailPage() {
                       onSuccess: () => {
                         setShowJoinForm(false)
                         setMessage('')
+                        // 申请之后进等待室（ADR-0012 修订 D7：加入流程里没有手动步骤）
+                        navigate(`/rooms/${room.id}/wait`)
                       },
                     })
                   }

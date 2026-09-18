@@ -292,9 +292,7 @@ def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) ->
         raise AppError(ERR_ALREADY_MEMBER, "你已在房间中", status=409)
     if repo.get_pending_request(conn, room_id, actor.id) is not None:
         raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409)
-    if repo.count_active_members(conn, room_id) >= room.capacity:
-        raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.capacity} 人）", status=409)
-
+    # 申请**不校验容量**（ADR-0012 修订 D2）：申请人总能进等待室；容量闸唯一在取票。
     request_id = new_id("req")
     try:
         with conn.transaction():
@@ -347,8 +345,7 @@ def approve_join_request(conn: Connection, actor: UserVO, request_id: str) -> Ap
         current = repo.get_join_request(conn, request_id)
         if current is None or current.status != "pending":
             raise AppError(ERR_CONFLICT, "该申请已被处理", status=409)
-        if repo.count_active_members(conn, request.room_id) >= room.capacity:
-            raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.capacity} 人）", status=409)
+        # 批准**不校验容量**（ADR-0012 修订 D3）：批准 = 授予本场入场资格，满不满由取票时的在场数决定。
         if repo.get_active_member(conn, request.room_id, request.user_id) is not None:
             raise AppError(ERR_ALREADY_MEMBER, "该用户已在房间中", status=409)
         member_id = new_id("mem")
@@ -438,6 +435,11 @@ def issue_room_token(conn: Connection, actor: Optional[UserVO], room_id: str) ->
     if member is None:
         raise AppError(ERR_NOT_MEMBER, "你不在该房间中（或已被移出）", status=403)
     settings = load_settings()
+    # 容量闸（ADR-0012 修订 D5）：按**在场人数**算（不含自己，重连时自己已连着）；
+    # LiveKit 查询失败会降级为 []（不因监控失败拦人），由 Token 的 max_participants 兜底。
+    present = livekit_service.list_participant_identities(room_id, settings=settings)
+    if len([identity for identity in present if identity != actor.id]) >= room.room.capacity:
+        raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.room.capacity} 人）", status=409)
     token = livekit_service.issue_token(
         room_id,
         actor.id,

@@ -188,6 +188,7 @@ backend/app/
 | `src/components/live/RoomSidePanel.tsx` | `RoomSidePanel`（管理抽屉） | 默认收起；成员列表（在线/离线分组，来自求交结果）+ 待批申请区块（复用 r001 的 `JoinRequestList`）+ 房间信息；管理动作（移出 / 设为协管 / 取消协管 / 移交房主）按角色显示 |
 | `src/hooks/useChromeIdle.ts` | `useChromeIdle(seconds)` | 静默计时（指针移动 / 键盘聚焦 / 有人说话即重置），返回 `{idle}`；供交流页把状态条与控制条淡至 `--live-chrome-idle-opacity`（§8.11） |
 | `src/pages/WaitingPage.tsx` | `WaitingPage`（**等待页**） | 路由 `/rooms/:id/wait`；暖色呼吸光 + 三步状态时间线 + 房间卡 + 主题简介 + 撤回/返回 + 「获批后自动进入」开关；5s 轮询 `GET /api/rooms/{id}`，获批 → 1.5s 后跳交流页（§8.12） |
+| `src/hooks/useWaitingRoom.ts` | `useWaitingRoom(roomId)` | 等待室状态机（5s 轮询 `GET /rooms/{id}`）：`loading / error / ended / pending / approved / rejected / withdrawn / none`；`approved` 触发自动进入（ADR-0012 修订 D4） |
 | `src/components/WaitTimeline.tsx` | `WaitTimeline` | 三步时间线（已提交 / 等待房主批准 / 进入房间）：当前步暖色微亮、后续步灰；被拒或房间结束时整体转中性 |
 | `src/App.tsx` | 路由 | 新增 `/rooms/:id/live`（交流页）与 `/rooms/:id/wait`（等待页）；**交流页隐藏全局侧边栏**（专注感），管理页与等待页保留 |
 | `src/pages/RoomDetailPage.tsx` | 按钮（**房间管理页**口径） | 活跃成员且 `active` 时显示「进入房间」→ `/rooms/:id/live`；我有 `pending` 申请时显示「去等待页」→ `/rooms/:id/wait`；保留 r001 的申请/批准/离开/结束 |

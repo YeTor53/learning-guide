@@ -222,10 +222,9 @@ def test_end_room_reports_livekit_applied(client, db, monkeypatch):
 # 目标口径（用户 2026-09-18）：容量按**在场**算（不占座、无「未入场」概念）；
 #   申请不校验容量 → 申请人总能进等待室；批准不校验容量 → 获批后**自动进入**；
 #   真正的容量闸在**取票**（`POST /token`）：在场 >= capacity → 409 ROOM_FULL，「失败回主界面」。
-# 当前实现仍是 r001 的「在册口径 + 申请/批准时拦截」，故本用例先标 xfail；cp-r002-4 落地后去掉标记。
+# 已按 ADR-0012 修订实现（cp-r002-4）：本用例为转正用例。
 
 
-@pytest.mark.xfail(reason="ADR-0012 修订口径待 cp-r002-4 落地（容量改在场口径、取票时才拦）", strict=False)
 def test_capacity_is_enforced_at_token_time_with_presence(client, db, monkeypatch):
     """满员＝在场满：申请可提交、批准不拦、取票时第 N+1 人被拒。"""
     from app.services import rooms as rooms_service

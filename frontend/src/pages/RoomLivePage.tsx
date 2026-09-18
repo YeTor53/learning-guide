@@ -85,7 +85,8 @@ export default function RoomLivePage() {
       return
     }
     if (error.code === 'NOT_MEMBER' || error.status === 403) {
-      navigate(`/rooms/${id}`, { replace: true, state: { notice: '你不在这个房间里（或已被移出），可以重新申请加入' } })
+      // 未获准 → 送等待室（ADR-0012 修订 D7：这里不是错误，是流程）
+      navigate(`/rooms/${id}/wait`, { replace: true })
     }
   }, [tokenQuery.error, navigate, id])
 
@@ -187,6 +188,14 @@ export default function RoomLivePage() {
 
   const endedRoom = room?.status === 'ended'
   const fatalError = tokenQuery.error instanceof ApiError && tokenQuery.error.code === 'ROOM_ENDED'
+  const fullError = tokenQuery.error instanceof ApiError && tokenQuery.error.code === 'ROOM_FULL'
+
+  // 取票失败（满员等）→ 停留 4 秒把原因说清，然后回主界面（ADR-0012 修订 D6）
+  useEffect(() => {
+    if (!fullError) return
+    const timer = window.setTimeout(() => navigate('/', { replace: true }), 4000)
+    return () => window.clearTimeout(timer)
+  }, [fullError, navigate])
 
   if (detail.isLoading) {
     return (
@@ -197,15 +206,30 @@ export default function RoomLivePage() {
     )
   }
 
-  if (detail.isError || endedRoom || fatalError) {
+  if (detail.isError || endedRoom || fatalError || fullError) {
+    const title = fullError
+      ? tokenQuery.error instanceof ApiError
+        ? tokenQuery.error.message
+        : '房间已满'
+      : endedRoom || fatalError
+        ? '房间已结束，仅可查看历史内容'
+        : '无法进入这间房'
     return (
       <div className="card live-fallback">
         <AlertCircle size={22} strokeWidth={1.75} />
         <div>
-          <p style={{ margin: '0 0 6px' }}>{endedRoom || fatalError ? '房间已结束，仅可查看历史内容' : '无法进入这间房'}</p>
-          <Link className="btn btn-sm" to={`/rooms/${id}`}>
-            回到房间管理
-          </Link>
+          <p style={{ margin: '0 0 6px' }}>{title}</p>
+          <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
+            {fullError ? '4 秒后自动回到房间列表' : '可以回房间列表看看别的讨论'}
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link className="btn btn-sm" to="/">
+              回房间列表
+            </Link>
+            <Link className="btn btn-ghost btn-sm" to={`/rooms/${id}`}>
+              回房间管理
+            </Link>
+          </div>
         </div>
       </div>
     )

@@ -599,6 +599,11 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   --live-tint: rgba(124, 240, 196, 0.05);   /* 顶部主题色光带：给房间一点「这里」 */
   --live-focus-glow: rgba(124, 240, 196, 0.16);
   --live-rail-width: 176px;
+  /* 等待室 · 温暖感（docs/04-style/global-style.md §12.2） */
+  --wait-warm: #f0b27a;
+  --wait-warm-soft: rgba(240, 178, 122, 0.10);
+  --wait-breathe-duration: 6s;   /* 呼吸光周期 */
+  --wait-autoenter-delay: 1.5s;  /* 获批后自动进入的延迟 */
   --live-focus-ratio: 16 / 9;               /* 焦点格比例（共享屏幕时同样按这个框做 letterbox） */
   --live-focus-max-height: calc(100vh - 250px); /* 焦点格高度上限：留出状态条/控制坞/提示的空间 */
 }
@@ -1057,4 +1062,72 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   .live-avatar-pulse { animation: none; opacity: 0.32; transform: scale(1.1); }
   .live-welcome { animation: none; }
   .spin { animation: none; }
+}
+
+/* ==========================================================================
+   等待室（温暖感）：柔光 + 时间线 + 有温度的短句；不给进度百分比、不转圈
+   设计事实源：docs/04-style/global-style.md §12.2；功能页 §4.4
+   ========================================================================== */
+.wait-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 61px);
+  padding: var(--s-6) var(--s-5);
+  overflow: hidden;
+}
+
+.wait-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(58% 42% at 18% 0%, var(--wait-warm-soft), transparent 72%);
+  animation: wait-breathe var(--wait-breathe-duration) ease-in-out infinite;
+}
+@keyframes wait-breathe {
+  0%, 100% { opacity: 0.78; }
+  50% { opacity: 1; }
+}
+
+.wait-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  width: min(540px, 100%);
+  padding: var(--s-6);
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(240, 178, 122, 0.22);
+  background: rgba(20, 17, 14, 0.62);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+.wait-card-quiet { align-items: center; text-align: center; }
+.wait-lead { margin: 0; font-size: 18px; line-height: 1.6; color: #f4e3d2; }
+
+.wait-timeline { display: flex; gap: var(--s-4); list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+.wait-step { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-mute); }
+.wait-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.wait-step-done .wait-dot { background: rgba(240, 178, 122, 0.5); }
+.wait-step-active { color: #f6e7d3; }
+.wait-step-active .wait-dot { background: var(--wait-warm); box-shadow: 0 0 0 4px rgba(240, 178, 122, 0.16); }
+.wait-timeline-muted .wait-step-active { color: var(--text-dim); }
+.wait-timeline-muted .wait-dot { background: var(--line); box-shadow: none; }
+
+.wait-room {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(240, 178, 122, 0.16);
+  background: rgba(240, 178, 122, 0.04);
+}
+.wait-room-title { font-weight: 600; }
+.wait-note { margin: 0; font-size: 13px; line-height: 1.7; color: var(--text-dim); }
+.wait-actions { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wait-glow { animation: none; }
 }
