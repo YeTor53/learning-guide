@@ -157,6 +157,9 @@ updated: 2026-09-17
   --live-focus-dim: 0.35;         /* 非焦点格降饱和程度 */
   --live-chrome-idle-seconds: 30; /* 静默多少秒后界面退场 */
   --live-chrome-idle-opacity: 0.45;
+  --live-focus-brightness: 0.88;
+  --live-chrome: 44px;            /* 顶部状态条高度 */
+  --live-surface: rgba(10, 12, 18, 0.72); /* 悬浮控制条底色 */
   /* 等待页 · 温暖感 */
   --wait-warm: #f0b27a;
   --wait-warm-soft: rgba(240, 178, 122, 0.10);

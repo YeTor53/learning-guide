@@ -1,7 +1,7 @@
 import {
   AlertTriangle,
-  Archive,
   AlignLeft,
+  Archive,
   CalendarClock,
   CheckCircle2,
   ClipboardList,
@@ -10,6 +10,7 @@ import {
   Hash,
   LogIn,
   MessageSquare,
+  Radio,
   RefreshCw,
   Send,
   ShieldCheck,
@@ -49,6 +50,7 @@ export default function RoomDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const notice = (location.state as { notice?: string } | null)?.notice
   const { user } = useSession()
   const [message, setMessage] = useState('')
   const [showJoinForm, setShowJoinForm] = useState(false)
@@ -160,7 +162,14 @@ export default function RoomDetailPage() {
           )}
         </div>
 
+        <p className="kicker">房间管理</p>
         <h1 className="detail-title">{room.title}</h1>
+
+        {notice && (
+          <div className="alert" role="status" style={{ marginBottom: 12 }}>
+            {notice}
+          </div>
+        )}
 
         <div className="meta-row">
           <span className="item">
@@ -197,6 +206,10 @@ export default function RoomDetailPage() {
           ) : room.myRole === 'participant' || room.myRole === 'moderator' ? (
             <>
               <span className="chip chip-accent">你已在房间中</span>
+              <button className="btn btn-primary" onClick={() => navigate(`/rooms/${room.id}/live`)}>
+                <Radio {...ICON} />
+                进入房间
+              </button>
               <button className="btn" onClick={doLeave} disabled={leave.isPending}>
                 <DoorOpen {...ICON} />
                 离开房间
@@ -205,6 +218,10 @@ export default function RoomDetailPage() {
           ) : room.myRole === 'host' ? (
             <>
               <span className="chip chip-accent">你是房主</span>
+              <button className="btn btn-primary" onClick={() => navigate(`/rooms/${room.id}/live`)}>
+                <Radio {...ICON} />
+                进入房间
+              </button>
               <button className="btn btn-danger" onClick={doEnd} disabled={end.isPending}>
                 <X {...ICON} />
                 {end.isPending ? '结束中…' : '结束房间'}

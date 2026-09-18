@@ -192,7 +192,15 @@ backend/app/
 | `src/App.tsx` | 路由 | 新增 `/rooms/:id/live`（交流页）与 `/rooms/:id/wait`（等待页）；**交流页隐藏全局侧边栏**（专注感），管理页与等待页保留 |
 | `src/pages/RoomDetailPage.tsx` | 按钮（**房间管理页**口径） | 活跃成员且 `active` 时显示「进入房间」→ `/rooms/:id/live`；我有 `pending` 申请时显示「去等待页」→ `/rooms/:id/wait`；保留 r001 的申请/批准/离开/结束 |
 
-依赖（**安装前需你批准**，见需求单 §9）：`livekit-client`、`@livekit/components-react`。
+**实现期落地说明（cp-r002-3，2026-09-18 实测）**
+
+- 舞台用 `@livekit/components-react` 的 `useTracks([{source: Camera, withPlaceholder: true}])` + `VideoTrack`，外包 `<LiveKitRoom room={connection.room} connect={false}>`（自己掌握连接时机：先取票再连）；`<RoomAudioRenderer />` 已挂在交流页内（否则听不到别人）。
+- 组件与文件实际落地：新增 `useActiveSpeaker`（说话者 → 单焦点）、`useOnlineIdentities`（在场 identity，仅用于抽屉区分在线/离线）；**原计划的 `api/livekit.ts` 与 4 个 hooks 全部落地**。
+- 管理动作的二次确认：本轮先用**页内轻量确认块**（`confirming` 状态 + 「确认 / 取消」），**不用 `window.confirm`**；`redirect-03`（站内 toast + 自绘 modal 组件）批准后再统一替换。
+- 准入判定分流（`redirect-04` + 本页 §8.5a）：401 → 跳登录；403 `NOT_MEMBER` → 回房间管理页并提示可重新申请（**cp-r002-4 起改送等待页**）；409 `ROOM_ENDED` → 「房间已结束」卡片。
+- 交流页隐藏全局侧边栏（`App.tsx` 按路由判断），底色再暗一档（`#05060a`）。
+
+依赖（**安装前需你批准**，见需求单 §9）：`livekit-client`、`@livekit/components-react`（已装并入库：`2.22.3` / `2.9.24`）。
 
 关键取舍：
 

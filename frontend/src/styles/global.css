@@ -579,3 +579,270 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   .room-card:hover { transform: none; }
   .hero canvas { display: none; }
 }
+
+/* ==========================================================================
+   r002 · 交流页（专注感）与页面级令牌
+   设计事实源：docs/04-style/global-style.md §12.1；redirect-04 §4.2
+   参数集中在这里，改情绪只改下面这组变量。
+   ========================================================================== */
+:root {
+  /* 交流页 · 专注感 */
+  --live-tile-radius: 16px;
+  --live-stage-gap: 12px;
+  --live-focus-dim: 0.35;      /* 非焦点格降饱和程度（0 = 不降，1 = 全灰） */
+  --live-focus-brightness: 0.88;
+  --live-chrome-idle-seconds: 30; /* 静默多少秒后界面退场（与 RoomLivePage 的 CHROME_IDLE_SECONDS 一致） */
+  --live-chrome-idle-opacity: 0.45;
+  --live-chrome: 44px;         /* 顶部状态条高度 */
+  --live-surface: rgba(10, 12, 18, 0.72);
+}
+
+/* ---------- 通用小组件（r002 起复用）---------- */
+
+.kicker {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.icon-btn:hover { background: var(--panel-strong); color: var(--text); }
+.icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.alert-warn {
+  border-color: rgba(255, 184, 107, 0.35);
+  background: rgba(255, 184, 107, 0.08);
+  color: #ffd9ae;
+}
+
+.spin { animation: spin 1.4s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.member-row:last-child { border-bottom: none; }
+.member-name { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
+.member-actions { display: flex; gap: 4px; }
+
+/* ---------- 交流页：外壳 / 状态条 / 舞台 / 控制条 ---------- */
+
+.live-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--live-stage-gap);
+  padding: var(--s-3) var(--s-5) var(--s-6);
+  min-height: calc(100vh - 61px);
+  background: #05060a; /* 比列表页再暗一档：专注感 */
+}
+
+.live-fallback {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin: var(--s-6) auto 0;
+  max-width: 520px;
+}
+
+.live-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--live-chrome);
+  flex: 0 0 var(--live-chrome);
+  padding: 0 var(--s-2);
+  border-bottom: 1px solid var(--line-soft);
+  transition: opacity var(--t-slow) var(--ease);
+}
+.live-statusbar-left,
+.live-statusbar-right { display: flex; align-items: center; gap: var(--s-3); }
+.live-title { color: var(--text); font-weight: 600; text-decoration: none; }
+.live-title:hover { color: var(--accent); }
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--line-soft);
+  color: var(--text-dim);
+}
+.live-badge-connected { color: var(--ok); border-color: rgba(124, 240, 196, 0.35); }
+.live-badge-reconnecting { color: var(--warn); border-color: rgba(255, 184, 107, 0.35); }
+.live-badge-closed { color: var(--danger); border-color: rgba(255, 107, 107, 0.3); }
+
+.live-alert { margin: 0; }
+
+.live-main { display: flex; gap: var(--live-stage-gap); flex: 1; min-height: 0; }
+
+.live-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--live-stage-gap);
+  min-height: 0;
+}
+.live-stage-empty {
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--line-soft);
+  border-radius: var(--r-lg);
+}
+
+.live-tile {
+  position: relative;
+  border-radius: var(--live-tile-radius);
+  overflow: hidden;
+  background: var(--ink-800);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-soft);
+  transition: filter var(--t-slow) var(--ease), box-shadow var(--t-base) var(--ease);
+}
+.live-tile > video { width: 100%; height: 100%; object-fit: cover; }
+.live-tile-focus {
+  flex: 1;
+  min-height: 0;
+  box-shadow: inset 0 2px 0 0 var(--accent); /* 焦点格上缘 2px 强调线 */
+}
+/* 非焦点格降权：降饱和 + 降亮（--live-focus-dim 单点可调） */
+.live-tile:not(.live-tile-focus) {
+  flex: 0 0 168px;
+  filter: saturate(calc(1 - var(--live-focus-dim))) brightness(var(--live-focus-brightness));
+}
+.live-tile-speaking { box-shadow: inset 0 2px 0 0 var(--accent); }
+.live-tile-avatar {
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--text-mute);
+  user-select: none;
+}
+.live-rail { display: flex; gap: var(--live-stage-gap); overflow-x: auto; padding-bottom: 2px; }
+
+.live-tile-bar {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+}
+.live-tile-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.live-devicebar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 999px;
+  background: var(--live-surface);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  transition: opacity var(--t-slow) var(--ease);
+  z-index: 20;
+}
+.live-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-strong);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.live-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.live-btn-off { color: var(--danger); }
+.live-btn-leave:hover { background: var(--danger); color: #14100f; }
+
+/* 专注态：静默后顶部与底部一起退场（不透明度单点可调） */
+.live-chrome-idle .live-statusbar,
+.live-chrome-idle .live-devicebar { opacity: var(--live-chrome-idle-opacity); }
+.live-chrome-idle .live-statusbar:hover,
+.live-chrome-idle .live-devicebar:hover { opacity: 1; }
+
+.live-drawer {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  overflow-y: auto;
+  max-height: calc(100vh - var(--live-chrome) - 96px);
+}
+
+.live-confirm {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  max-width: 380px;
+  padding: var(--s-5);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--ink-700);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.live-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  margin: 0 0 84px; /* 抬高，避开底部悬浮控制条 */
+  font-size: 12px;
+  color: var(--text-mute);
+  transition: opacity var(--t-slow) var(--ease);
+}
+.live-chrome-idle .live-hint { opacity: var(--live-chrome-idle-opacity); }
+
+@media (prefers-reduced-motion: reduce) {
+  .live-statusbar,
+  .live-devicebar,
+  .live-hint,
+  .live-tile { transition: none; }
+  .spin { animation: none; }
+}

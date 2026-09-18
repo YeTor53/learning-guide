@@ -92,6 +92,26 @@ updated: 2026-09-18
 
 **cp-r002-2 判据核对**：pytest 全绿且含新增断言 ✅；迁移可重复执行 ✅；打桩下不产生真实外呼 ✅。
 
+### cp-r002-3（房间管理页口径 + 交流页，完成）
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/api/livekit.ts`（新增） | `issueToken` / `kickMember` / `setMemberRole` / `transferHost` 四个调用 |
+| `src/hooks/useRoomToken.ts`、`useRoomConnection.ts`、`useLocalDeviceState.ts`、`useChromeIdle.ts`（新增） | 取票 query（`staleTime: 0`）；连接状态机 `idle→connecting→connected⇄reconnecting→closed` 与 `DisconnectReason` 归因；设备状态记忆与重连重放；静默退场计时 |
+| `src/hooks/useActiveSpeaker.ts`、`useOnlineIdentities.ts`（新增） | 说话者（单焦点）；在场 identity（抽屉「在线 / 离线」） |
+| `src/components/live/{LiveStage,ParticipantTile,DeviceBar,RoomSidePanel}.tsx`（新增） | 单焦点舞台 + 窄缩格；格子（画面/头像块 + 姓名 + 角色徽标）；只图标 + tooltip 的控制条；默认收起的管理抽屉（成员 + 待批申请 + 房间信息 + 管理动作） |
+| `src/pages/RoomLivePage.tsx`（新增） | 交流页：44px 状态条（标题 · 人数 · 房间码 · 连接徽标 · 抽屉开关）+ 舞台 + 悬浮控制条 + 焦点态；准入分流（401 登录 / 403 回管理页 / 409 已结束）；`livekitApplied=false` 时如实提示 |
+| `src/pages/RoomDetailPage.tsx` | 口径改「房间管理页」+ 活跃成员看到「进入房间」（→ `/rooms/:id/live`）；展示从交流页回跳的提示 |
+| `src/App.tsx` | 新增 `/rooms/:id/live` 路由；**交流页隐藏全局侧边栏与外层容器** |
+| `src/styles/global.css` | 新增 r002 令牌（`--live-*`）与交流页样式、通用小组件（`.kicker/.panel/.icon-btn/.alert-warn/.spin/.member-row`）；`prefers-reduced-motion` 下降级 |
+
+**实测证据（2026-09-18）**
+
+- `npx tsc --noEmit` 全绿；`npm run build` 成功（`dist` 产出，bundle 900 KB——livekit-client 体积所致，属已知项）
+- **真机端到端（浏览器，连 LiveKit Cloud）**：以 `host@example.com` 登录 → 打开 `/rooms/room_demo_epicurus/live` → 状态条显示「哲学共读… · 2 / 8 · HK7M2Q · 已连接」；舞台渲染 1 个焦点格（摄像头关 → 姓名首字头像块 + 房主徽标 + 麦关图标）；底部三个圆形控制按钮（麦克风 / 摄像头 / 离开）；`document.querySelectorAll('canvas').length === 0`（零装饰成立）；交流页底色 `rgb(5,6,10)`；全局侧边栏未渲染
+
+**未完成（继续）**：等待页（cp-r002-4）、`403 → 等待页` 的分流改写、管理抽屉里的 toast/自绘 modal（等 `redirect-03` 批复）、两页的人工验收（cp-r002-5 演示脚本）。
+
 ## 无文档变更的提交（若有）
 
 （实现期若某步确实无对外行为变化，在此登记一行并说明原因。）
