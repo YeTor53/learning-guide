@@ -707,8 +707,33 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 }
 .live-statusbar-left,
 .live-statusbar-right { display: flex; align-items: center; gap: var(--s-3); }
-.live-title { color: var(--text); font-weight: 600; text-decoration: none; }
-.live-title:hover { color: var(--accent); }
+.live-title { color: var(--text); font-weight: 600; }
+.live-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.live-back:hover { background: var(--panel-strong); color: var(--text); }
+.live-sep { width: 1px; height: 18px; background: var(--line-soft); }
+
+.live-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+}
 
 .live-quiet { font-size: 12px; color: var(--text-mute); }
 .live-focus-timer {

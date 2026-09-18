@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react'
 
 import { ApiError } from '../api/http'
@@ -46,6 +46,7 @@ export default function RoomLivePage() {
   const [confirming, setConfirming] = useState<{ userId: string; action: 'kick' | 'transfer' } | null>(null)
   const [confirmingLeave, setConfirmingLeave] = useState(false)
   const [welcome, setWelcome] = useState(true)
+  const [confirmingBack, setConfirmingBack] = useState(false)
   const [focusedSeconds, setFocusedSeconds] = useState(0)
 
   const detail = useQuery({
@@ -108,11 +109,23 @@ export default function RoomLivePage() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (confirmingLeave) setConfirmingLeave(false)
+      else if (confirmingBack) setConfirmingBack(false)
       else if (drawerOpen) setDrawerOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [confirmingLeave, drawerOpen])
+  }, [confirmingLeave, confirmingBack, drawerOpen])
+
+  const goBackToManage = async () => {
+    setConfirmingBack(false)
+    if (connection.status === 'connected' || connection.status === 'reconnecting') await connection.disconnect()
+    navigate(`/rooms/${id}`)
+  }
+
+  const requestBack = () => {
+    if (connection.status === 'connected' || connection.status === 'reconnecting') setConfirmingBack(true)
+    else void goBackToManage()
+  }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['live-room', id] })
 
@@ -211,9 +224,12 @@ export default function RoomLivePage() {
       <div className={`live-shell${chromeIdle ? ' live-chrome-idle' : ''}`}>
         <header className="live-statusbar">
           <div className="live-statusbar-left">
-            <Link className="live-title" to={`/rooms/${id}`} title="回到房间管理">
-              {room?.title ?? '交流页'}
-            </Link>
+            <button className="live-back" onClick={requestBack} title="回到房间管理">
+              <ArrowLeft {...ICON} />
+              房间管理
+            </button>
+            <span className="live-sep" aria-hidden />
+            <span className="live-title">{room?.title ?? '交流页'}</span>
             <span className="live-quiet mono">{members.filter((m) => m.status === 'active').length} / {room?.capacity ?? 8}</span>
             <span className="live-quiet mono">{room?.roomCode}</span>
             {connection.status === 'connected' && (
@@ -299,6 +315,22 @@ export default function RoomLivePage() {
             />
           )}
         </main>
+
+        {confirmingBack && (
+          <div className="live-confirm" role="dialog" aria-modal="true">
+            <p style={{ margin: 0 }}>
+              回到房间管理会<strong>离开当前讨论</strong>（音视频断开），确定吗？
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary btn-sm" onClick={() => void goBackToManage()}>
+                确认返回
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setConfirmingBack(false)}>
+                继续讨论（Esc）
+              </button>
+            </div>
+          </div>
+        )}
 
         {confirming && (
           <div className="live-confirm" role="dialog" aria-modal="true">

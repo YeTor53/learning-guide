@@ -151,18 +151,15 @@ export default function RoomSidePanel({
         </section>
       )}
 
-      <section className="panel">
-        <h2 className="panel-title">房间信息</h2>
-        <p className="muted" style={{ fontSize: 14, margin: 0 }}>{room.topicLabel}</p>
-        {room.description && <p className="muted" style={{ fontSize: 14 }}>{room.description}</p>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="dim mono" style={{ fontSize: 12 }}>房间码 {room.roomCode}</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => void copyCode()} title="复制房间码">
-            {copied ? <Check {...ICON} /> : <Copy {...ICON} />}
-            {copied ? '已复制' : '复制'}
-          </button>
-        </div>
-      </section>
+      {/* 只留「讨论中要用到」的东西：房间码（口头传播）。主题/简介/成员历史等归房间管理页，
+          避免两处维护同一份信息（分工原则见功能页 §4.9）。 */}
+      <div className="live-code-row">
+        <span className="dim mono" style={{ fontSize: 12 }}>房间码 {room.roomCode}</span>
+        <button className="btn btn-ghost btn-sm" onClick={() => void copyCode()} title="复制房间码">
+          {copied ? <Check {...ICON} /> : <Copy {...ICON} />}
+          {copied ? '已复制' : '复制'}
+        </button>
+      </div>
     </aside>
   )
 }
