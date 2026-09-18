@@ -15,6 +15,9 @@ updated: 2026-09-18
 | 学习主题（topic） | 房间绑定的学习方向，如伊壁鸠鲁主义、数理生物学、德国史模拟 |
 | 房间（room） | 一次讨论的容器，绑定一个主题，有标题与简介，单房间上限 8 人 |
 | 等候室（waiting room） | 进入正式讨论前的审批环节：申请人提交申请，房主批准后才进入；申请人停留的界面是**等待页** |
+| JWT（JSON Web Token） | 「自包含的签名凭证」：`header.payload.signature` 三段，前两段 base64 可读、第三段用密钥签名。LiveKit 用它确认「这张进房票是我们发的、没被改过、还没过期」，无需查库。详见 `docs/03-decisions/r002-adr-0011-realtime-presence-model.md` 条 3 |
+| TTL（time to live） | 凭证的保质期：JWT 里的 `exp`。本项目 `cloud` 模式 3600 秒、`self` 模式 300 秒（自建无法撤销 Token，靠短保质期兜底） |
+| 进房 Token | 后端为某个成员现签的 LiveKit 准入凭证（JWT，identity = `user_id`）；每次连接/重连现签，不入库 |
 | 房间管理页（room admin page） | 房间的治理页（`/rooms/:id`）：房间信息、成员与角色、待批申请处理、离开 / 结束、只读回访；「进入房间」入口指向交流页。情绪取向：克制、工具感 |
 | 交流页（live room page） | 专注交流的页面（`/rooms/:id/live`）：音视频为主、界面最小化（单焦点、界面会退场、零装饰）。情绪取向：**专注感** |
 | 等待页（waiting page） | 等待房主批准的页面（`/rooms/:id/wait`）：状态时间线、安抚文案、撤回申请 / 返回，获批后自动进入交流页。情绪取向：**温暖感** |
