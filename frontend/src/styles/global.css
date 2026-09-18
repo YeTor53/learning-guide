@@ -648,8 +648,23 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   border-bottom: 1px solid var(--line-soft);
 }
 .member-row:last-child { border-bottom: none; }
-.member-name { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
-.member-actions { display: flex; gap: 4px; }
+.member-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.member-row > div:first-child { flex: 1; min-width: 0; }
+.member-actions { display: flex; gap: 4px; flex-wrap: nowrap; flex-shrink: 0; }
+.member-actions .btn {
+  white-space: nowrap;
+  padding: 3px 8px;
+  font-size: 12px;
+}
 
 /* ---------- 交流页：外壳 / 状态条 / 舞台 / 控制条 ---------- */
 
@@ -848,8 +863,44 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .live-chrome-idle .live-dock:hover,
 .live-chrome-idle .live-dock:focus-within { opacity: 1; }
 
+.live-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding-bottom: var(--s-1);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.more-menu { position: relative; }
+.more-menu-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 25;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--ink-700);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.more-menu-pop button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.more-menu-pop button:hover { background: rgba(255, 107, 107, 0.16); color: #fff; }
+
 .live-drawer {
-  width: 320px;
+  width: 380px;
   display: flex;
   flex-direction: column;
   gap: var(--s-3);

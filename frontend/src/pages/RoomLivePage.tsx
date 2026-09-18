@@ -215,7 +215,7 @@ export default function RoomLivePage() {
           <div className="alert alert-warn live-alert" role="status">
             {connection.reason}
             <button className="btn btn-sm" onClick={() => window.location.reload()} style={{ marginLeft: 12 }}>
-              重新进入
+              重新连接
             </button>
           </div>
         )}
@@ -241,6 +241,7 @@ export default function RoomLivePage() {
               onlineIds={onlineIds}
               requests={requests.filter((item) => item.kind === 'request') as never}
               busyId={busyId}
+              onClose={() => setDrawerOpen(false)}
               onKick={(userId) => setConfirming({ userId, action: 'kick' })}
               onSetRole={doSetRole}
               onTransferHost={(userId) => setConfirming({ userId, action: 'transfer' })}
