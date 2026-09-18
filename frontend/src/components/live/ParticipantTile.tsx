@@ -1,6 +1,7 @@
-/** 单个视频格：画面或头像块 + 姓名 + 麦克风/角色徽标。
+/** 单个视频格：画面或头像块 + 声波（说话时）+ 姓名/角色/静音徽标。
  *
- * 设计事实源：docs/02-modules/r002-livekit-features.md §4.1（交流页布局，专注感）。
+ * 设计事实源：docs/02-modules/r002-livekit-features.md §4.1、§4.7（专注感的四个来源）。
+ * 头像块不是「占位」：无摄像头时用主题色渐变 + 首字，并在说话时给出声波脉冲——让「谁在说」可感知。
  */
 import { MicOff } from 'lucide-react'
 import type { Participant, TrackPublication } from 'livekit-client'
@@ -35,8 +36,11 @@ export default function ParticipantTile({ participant, publication, role, isFocu
       {showVideo ? (
         <VideoTrack trackRef={{ participant, publication: publication!, source: publication!.source }} />
       ) : (
-        <div className="live-tile-avatar" aria-hidden>
-          {initial(name)}
+        <div className="live-avatar-wrap">
+          {speaking && <span className="live-avatar-pulse" aria-hidden />}
+          <span className="live-avatar" aria-hidden>
+            {initial(name)}
+          </span>
         </div>
       )}
       <div className="live-tile-bar">

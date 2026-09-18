@@ -45,6 +45,8 @@ export default function RoomLivePage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<{ userId: string; action: 'kick' | 'transfer' } | null>(null)
   const [confirmingLeave, setConfirmingLeave] = useState(false)
+  const [welcome, setWelcome] = useState(true)
+  const [focusedSeconds, setFocusedSeconds] = useState(0)
 
   const detail = useQuery({
     queryKey: ['live-room', id],
@@ -85,6 +87,21 @@ export default function RoomLivePage() {
       navigate(`/rooms/${id}`, { replace: true, state: { notice: '你不在这个房间里（或已被移出），可以重新申请加入' } })
     }
   }, [tokenQuery.error, navigate, id])
+
+  // 进房仪式：欢迎行 3.2 秒后自动退场（建立「现在开始专注」的边界）
+  useEffect(() => {
+    const timer = window.setTimeout(() => setWelcome(false), 3200)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  // 一起专注了多久（状态条右侧的安静计时，给正反馈而不是倒计时）
+  useEffect(() => {
+    if (connection.status !== 'connected') return
+    const timer = window.setInterval(() => setFocusedSeconds((value) => value + 1), 1000)
+    return () => window.clearInterval(timer)
+  }, [connection.status])
+
+  const focusedLabel = `${String(Math.floor(focusedSeconds / 60)).padStart(2, '0')}:${String(focusedSeconds % 60).padStart(2, '0')}`
 
   // Esc：先取消「确认离开」，再收起抽屉（防呆：离场永远有退路）
   useEffect(() => {
@@ -197,8 +214,13 @@ export default function RoomLivePage() {
             <Link className="live-title" to={`/rooms/${id}`} title="回到房间管理">
               {room?.title ?? '交流页'}
             </Link>
-            <span className="dim mono">{members.filter((m) => m.status === 'active').length} / {room?.capacity ?? 8}</span>
-            <span className="dim mono">{room?.roomCode}</span>
+            <span className="live-quiet mono">{members.filter((m) => m.status === 'active').length} / {room?.capacity ?? 8}</span>
+            <span className="live-quiet mono">{room?.roomCode}</span>
+            {connection.status === 'connected' && (
+              <span className="live-focus-timer mono" title="你在房间里的时长">
+                {focusedLabel}
+              </span>
+            )}
           </div>
           <div className="live-statusbar-right">
             <span className={`live-badge live-badge-${connection.status}`}>
@@ -231,8 +253,21 @@ export default function RoomLivePage() {
 
         {room && !room.memberCount ? null : null}
 
+        {welcome && (
+          <div className="live-welcome" role="status">
+            已进入 · {room?.topicLabel ?? ''} · 上限 {room?.capacity ?? 8} 人
+          </div>
+        )}
+
         <main className="live-main">
-          <LiveStage members={members} speakerIdentity={speaker?.identity ?? null} localIdentity={connection.room.localParticipant?.identity ?? ''} />
+          {room && (
+            <LiveStage
+              room={room}
+              members={members}
+              speakerIdentity={speaker?.identity ?? null}
+              localIdentity={connection.room.localParticipant?.identity ?? ''}
+            />
+          )}
           {drawerOpen && room && (
             <RoomSidePanel
               room={room}

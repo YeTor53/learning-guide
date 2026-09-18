@@ -161,6 +161,10 @@ updated: 2026-09-17
   --live-focus-brightness: 0.88;
   --live-chrome: 44px;            /* 顶部状态条高度 */
   --live-surface: rgba(10, 12, 18, 0.72); /* 悬浮控制条底色 */
+  --live-vignette: rgba(0, 0, 0, 0.45);   /* 舞台暗角 */
+  --live-tint: rgba(124, 240, 196, 0.05); /* 顶部主题色光带 */
+  --live-focus-glow: rgba(124, 240, 196, 0.16);
+  --live-rail-width: 176px;               /* 右侧窄缩格条宽度 */
   /* 等待页 · 温暖感 */
   --wait-warm: #f0b27a;
   --wait-warm-soft: rgba(240, 178, 122, 0.10);
