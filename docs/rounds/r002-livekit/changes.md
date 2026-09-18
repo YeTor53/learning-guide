@@ -30,6 +30,8 @@ updated: 2026-09-18
 | 模块功能页 | `docs/02-modules/r002-livekit-features.md` | 建立（draft） |
 | 使用者教学页 | `docs/tutorials/r002-livekit-demo.md` | planned（跑通后写） |
 | 开发者教学页 | `docs/tutorials/r002-livekit-dev-guide.md` | planned（跑通后写） |
+| 决策记录 | `docs/03-decisions/r002-adr-0011-realtime-presence-model.md`（9 条约定 + 5 条被否方案） | 建立（proposed，随设计一起批） |
+| 重定向确认单 | `docs/rounds/r002-livekit/redirect-01.md` | confirmed-C（批复「设计进行」，结论已落地） |
 | 索引/项目级 | `docs/00-requirements/README.md`、`README.md`、`AGENTS.md`、`global-roadmap.md` | 索引行本批；其余随 cp/收官 |
 
 ## 逐 cp 记录（实现期追加）

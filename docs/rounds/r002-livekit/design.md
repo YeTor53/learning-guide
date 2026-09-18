@@ -21,6 +21,8 @@ updated: 2026-09-18
 | `docs/02-modules/r002-livekit.md` | 数据用途、业务规则、接口清单、后端函数签名、前端文件路径、边界与失败 |
 | `docs/02-modules/r002-livekit-features.md` | 角色能力矩阵、功能详述、房内页布局与按钮矩阵、提示文案、双浏览器演示脚本 |
 | `docs/tutorials/r002-livekit-demo.md`、`r002-livekit-dev-guide.md` | 使用者/开发者教学（**随实现跑通后写**，铁律 2） |
+| `docs/03-decisions/r002-adr-0011-realtime-presence-model.md` | 长期约定（双事实源 / identity 唯一 / Token 无状态 / 外部调用时机 / 断线归因与重连 / 上限口径，9 条 + 5 条被否方案） |
+| `docs/rounds/r002-livekit/redirect-01.md` | 断线重连与状态保持的确认单（confirmed-C，批复「设计进行」） |
 
 ## 2. 契约面清单（CR 定级基准物）
 
