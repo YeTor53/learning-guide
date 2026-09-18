@@ -2,9 +2,10 @@
 title: r001 教程：本机装 PostgreSQL 并建好项目库（含 Stack Builder 处置）
 description: 从 EDB 安装向导逐页选择到建角色建库、连接自检与写入 .env 的手工步骤清单。
 type: tutorial
-status: draft
+status: approved
 owner: 陀梓皓
-updated: 2026-09-17
+rounds: [r001]
+updated: 2026-09-18
 ---
 
 <!-- overview -->

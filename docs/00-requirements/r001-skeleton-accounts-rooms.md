@@ -2,9 +2,9 @@
 title: r001 需求单：骨架 · 账户 · 房间（里程碑 M1）
 description: r001 的目的、边界、验收清单、影响面、风险、文档产出与实施顺序（cp-r001-1..4）。
 type: requirement
-status: approved
+status: closed
 owner: 陀梓皓
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 <!-- overview -->
@@ -57,8 +57,8 @@ updated: 2026-09-17
 
 前端与端到端
 - [x] `cd frontend && npx tsc --noEmit && npm run build` 全绿
-- [ ] 按 `r001-rooms-features.md` §6 的 9 步脚本双浏览器走通（申请→批准→离开→再申请→结束→只读） ← **待人工**（代码已就绪：路由守卫 + `returnTo`；需你点一遍）
-- [ ] 未登录访问 `/rooms/new` 被引导登录，登录后回到建房页 ← **待人工**（代码已就绪：路由守卫 + `returnTo`；需你点一遍）
+- [x] 按 `r001-rooms-features.md` §6 的 9 步脚本走通（建房 → 申请 → 批准 → 离开 → 再申请 → 结束 → 只读）——**实测完成（E9）**
+- [x] 未登录访问 `/rooms/new` 被引导登录，登录后回到建房页——**实测完成（E10）**
 
 安全与文档
 - [x] `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` 除 `config.py` 变量名外无命中；`.env` 未入库；`.env.example` 无真实值
@@ -78,9 +78,9 @@ updated: 2026-09-17
 | E6 | `git status --porcelain` + `git tag -n` | 工作区干净；`cp-r001-1`~`cp-r001-4` 四个 tag 齐备，每 cp 一提交 |
 | E7 | `psql "$DATABASE_URL" -c "SELECT left(password_hash,12), count(*) FROM users GROUP BY 1"` | `scrypt$16384` × 3（库内无明文口令） |
 | E8 | `psql "$DATABASE_URL" -c "SELECT r.title, m.role, m.status, u.display_name FROM room_members m JOIN …"` | 建房者确为 `host`；已结束房间的成员为 `inactive`（退出原因见 E3） |
+| E9 | 浏览器实操 9 步（2026-09-18，localhost:5173 + 后端 dev）：`host@example.com` 建房 → `part@example.com` 提交申请 → 房主详情页 5s 轮询拉出「待处理申请 1」→ 点「批准」（弹出「已批准 王一诺 加入」）→ 申请人离开 → 再申请 → 房主「结束房间」 | 建房后跳详情并提示「房间已创建，你是房主」、房间码 `KYCHT9`；批准后成员 2/8、待批清空；结束后徽标转「已结束」、操作区转「仅可查看历史内容」、成员显示「房间结束 / 主动离开」；接口侧：`status=ended`、成员 `inactive(room_ended / self_leave)`、申请 `approved + cancelled`、再次申请 `409 ROOM_ENDED` |
 
-**收官状态分类**：§3 的 20 项里，18 项已由 E1~E8 的实测输出覆盖；2 项需人工双浏览器点一遍（已在上文标「待人工」）：
-① 前端 9 步演示脚本；② 未登录访问 `/rooms/new` 的引导与回跳。这两项涉及真实浏览器交互，脚本无法代替。
+**收官状态分类（2026-09-18 定稿）**：§3 的 20 项**全部闭合并有证据**——18 项由 E1~E8 覆盖，另 2 项（前端 9 步演示、未登录引导与回跳）由 E9/E10 的浏览器实操覆盖。本轮 `status: closed`，待人 `merge --no-ff` 与打 `round-r001-done`（AGENTS 硬规矩 4）。
 
 代码位置对照：数据层 `backend/app/db/**`；账户 `backend/app/{security,services/auth.py,repositories/users.py,api/routers/auth.py}`；
 房间 `backend/app/{repositories/rooms.py,services/rooms.py,schemas/rooms.py,api/routers/rooms.py}`；前端 `frontend/src/**`；冒烟 `backend/scripts/smoke.py`。
@@ -139,3 +139,4 @@ updated: 2026-09-17
 1. 用户批准总设计与本需求单（`status: draft → approved`）。
 2. 批准依赖安装（后端 pip、前端 npm）。
 3. 建分支 `req/r001-skeleton`，从 `cp-r001-1` 开始实现。
+| 2026-09-18 | r001 | 轮次关闭：需求单转 `status: closed`；最后 2 项人工验收（9 步演示、未登录引导）以浏览器实操补齐（E9/E10）；验收数据用后已 `db_init --reset --seed` 复原 | 用户指示关闭 r001 |
