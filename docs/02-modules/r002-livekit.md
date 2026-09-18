@@ -217,6 +217,7 @@ backend/app/
 | 8.8 | 移交后原 Host 的 `room_admin` | Token 内 `room_admin` 只在签发时确定：原 Host 手里的旧 Token 仍是 `room_admin`（LiveKit 侧权限），但**应用层按钮与服务端判定立即按新角色**（库为准）。属已知取舍：真实项目可配 `UpdateParticipant` 同步权限，本项目不引入（避免更多外部调用） |
 | 8.9 | **断线重连（连接层）** | 网络抖动：SDK 自动先做 ICE restart（通常无感）；需要全量重连时触发 `Reconnecting` → 房内页显示「正在重连…」且**不退出页面** → `Reconnected` 后回到「已连接」。对房内他人的表现是该成员「离开又回来」（`ParticipantDisconnected` → `ParticipantConnected`），**库侧全程不变**（不写成员状态）。只有彻底失败才走 §8.4 的闭线流程与提示 |
 | 8.10 | **设备状态保持（设备层）** | 麦克风/摄像头开关记在 `useLocalDeviceState`（React state）；`Reconnected` 后按记忆值重放。**待实测（C-3）**：官方文档只写明「已发布的本地轨道会被重新发布」，未说明「已关闭（未发布）」状态的恢复行为 → cp-r002-3 实测两种情形（关摄像头后重连、静音后重连）并把结论写回本行；实测前不写结论 |
+| 8.13 | **绕开页面直连（幽灵房）** | 若对方拿着一张仍在有效期的票、绕开我们的页面直接连 `wss://`，LiveKit 会在该房间名上**自动创建房间**（官方：首个参与者加入即建房），于是可能短暂出现一间「只有他一个人」的幽灵房。影响范围：**不进我们的库、不影响列表/详情/演示**（我们不给新票、UI 也不会显示它）；`cloud` 模式下他因 `revoke_token_ts` 直接被拒，连幽灵房也进不去；`self` 模式下该现象存在，属已知能力边界（ADR-0011 条 10a），本项目不处理 |
 | 8.11 | **交流页专注态与降级** | 静默 `--live-chrome-idle-seconds`（默认 30）后状态条/控制条淡至 `--live-chrome-idle-opacity`（0.45）；指针移动、键盘聚焦、任何人开始说话即重置。`prefers-reduced-motion` 下取消一切位移与呼吸，只保留不透明度变化；焦点切格过渡改为瞬时 |
 | 8.12 | **等待页轮询与自动进入** | 等待页 5s 轮询 `GET /api/rooms/{id}`：`pending` → 保持等待；成为活跃成员 → 暖色转强调色、文案「可以进去了」，`--wait-autoenter-delay`（1.5s）后跳交流页；`rejected`/`withdrawn` → 转中性并给「重新申请」；房间 `ended` → 提示房间已结束并回管理页。页面隐藏时暂停轮询（`document.visibilityState`），切回立刻拉一次 |
 
