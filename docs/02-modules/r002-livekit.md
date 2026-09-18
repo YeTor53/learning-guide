@@ -18,7 +18,7 @@ updated: 2026-09-18
 | --- | --- | --- |
 | LiveKit 接入（签 Token、移除参与者、删除房间、在场列表） | **r002（本文）** | 模块 `app/services/livekit.py`（§6.4） |
 | 进房（获批成员取 Token 连上音视频） | **r002（本文）** | 新路由 `POST /api/rooms/{room_id}/token` + **交流页**（`/rooms/:id/live`） |
-| **页面职责三分**（`redirect-04`）：房间管理页（`/rooms/:id`，口径调整）/ 交流页（专注感）/ 等待页（温暖感） | **r002（本文）** | 管理页复用 r001 页面只改口径与入口；交流页与等待页为新增页（§7） |
+| **页面口径**（`redirect-04` 三分 → `redirect-06` 定稿）：列表页（发现与申请入口）/ 交流页（专注感）/ 等待页（温暖感）；**原房间管理页 `/rooms/:id` 已删除**，治理动作只在交流页抽屉 | **r002（本文）** | 交流页与等待页为新增页（§7）；治理入口唯一化见 ADR-0012 判据「跳页 = 断开讨论」 |
 | 踢人 / 任命协管 / 移交房主 | **r002（本文）** | 承接 r001 期间从房间设计页剥离、存在 `docs/99-archive/` 的 M2 归档内容（2026-09-18 随 r002 移回本页并改写） |
 | 邀请（限时链接 / 房间码） | 延后 | `docs/99-archive/r002-ahead-invites.md`（`status: backlog`），`invites` 表本轮不使用 |
 | 群聊实时收发、举手、焦点发言、屏幕共享 | M3 | 不在本文 |
@@ -138,11 +138,12 @@ backend/app/
 | 函数 | 签名 | 职责 / 返回 |
 | --- | --- | --- |
 | `issue_token` | `(room_name: str, user_id: str, display_name: str, role: str, ttl_seconds: int, max_participants: int) -> str` | `AccessToken(api_key, api_secret).with_identity(user_id).with_name(display_name).with_grants(VideoGrants(room_join=True, room=room_name, can_publish=True, can_subscribe=True, can_publish_data=True, room_admin=(role=='host'))).with_room_config(RoomConfiguration(max_participants=max_participants)).with_ttl(timedelta(seconds=ttl_seconds)).to_jwt()`；**纯本地签名，不联网** |
-| `remove_participant` | `(room_name: str, user_id: str) -> bool` | 异步 `LiveKitAPI.room.remove_participant(RemoveParticipantRequest(room=room_name, identity=user_id, revoke_token_ts=now))`（`cloud` 模式）——**必须显式传 `revoke_token_ts`**：撤销按 token 的 `nbf` 判定，默认截止时间带 1 分钟缓冲，用默认值时被踢者在约 1 分钟内仍能拿旧票重连（官方文档原文）；`self` 模式不传该字段（自建无撤销能力，官方写法是短 TTL + 移除后不再签发）。返回是否成功，异常记日志返回 `False` |
+| `remove_participant` | `(room_name: str, user_id: str, settings=None) -> bool` | 异步 `LiveKitAPI.room.remove_participant(proto_room.RoomParticipantIdentity(room=..., identity=..., revoke_token_ts=now))`（`cloud` 模式；**本版 SDK 的请求类是 `livekit.protocol.room.RoomParticipantIdentity`，不是 `RemoveParticipantRequest`**——实现期实测）。返回值语义 = 「调用是否成功」而非「确实移除了谁」：传了 `revoke_token_ts` 后，即使房间/参与者都不存在也会返回成功（官方文档行为，用于事后撤销 Token）——**必须显式传 `revoke_token_ts`**：撤销按 token 的 `nbf` 判定，默认截止时间带 1 分钟缓冲，用默认值时被踢者在约 1 分钟内仍能拿旧票重连（官方文档原文）；`self` 模式不传该字段（自建无撤销能力，官方写法是短 TTL + 移除后不再签发）。返回是否成功，异常记日志返回 `False` |
 | `delete_room` | `(room_name: str) -> bool` | `DeleteRoomRequest`：房间结束时强制断开全部连接 |
 | `list_participant_identities` | `(room_name: str) -> list[str]` | `ListParticipantsRequest` → identity 列表；**供演示取证与排障用**（前端在场状态由 SDK 直接拿，不经过本函数） |
-| `_run`（内部） | `(coro) -> object` | 把 `livekit-api` 的 async 调用跑在事件循环里（`asyncio.run` / 已有 loop 时 `run_until_complete`），并施加 `livekit_timeout_seconds`；**本项目后端是同步 `def` 路由**（架构页 §2），此处是唯一的 async 边界 |
-| `_api`（内部） | `() -> LiveKitAPI` | 每次调用构造并按 `async with` 关闭；不缓存长连接（调用频率极低） |
+| `_safe_livekit`（内部） | `(call: Callable[[], bool]) -> bool` | 外部调用兜底：LiveKit 层已有 try/except，本层再加一道，保证**任何**异常都不影响已提交的库状态（返回 `livekitApplied`）。`kick_member` / `end_room` 用 |
+| `_run`（内部） | `(call: Callable[[LiveKitAPI], Any], settings=None) -> Any` | **在事件循环内**构造 `LiveKitAPI` → 调用 → `aclose()`，并施加 `livekit_timeout_seconds`；异常记日志返回 `None`。实测约束：`LiveKitAPI.__init__` 会建 `aiohttp.ClientSession`，**在循环外构造会 `RuntimeError: no running event loop`**，所以「构造」必须发生在 `async def _wrap()` 内部（原设计的 `_api()` 纯同步工厂作废）；**本项目后端是同步 `def` 路由**（架构页 §2），此处是唯一的 async 边界 |
+| `list_participant_identities` | `(room_name: str, settings=None) -> list[str]` | 房间内在场 identity 列表；房间不存在时上游 404 → `_run` 记日志返回 `None` → 本函数返回 `[]`（失败降级，不阻塞调用方） |
 
 要点：
 - 本模块**只读 `Settings`**，不读 `process.env`，不 import repositories（依赖方向 `services → {repositories, security, livekit}`）。
@@ -187,11 +188,19 @@ backend/app/
 | `src/components/live/RoomSidePanel.tsx` | `RoomSidePanel`（管理抽屉） | 默认收起；成员列表（在线/离线分组，来自求交结果）+ 待批申请区块（复用 r001 的 `JoinRequestList`）+ 房间信息；管理动作（移出 / 设为协管 / 取消协管 / 移交房主）按角色显示 |
 | `src/hooks/useChromeIdle.ts` | `useChromeIdle(seconds)` | 静默计时（指针移动 / 键盘聚焦 / 有人说话即重置），返回 `{idle}`；供交流页把状态条与控制条淡至 `--live-chrome-idle-opacity`（§8.11） |
 | `src/pages/WaitingPage.tsx` | `WaitingPage`（**等待页**） | 路由 `/rooms/:id/wait`；暖色呼吸光 + 三步状态时间线 + 房间卡 + 主题简介 + 撤回/返回 + 「获批后自动进入」开关；5s 轮询 `GET /api/rooms/{id}`，获批 → 1.5s 后跳交流页（§8.12） |
+| `src/hooks/useWaitingRoom.ts` | `useWaitingRoom(roomId)` | 等待室状态机（5s 轮询 `GET /rooms/{id}`）：`loading / error / ended / pending / approved / rejected / withdrawn / none`；`approved` 触发自动进入（ADR-0012 修订 D4） |
 | `src/components/WaitTimeline.tsx` | `WaitTimeline` | 三步时间线（已提交 / 等待房主批准 / 进入房间）：当前步暖色微亮、后续步灰；被拒或房间结束时整体转中性 |
-| `src/App.tsx` | 路由 | 新增 `/rooms/:id/live`（交流页）与 `/rooms/:id/wait`（等待页）；**交流页隐藏全局侧边栏**（专注感），管理页与等待页保留 |
-| `src/pages/RoomDetailPage.tsx` | 按钮（**房间管理页**口径） | 活跃成员且 `active` 时显示「进入房间」→ `/rooms/:id/live`；我有 `pending` 申请时显示「去等待页」→ `/rooms/:id/wait`；保留 r001 的申请/批准/离开/结束 |
+| `src/App.tsx` | 路由 | 5 条：`/`、`/login`、`/register`、`/rooms/new`、`/rooms/:id/live`、`/rooms/:id/wait`（**`/rooms/:id` 已由 `redirect-06` 删除**）；**交流页隐藏全局侧边栏**（专注感），列表页与等待页保留 |
 
-依赖（**安装前需你批准**，见需求单 §9）：`livekit-client`、`@livekit/components-react`。
+**实现期落地说明（cp-r002-3，2026-09-18 实测）**
+
+- 舞台用 `@livekit/components-react` 的 `useTracks([{source: Camera, withPlaceholder: true}])` + `VideoTrack`，外包 `<LiveKitRoom room={connection.room} connect={false}>`（自己掌握连接时机：先取票再连）；`<RoomAudioRenderer />` 已挂在交流页内（否则听不到别人）。
+- 组件与文件实际落地：新增 `useActiveSpeaker`（说话者 → 单焦点）、`useOnlineIdentities`（在场 identity，仅用于抽屉区分在线/离线）；**原计划的 `api/livekit.ts` 与 4 个 hooks 全部落地**。
+- 管理动作的二次确认：本轮先用**页内轻量确认块**（`confirming` 状态 + 「确认 / 取消」），**不用 `window.confirm`**；`redirect-03`（站内 toast + 自绘 modal 组件）批准后再统一替换。
+- 准入判定分流（`redirect-04` + §8.5a，`redirect-06` 后落点更新）：401 → 跳登录；403 `NOT_MEMBER` → **有 `pending` 申请则送等待页，否则回房间列表页**并提示可重新申请；409 `ROOM_ENDED` → 「房间已结束」卡片；409 `ROOM_FULL` → 显示服务端原因 4 秒后回列表页。
+- 交流页隐藏全局侧边栏（`App.tsx` 按路由判断），底色再暗一档（`#05060a`）。
+
+依赖（**安装前需你批准**，见需求单 §9）：`livekit-client`、`@livekit/components-react`（已装并入库：`2.22.3` / `2.9.24`）。
 
 关键取舍：
 
@@ -206,6 +215,7 @@ backend/app/
 
 | 编号 | 情形 | 处理 |
 | --- | --- | --- |
+| 8.0 | **容量口径（ADR-0012）** | 座位 = `room_members.status='active'` 的行（含**已批准未入场**）；**退场即释放**（离开 / 被移出 → `inactive`）；满员时 `request_join` **仍可提交**（申请保留 `pending`），**批准**时才拦（`ROOM_FULL`）；**不自动放行**（顺序由房主判断，backlog） |
 | 8.1 | 8 人上限 | 三道闸：① r001 批准时应用层校验 `capacity`；② Token 内 `RoomConfiguration(max_participants=capacity)` 由 LiveKit 硬限；③ 连接失败（`max_participants` 触发）前端提示「房间已满（上限 N 人）」。**演示口径**：浏览器只有 2~3 个，用 `capacity=2~3` 的房间复现「满员被拒」，并在演示脚本里写明这是同一套校验（真实上限 8） |
 | 8.2 | 踢人与被踢者「离开」竞态 | 两者都走 `lock_room`；先到者生效，后到者遇到目标 `status='inactive'` → `NOT_MEMBER`（不 500） |
 | 8.3 | Cloud 不可达 | 踢人/删房失败：库照常提交，响应 `livekitApplied=false`，日志留证；**进房失败**：前端显示「实时服务暂时不可用，请稍后重试」+ 重试按钮，不影响房间详情的其他功能 |
@@ -225,13 +235,15 @@ backend/app/
 
 | 层 | 命令 / 动作 | 判据 |
 | --- | --- | --- |
-| Token 纯函数 | `pytest backend/tests/test_livekit_token.py -q` | 解 JWT 后断言 `sub`=user_id、`name`=显示名、`video.room`=room_id、`video.roomJoin`、`roomAdmin` 仅 Host 为真、`roomConfig.max_participants`=capacity、`exp-iat`=TTL；断言 `LIVEKIT_API_SECRET` 不出现在返回值以外的任何字符串 |
+| Token 纯函数 | `pytest backend/tests/test_livekit_token.py -q` | 解 JWT 断言 `sub`=user_id、`name`=显示名、`video.room`=room_id、`roomJoin`、`roomAdmin` 仅 Host 为真、`roomConfig.maxParticipants`=capacity、**`exp - nbf` = TTL**（实测本版 SDK 用 `nbf` 不用 `iat`）；另断言「能用 secret 验签」「错 secret 验签失败」「secret 不出现在 token 字符串里」；配置用例覆盖 LIVEKIT 三项缺失 → `CONFIG_MISSING`、`LIVEKIT_MODE` 非法、URL 非法、派生 TTL/超时 |
 | 接口层（打桩外部调用） | `pytest backend/tests/test_rooms_members_api.py -q` | 取 Token：非成员 403 `NOT_MEMBER`、已结束 409 `ROOM_ENDED`、未登录 401；踢人：协管踢协管 403、踢房主 403、踢自己 400 `VALIDATION`、踢成功 → 目标 `inactive/kicked` 且桩函数被调用一次、桩抛异常时接口仍 200 且 `livekitApplied=false`；改角色/移交：非 Host 403、成功后双方角色与 `rooms.host_id` 正确、并发用例断言活跃 Host 恒为 1（R-6 时） |
 | 冒烟（真实 HTTP） | `python backend/scripts/smoke.py` | 新增步骤：成员取 Token 200 且 JWT 可解析 → 非成员取 Token 403 → 踢人后目标再取 Token 403 → 结束后取 Token 409；末尾仍 `PASS n/n` |
 | 密钥检索 | `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` | 除 `config.py` 变量名外无命中；前端产物内无 Secret（`npm run build` 后再检索一次 `dist/`） |
 | 前端类型与构建 | `cd frontend && npx tsc --noEmit && npm run build` | 无类型错误；`dist/` 产出 |
 | 交流页专注态（人工） | 交流页里鼠标静止 30 秒后移动；两人以上说话 | UI 淡至 45% 且指针一移即恢复；说话者格放大、其余格降权与焦点强调线肉眼可见；页面中无装饰层（`document.querySelectorAll('canvas')` 长度 0） |
-| 等待页链路（人工） | 未获批账号打开 `/rooms/:id/live` → 房主批准 | 被送到等待页（无错误卡片）；时间线当前步高亮；获批后 1.5s 自动进入交流页；撤回后再申请可复用同一页 |
+| 等待页链路（人工） | 未获批账号打开 `/rooms/:id/live` → 房主在**交流页抽屉**批准 | 被送到等待页（无错误卡片）；时间线当前步高亮；获批后 1.5s 自动进入交流页；撤回后再申请可复用同一页 |
+| 管理页删除（`redirect-06`） | 列表页与交流页 | `/rooms/:id` 不再存在；在册成员从卡片「回到讨论」直接进交流页；未申请者「申请加入」→ 等待室；治理只在抽屉 |
+| 旧链接与兜底 | 浏览器直访 `/rooms/{id}` 与任意未知路径 | `/rooms/{id}` 重定向回列表（`<Navigate to="/" replace />`）；未知路径显示 404 卡片 + 「回房间列表」；面包屑细分（交流 / 等待室 / 房间） |
 | 降级（人工） | 系统开启「减少动效」后打开两页 | 无位移与呼吸，只剩不透明度变化 |
 | 断线重连（人工） | 双浏览器进房后，一端断网 5~10 秒再恢复 | 自动回到房间（无需点按钮）、声画恢复、期间「正在重连…」可见；`room_members` 无新记录；关摄像头者回来仍关闭（C-3 的实测结论在此记录） |
 | 人工（双浏览器，§功能页 §6） | 两个浏览器 / 一台手机扫 Cloud 链接 | 声画互通；第 N+1 人被拒并提示「房间已满」；Host 踢人后对方页面立刻断开并显示「你已被移出房间」；结束房间后所有端断开并显示「房间已结束」；被踢者再申请可获批重进 |

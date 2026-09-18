@@ -25,8 +25,10 @@ from app.api.errors import (
     ERR_ROOM_ENDED,
     ERR_ROOM_FULL,
     ERR_UNAUTHORIZED,
+    ERR_VALIDATION,
     AppError,
 )
+from app.config import load_settings
 from app.repositories import rooms as repo
 from app.repositories.rooms import MemberRow, RoomRow, RoomWithHost
 from app.repositories.users import get_user_by_id
@@ -35,12 +37,16 @@ from app.schemas.rooms import (
     ApprovalResult,
     CreateRoomIn,
     JoinRequestVO,
+    KickResult,
     MemberVO,
     MessageVO,
     RoomDetail,
     RoomListItem,
+    RoomTokenVO,
     RoomVO,
+    TransferHostResult,
 )
+from app.services import livekit as livekit_service
 from app.security.ids import new_code, new_id
 
 logger = logging.getLogger("app")
@@ -56,14 +62,27 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _safe_livekit(call) -> bool:
+    """外部调用兜底：LiveKit 层已自带 try/except，这里再加一层，保证任何异常都不影响已提交的库状态。
+
+    返回外部调用是否成功（`livekitApplied`）；失败只记日志（ADR-0011 条 4）。
+    """
+    try:
+        return bool(call())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("LiveKit 外部调用异常（库状态已提交，不回滚）：%s: %s", type(exc).__name__, exc)
+        return False
+
+
 def _room_vo(
     item: RoomWithHost,
     member_count: int,
     pending_count: int,
     my_role: Optional[str] = None,
     my_request_status: Optional[str] = None,
+    livekit_applied: Optional[bool] = None,
 ) -> RoomVO:
-    """房间行 + 聚合 → VO（列表与详情的唯一组装点）。"""
+    """房间行 + 聚合 → VO（列表与详情的唯一组装点；`livekit_applied` 仅触达外部服务的动作会带）。"""
     room = item.room
     return RoomVO(
         id=room.id,
@@ -83,6 +102,7 @@ def _room_vo(
         my_request_status=my_request_status,
         created_at=room.created_at,
         ended_at=room.ended_at,
+        livekit_applied=livekit_applied,
     )
 
 
@@ -272,9 +292,7 @@ def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) ->
         raise AppError(ERR_ALREADY_MEMBER, "你已在房间中", status=409)
     if repo.get_pending_request(conn, room_id, actor.id) is not None:
         raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409)
-    if repo.count_active_members(conn, room_id) >= room.capacity:
-        raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.capacity} 人）", status=409)
-
+    # 申请**不校验容量**（ADR-0012 修订 D2）：申请人总能进等待室；容量闸唯一在取票。
     request_id = new_id("req")
     try:
         with conn.transaction():
@@ -327,8 +345,7 @@ def approve_join_request(conn: Connection, actor: UserVO, request_id: str) -> Ap
         current = repo.get_join_request(conn, request_id)
         if current is None or current.status != "pending":
             raise AppError(ERR_CONFLICT, "该申请已被处理", status=409)
-        if repo.count_active_members(conn, request.room_id) >= room.capacity:
-            raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.capacity} 人）", status=409)
+        # 批准**不校验容量**（ADR-0012 修订 D3）：批准 = 授予本场入场资格，满不满由取票时的在场数决定。
         if repo.get_active_member(conn, request.room_id, request.user_id) is not None:
             raise AppError(ERR_ALREADY_MEMBER, "该用户已在房间中", status=409)
         member_id = new_id("mem")
@@ -387,9 +404,142 @@ def end_room(conn: Connection, actor: UserVO, room_id: str) -> RoomVO:
         repo.update_room_ended(conn, room_id, ended_at)
         repo.deactivate_all_members(conn, room_id, ended_at)
         repo.cancel_pending_requests(conn, room_id, ended_at)
+    # 外部调用一律在事务提交之后（ADR-0011 条 4）：失败不回滚库状态，用 livekit_applied 如实上报
+    livekit_applied = _safe_livekit(lambda: livekit_service.delete_room(room_id))
     item = repo.get_room(conn, room_id)
     if item is None:
         raise AppError(ERR_INTERNAL, "结束后无法读取房间", status=500)
     aggregates = repo.room_aggregates(conn, [room_id])
     member_count, pending_count = aggregates.get(room_id, (0, 0))
-    return _room_vo(item, member_count=member_count, pending_count=pending_count, my_role="host")
+    return _room_vo(
+        item, member_count=member_count, pending_count=pending_count, my_role="host", livekit_applied=livekit_applied
+    )
+
+
+# ---------------- 实时房间（r002，LiveKit） ----------------
+
+def issue_room_token(conn: Connection, actor: Optional[UserVO], room_id: str) -> RoomTokenVO:
+    """取进房 Token。
+
+    拦截顺序：未登录 401 → 房间不存在 404 → 已结束 409 `ROOM_ENDED` → 非活跃成员 403 `NOT_MEMBER`。
+    `identity` 用 `actor.id`（ADR-0011 条 2 的「identity 唯一」），签票是**本地签名**、不联网。
+    """
+    if actor is None:
+        raise AppError(ERR_UNAUTHORIZED, "请先登录", status=401)
+    room = repo.get_room(conn, room_id)
+    if room is None:
+        raise AppError(ERR_NOT_FOUND, "房间不存在", status=404)
+    if room.room.status != "active":
+        raise AppError(ERR_ROOM_ENDED, "该房间已结束，仅可查看历史内容", status=409)
+    member = repo.get_active_member(conn, room_id, actor.id)
+    if member is None:
+        raise AppError(ERR_NOT_MEMBER, "你不在该房间中（或已被移出）", status=403)
+    settings = load_settings()
+    # 容量闸（ADR-0012 修订 D5）：按**在场人数**算（不含自己，重连时自己已连着）；
+    # LiveKit 查询失败会降级为 []（不因监控失败拦人），由 Token 的 max_participants 兜底。
+    present = livekit_service.list_participant_identities(room_id, settings=settings)
+    if len([identity for identity in present if identity != actor.id]) >= room.room.capacity:
+        raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.room.capacity} 人）", status=409)
+    token = livekit_service.issue_token(
+        room_id,
+        actor.id,
+        actor.display_name,
+        member.role,
+        settings=settings,
+        max_participants=room.room.capacity,
+    )
+    return RoomTokenVO(
+        token=token,
+        url=settings.livekit_url,
+        room_name=room_id,
+        expires_in=settings.livekit_token_ttl_seconds,
+    )
+
+
+def kick_member(conn: Connection, actor: Optional[UserVO], room_id: str, user_id: str) -> KickResult:
+    """移出成员（Host 任意；Moderator 只能移出普通参与者）。
+
+    库侧置 `inactive/kicked` 与外部移除**不在同一事务**：外部调用在提交后执行，失败不回滚（ADR-0011 条 4）。
+    """
+    if actor is None:
+        raise AppError(ERR_UNAUTHORIZED, "请先登录", status=401)
+    if actor.id == user_id:
+        raise AppError(ERR_VALIDATION, "不能移出自己（房主请用「结束房间」，其他人请用「离开房间」）", status=400)
+    with conn.transaction():
+        room_row = repo.lock_room(conn, room_id)
+        assert_room_active(room_row)
+        actor_member = assert_room_role(conn, actor, room_id, MANAGER_ROLES)
+        target = repo.get_active_member(conn, room_id, user_id)
+        if target is None:
+            raise AppError(ERR_NOT_MEMBER, "该用户不在房间中", status=409)
+        if target.role == "host":
+            raise AppError(ERR_FORBIDDEN, "不能移出房主", status=403)
+        if target.role == "moderator" and actor_member.role == "moderator":
+            raise AppError(ERR_FORBIDDEN, "协管不能移出协管", status=403)
+        repo.deactivate_member(conn, room_id, user_id, "kicked", _now())
+    livekit_applied = _safe_livekit(lambda: livekit_service.remove_participant(room_id, user_id))
+    item = next((m for m in repo.list_members(conn, room_id, include_inactive=True) if m.member.user_id == user_id), None)
+    if item is None:
+        raise AppError(ERR_INTERNAL, "移出后无法读取成员", status=500)
+    return KickResult(member=_member_vo(item), livekit_applied=livekit_applied)
+
+
+def set_member_role(conn: Connection, actor: Optional[UserVO], room_id: str, user_id: str, role: str) -> MemberVO:
+    """任命 / 取消协管（仅 Host；不用于房主移交）。"""
+    if actor is None:
+        raise AppError(ERR_UNAUTHORIZED, "请先登录", status=401)
+    if role not in ("moderator", "participant"):
+        raise AppError(ERR_VALIDATION, "角色只能是 moderator 或 participant", status=400)
+    if actor.id == user_id:
+        raise AppError(ERR_VALIDATION, "不能修改自己的角色（房主移交请用「移交房主」）", status=400)
+    with conn.transaction():
+        room_row = repo.lock_room(conn, room_id)
+        assert_room_active(room_row)
+        assert_room_role(conn, actor, room_id, HOST_ROLES)
+        target = repo.get_active_member(conn, room_id, user_id)
+        if target is None:
+            raise AppError(ERR_NOT_MEMBER, "该用户不在房间中", status=409)
+        if target.role == "host":
+            raise AppError(ERR_FORBIDDEN, "房主角色不能通过该接口修改", status=403)
+        repo.update_member_role(conn, room_id, user_id, role)
+    item = next((m for m in repo.list_members(conn, room_id) if m.member.user_id == user_id), None)
+    if item is None:
+        raise AppError(ERR_INTERNAL, "改角色后无法读取成员", status=500)
+    return _member_vo(item)
+
+
+def transfer_host(conn: Connection, actor: Optional[UserVO], room_id: str, new_host_id: str) -> TransferHostResult:
+    """移交房主：原 Host 降为 Moderator、目标升为 Host、`rooms.host_id` 改写（同一事务）。
+
+    不调用 LiveKit（旧 Token 的 `room_admin` 到 TTL 为止；ADR-0011 §8.8 已知取舍）。
+    """
+    if actor is None:
+        raise AppError(ERR_UNAUTHORIZED, "请先登录", status=401)
+    if actor.id == new_host_id:
+        raise AppError(ERR_VALIDATION, "不能把房主移交给自己", status=400)
+    with conn.transaction():
+        room_row = repo.lock_room(conn, room_id)
+        assert_room_active(room_row)
+        assert_room_role(conn, actor, room_id, HOST_ROLES)
+        target = repo.get_active_member(conn, room_id, new_host_id)
+        if target is None:
+            raise AppError(ERR_NOT_MEMBER, "该用户不在房间中", status=409)
+        repo.update_member_role(conn, room_id, actor.id, "moderator")
+        repo.update_member_role(conn, room_id, new_host_id, "host")
+        repo.update_room_host(conn, room_id, new_host_id)
+        if repo.count_active_hosts(conn, room_id) != 1:  # 不变量：活跃 Host 恒为 1
+            raise AppError(ERR_INTERNAL, "移交后活跃房主数量异常", status=500)
+    room = repo.get_room(conn, room_id)
+    if room is None:
+        raise AppError(ERR_INTERNAL, "移交后无法读取房间", status=500)
+    members = {m.member.user_id: m for m in repo.list_members(conn, room_id)}
+    previous, new_host = members.get(actor.id), members.get(new_host_id)
+    if previous is None or new_host is None:
+        raise AppError(ERR_INTERNAL, "移交后无法读取成员", status=500)
+    aggregates = repo.room_aggregates(conn, [room_id])
+    member_count, pending_count = aggregates.get(room_id, (0, 0))
+    return TransferHostResult(
+        room=_room_vo(room, member_count=member_count, pending_count=pending_count, my_role="moderator"),
+        previous_host=_member_vo(previous),
+        new_host=_member_vo(new_host),
+    )

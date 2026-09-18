@@ -78,16 +78,16 @@ def test_request_join_rejected_when_already_member(db) -> None:
     assert exc.value.code == "ALREADY_MEMBER"
 
 
-def test_request_join_rejected_when_full(db) -> None:
+def test_request_join_allowed_when_full(db) -> None:
+    """ADR-0012 修订 D2：申请不校验容量——满员时也能进等待室（容量闸在取票）。"""
     host = register_user(db, "房主甲")
     room = _make_room(db, host, capacity=2)
     first, second = register_user(db, "成员一"), register_user(db, "成员二")
     req = _join(db, first, room.id)
     rooms_service.approve_join_request(db, host, req.id)
 
-    with pytest.raises(AppError) as exc:
-        _join(db, second, room.id)
-    assert (exc.value.code, exc.value.status) == ("ROOM_FULL", 409)
+    request = _join(db, second, room.id)  # 不再抛 ROOM_FULL
+    assert request.status == "pending"
 
 
 # ---------- 批准 / 拒绝 ----------
@@ -119,19 +119,17 @@ def test_approve_requires_manager_role(db) -> None:
     assert (exc.value.code, exc.value.status) == ("FORBIDDEN", 403)
 
 
-def test_approve_when_full_keeps_request_pending(db) -> None:
+def test_approve_allowed_when_full(db) -> None:
+    """ADR-0012 修订 D3：批准不校验容量——批准是发入场资格，满不满由取票时的在场数决定。"""
     host = register_user(db, "房主甲")
     room = _make_room(db, host, capacity=2)
     first, second = register_user(db, "成员一"), register_user(db, "成员二")
-    waiting = _join(db, second, room.id)          # 先让第二条申请排上队（此时还差一个名额）
+    waiting = _join(db, second, room.id)
     approved = _join(db, first, room.id)
-    rooms_service.approve_join_request(db, host, approved.id)  # 批准后房间满
+    rooms_service.approve_join_request(db, host, approved.id)
 
-    with pytest.raises(AppError) as exc:
-        rooms_service.approve_join_request(db, host, waiting.id)
-    assert exc.value.code == "ROOM_FULL"
-    status = db.execute("SELECT status FROM join_requests WHERE id = %s", (waiting.id,)).fetchone()[0]
-    assert status == "pending"
+    result = rooms_service.approve_join_request(db, host, waiting.id)  # 不再抛 ROOM_FULL
+    assert result.request.status == "approved" and result.member.status == "active"
 
 
 def test_approve_twice_returns_conflict(db) -> None:

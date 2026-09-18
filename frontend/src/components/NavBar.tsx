@@ -10,7 +10,9 @@ interface Props {
 const CRUMBS: { test: (path: string) => boolean; label: string }[] = [
   { test: (path) => path === '/', label: '房间列表' },
   { test: (path) => path.startsWith('/rooms/new'), label: '创建房间' },
-  { test: (path) => path.startsWith('/rooms/'), label: '房间详情' },
+  { test: (path) => /^\/rooms\/[^/]+\/live$/.test(path), label: '房间交流' },
+  { test: (path) => /^\/rooms\/[^/]+\/wait$/.test(path), label: '房间等待室' },
+  { test: (path) => path.startsWith('/rooms/'), label: '房间' },
   { test: (path) => path.startsWith('/login'), label: '登录' },
   { test: (path) => path.startsWith('/register'), label: '注册' },
 ]

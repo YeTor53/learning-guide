@@ -266,6 +266,10 @@ def update_room_ended(conn: Connection, room_id: str, at: datetime) -> None:
     conn.execute("UPDATE rooms SET status = 'ended', ended_at = %s WHERE id = %s", (at, room_id))
 
 
+def update_room_host(conn: Connection, room_id: str, host_id: str) -> None:
+    conn.execute("UPDATE rooms SET host_id = %s WHERE id = %s", (host_id, room_id))
+
+
 # ---------------- room_members ----------------
 
 def insert_member(conn: Connection, row: NewMember) -> None:
@@ -307,6 +311,20 @@ def deactivate_member(conn: Connection, room_id: str, user_id: str, reason: str,
            WHERE room_id = %s AND user_id = %s AND status = 'active'""",
         (reason, at, room_id, user_id),
     )
+
+
+def update_member_role(conn: Connection, room_id: str, user_id: str, role: str) -> None:
+    conn.execute(
+        "UPDATE room_members SET role = %s WHERE room_id = %s AND user_id = %s AND status = 'active'",
+        (role, room_id, user_id),
+    )
+
+
+def count_active_hosts(conn: Connection, room_id: str) -> int:
+    """活跃 Host 数量（并发移交 / 角色变更后的不变量断言；R-6 部分唯一索引兜底）。"""
+    return conn.execute(
+        "SELECT count(*) FROM room_members WHERE room_id = %s AND status = 'active' AND role = 'host'", (room_id,)
+    ).fetchone()[0]
 
 
 def deactivate_all_members(conn: Connection, room_id: str, at: datetime) -> int:

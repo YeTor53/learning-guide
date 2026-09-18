@@ -23,7 +23,7 @@ updated: 2026-09-18
 - 账户：注册、登录、登出、当前用户；scrypt 口令哈希；签名 Cookie 会话。
 - 房间：创建（主题/标题/简介）、列表（状态/主题/我的筛选、分页）、详情（成员列表）；房间生命周期 `active → ended` 与本轮结束流程（房间置 ended + 活跃成员转 `inactive/room_ended` + 待批申请转 `cancelled`，同一事务）。
 - 加入申请：提交（五种拦截与提示）、列表（房主/协管可见）、批准、拒绝、**撤回**（申请人本人，撤回后可立即再申请）；容量校验（`ROOM_FULL`）；待批申请数对非管理者服务端返回 0。
-- 前端 5 个页面：`/`（房间列表）、`/login`、`/register`、`/rooms/new`、`/rooms/:id`；外壳为「顶栏 + 左侧边栏」（导航 / 个人信息 / 会话操作，ADR-0007），视觉体系见 ADR-0008 与 `docs/04-style/global-style.md`。
+- 前端 5 个页面：`/`（房间列表）、`/login`、`/register`、`/rooms/new`、`/rooms/:id`（**注：`/rooms/:id` 已于 r002 `redirect-06` 删除，治理动作移入交流页抽屉**）；外壳为「顶栏 + 左侧边栏」（导航 / 个人信息 / 会话操作，ADR-0007），视觉体系见 ADR-0008 与 `docs/04-style/global-style.md`。
 - 验证：`pytest`（schema 断言 + 服务层 + 接口层）、`smoke.py`（真实 HTTP 全链路）、密钥检索、文档同步。
 
 **不做（本轮不碰）**

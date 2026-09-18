@@ -33,8 +33,9 @@ def _normalize(statements: list[str]) -> list[str]:
 # ---------- 纯函数（不需要数据库） ----------
 
 def test_sql_files_are_ordered() -> None:
+    """迁移按序号执行；新增迁移必须追加在末尾（r002 起：003_ 为 R-6 活跃 Host 唯一索引）。"""
     names = [p.stem for p in sql_files()]
-    assert names == ["001_schema", "002_seed"], names
+    assert names == ["001_schema", "002_seed", "003_r002_host_uniqueness"], names
 
 
 def test_split_statements_handles_comments_and_literals() -> None:
@@ -217,3 +218,26 @@ def test_foreign_keys_are_enforced(db, room_ctx) -> None:
             """INSERT INTO rooms (id, host_id, topic, topic_label, title, capacity, room_code)
                VALUES ('r_fk', 'usr_does_not_exist', 'custom', '主题', '标题', 8, 'C00005')"""
         )
+
+
+# ---------- r002：R-6 活跃 Host 唯一（003 迁移） ----------
+
+def test_one_active_host_partial_unique_index(db, room_ctx) -> None:
+    """同一房间不能出现两个活跃 Host（库级兜底，应用层另有 count_active_hosts 断言）。"""
+    db.execute("INSERT INTO room_members (id, room_id, user_id, role) VALUES ('mem_h1', 'r_1', 'u_1', 'host')")
+    with pytest.raises(pg_errors.UniqueViolation):
+        db.execute("INSERT INTO room_members (id, room_id, user_id, role) VALUES ('mem_h2', 'r_1', 'u_2', 'host')")
+
+
+def test_inactive_hosts_do_not_conflict(db, room_ctx) -> None:
+    """历史 Host 可以并存（部分索引只覆盖 active），否则房间结束后没法追溯。"""
+    db.execute(
+        """INSERT INTO room_members (id, room_id, user_id, role, status, exit_reason, left_at)
+           VALUES ('mem_h1', 'r_1', 'u_1', 'host', 'inactive', 'room_ended', now())"""
+    )
+    db.execute(
+        """INSERT INTO room_members (id, room_id, user_id, role, status, exit_reason, left_at)
+           VALUES ('mem_h2', 'r_1', 'u_2', 'host', 'inactive', 'room_ended', now())"""
+    )
+    hosts = db.execute("SELECT count(*) FROM room_members WHERE room_id = 'r_1' AND role = 'host'").fetchone()[0]
+    assert hosts == 2
