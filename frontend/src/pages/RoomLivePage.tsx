@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Loader2, PanelRightOpen, RotateCw, Volume2 } from 'lucide-react'
+import { AlertCircle, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react'
 
 import { ApiError } from '../api/http'
@@ -19,6 +19,7 @@ import RoomSidePanel from '../components/live/RoomSidePanel'
 import { useActiveSpeaker } from '../hooks/useActiveSpeaker'
 import { useChromeIdle } from '../hooks/useChromeIdle'
 import { useLocalDeviceState } from '../hooks/useLocalDeviceState'
+import { useMicLevel } from '../hooks/useMicLevel'
 import { useOnlineIdentities } from '../hooks/useOnlineIdentities'
 import { useRoomConnection } from '../hooks/useRoomConnection'
 import { useRoomToken } from '../hooks/useRoomToken'
@@ -43,6 +44,7 @@ export default function RoomLivePage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<{ userId: string; action: 'kick' | 'transfer' } | null>(null)
+  const [confirmingLeave, setConfirmingLeave] = useState(false)
 
   const detail = useQuery({
     queryKey: ['live-room', id],
@@ -60,6 +62,7 @@ export default function RoomLivePage() {
   const speaker = useActiveSpeaker(connection.room)
   const devices = useLocalDeviceState(connection.room, connection.status)
   const onlineIds = useOnlineIdentities(connection.room, connection.status)
+  const micLevel = useMicLevel(connection.room, devices.micEnabled && connection.status === 'connected')
   const chromeIdle = useChromeIdle(CHROME_IDLE_SECONDS, Boolean(speaker))
 
   const requests = useMemo(() => detail.data?.messages ?? [], [detail.data])
@@ -82,6 +85,17 @@ export default function RoomLivePage() {
       navigate(`/rooms/${id}`, { replace: true, state: { notice: '你不在这个房间里（或已被移出），可以重新申请加入' } })
     }
   }, [tokenQuery.error, navigate, id])
+
+  // Esc：先取消「确认离开」，再收起抽屉（防呆：离场永远有退路）
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (confirmingLeave) setConfirmingLeave(false)
+      else if (drawerOpen) setDrawerOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [confirmingLeave, drawerOpen])
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['live-room', id] })
 
@@ -127,6 +141,7 @@ export default function RoomLivePage() {
   }
 
   const doLeave = async () => {
+    setConfirmingLeave(false)
     await connection.disconnect()
     if (myRole === 'host') {
       setNotice('房主不能直接离开，请先移交房主或结束房间')
@@ -271,15 +286,17 @@ export default function RoomLivePage() {
         <DeviceBar
           micEnabled={devices.micEnabled}
           camEnabled={devices.camEnabled}
+          micLevel={micLevel}
+          isHost={myRole === 'host'}
+          disabled={connection.status === 'connecting' || connection.status === 'reconnecting'}
           idle={chromeIdle}
+          confirmingLeave={confirmingLeave}
           onToggleMic={() => void devices.toggleMic()}
           onToggleCam={() => void devices.toggleCam()}
-          onLeave={() => void doLeave()}
+          onRequestLeave={() => setConfirmingLeave(true)}
+          onConfirmLeave={() => void doLeave()}
+          onCancelLeave={() => setConfirmingLeave(false)}
         />
-
-        <p className="live-hint">
-          <Volume2 {...ICON} /> 界面会在你静默 {CHROME_IDLE_SECONDS} 秒后自动淡出，动一下鼠标即回来
-        </p>
       </div>
     </LiveKitRoom>
   )

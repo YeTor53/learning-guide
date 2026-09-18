@@ -701,7 +701,13 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 
 .live-alert { margin: 0; }
 
-.live-main { display: flex; gap: var(--live-stage-gap); flex: 1; min-height: 0; }
+.live-main {
+  display: flex;
+  gap: var(--live-stage-gap);
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 76px; /* 给底部控制坞让位，避免压住格子 */
+}
 
 .live-stage {
   flex: 1;
@@ -763,43 +769,84 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 }
 .live-tile-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.live-devicebar {
+.live-dock {
   position: fixed;
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
   display: flex;
+  align-items: center;
   gap: 10px;
-  padding: 8px;
-  border-radius: 999px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: min(760px, calc(100vw - 48px));
+  padding: 8px 10px;
+  border-radius: 14px;
   background: var(--live-surface);
   border: 1px solid var(--line);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
   transition: opacity var(--t-slow) var(--ease);
   z-index: 20;
 }
-.live-btn {
+.live-dock-group { display: flex; align-items: center; gap: 8px; }
+.live-dock-sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; }
+
+.live-ctrl {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
   border: 1px solid var(--line-soft);
   background: var(--panel-strong);
   color: var(--text);
+  font-size: 13px;
   cursor: pointer;
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
-.live-btn:hover { background: rgba(255, 255, 255, 0.12); }
-.live-btn-off { color: var(--danger); }
-.live-btn-leave:hover { background: var(--danger); color: #14100f; }
+.live-ctrl:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+.live-ctrl:disabled { opacity: 0.45; cursor: not-allowed; }
+.live-ctrl-text { font-size: 13px; }
+/* 关闭态用「危险色 + 文字」双重表达：颜色不可靠，文字才可靠 */
+.live-ctrl-off { color: var(--danger); }
+.live-ctrl-state { font-size: 11px; color: var(--text-mute); }
+.live-ctrl-muted { color: var(--danger); }
+
+.live-level { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.live-level i {
+  width: 3px;
+  height: 6px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: height var(--t-fast) linear, background var(--t-fast) linear;
+}
+.live-level i.on { height: 12px; background: var(--accent); }
+
+/* 离场单独一组：描边而非填充，且不绑定快捷键，避免误触 */
+.live-ctrl-leave { color: #ffc9c9; border-color: rgba(255, 107, 107, 0.35); }
+.live-ctrl-leave:hover:not(:disabled) { background: rgba(255, 107, 107, 0.16); color: #fff; }
+
+.live-dock-confirm { display: flex; align-items: center; gap: 8px; padding: 2px 4px; }
+
+.live-dock-hint {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-mute);
+}
 
 /* 专注态：静默后顶部与底部一起退场（不透明度单点可调） */
 .live-chrome-idle .live-statusbar,
-.live-chrome-idle .live-devicebar { opacity: var(--live-chrome-idle-opacity); }
+.live-chrome-idle .live-dock { opacity: var(--live-chrome-idle-opacity); }
 .live-chrome-idle .live-statusbar:hover,
-.live-chrome-idle .live-devicebar:hover { opacity: 1; }
+.live-chrome-idle .live-dock:hover,
+.live-chrome-idle .live-dock:focus-within { opacity: 1; }
 
 .live-drawer {
   width: 320px;
@@ -841,8 +888,8 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 
 @media (prefers-reduced-motion: reduce) {
   .live-statusbar,
-  .live-devicebar,
-  .live-hint,
-  .live-tile { transition: none; }
+  .live-dock,
+  .live-tile,
+  .live-level i { transition: none; }
   .spin { animation: none; }
 }
