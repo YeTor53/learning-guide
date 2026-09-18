@@ -386,8 +386,8 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
    --thinker-w       图版宽（容器与图版等宽）
    --thinker-aspect  图版高宽比（资材 900×1094）
    --thinker-ratio   容器高 = 图版高 × 该系数（多出来的部分 = 可滑动行程）
-   --thinker-top     容器顶相对 hero 顶的偏移（负值 = 高于页面顶；-67px ≈ 顶栏 57px + 10px）
-   --thinker-bottom  容器底相对 hero 底的越界量（负值 = 比房间块底边更低；视觉上多出的部分会被下一块盖住）
+   --thinker-top     容器顶相对 hero 顶的偏移（-110px ≈ 顶栏 57px + 内边距 40px + 13px → 略高于页面顶）
+   --thinker-gap     容器底与「创建房间」那一行之间的空隙（容器底 = hero 底 + 区块间距 - 该空隙）
    --hero-min-h      hero 最小高度（保证页面有可滚动距离，屏幕再高也能看到位移）
 ----------------------------------------------------------------------------------- */
 .hero {
@@ -395,6 +395,7 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   --thinker-aspect: 1.2156;
   --thinker-ratio: 1.4;
   --thinker-top: -110px;   /* hero 顶(顶栏57px + 内边距40px)再加约10px → 容器顶略高于页面顶 */
+  --thinker-gap: 20px;     /* 容器底停在「创建房间」那行上方 20px */
   --hero-min-h: min(88vh, 700px);
   min-height: var(--hero-min-h);
 }
@@ -403,8 +404,8 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   top: var(--thinker-top);
   right: 0;
   width: var(--thinker-w);
-  /* 容器高 = 图版高 × 系数（多出来的部分就是图版可滑动行程，不再被页面高度夹住） */
-  height: calc(var(--thinker-w) * var(--thinker-aspect) * var(--thinker-ratio));
+  /* 容器高由上下两个锚点决定：顶高于页面顶，底停在「创建房间」那行上方 --thinker-gap */
+  bottom: calc(-1 * (var(--s-6) - var(--thinker-gap)));
   overflow: clip;
   pointer-events: none;
   user-select: none;
