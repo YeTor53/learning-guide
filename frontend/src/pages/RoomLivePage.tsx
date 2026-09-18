@@ -140,15 +140,15 @@ export default function RoomLivePage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [confirmingLeave, confirmingBack, drawerOpen])
 
-  const goBackToManage = async () => {
+  const goBackToRooms = async () => {
     setConfirmingBack(false)
     if (connection.status === 'connected' || connection.status === 'reconnecting') await connection.disconnect()
-    navigate(`/rooms/${id}`)
+    navigate('/')
   }
 
   const requestBack = () => {
     if (connection.status === 'connected' || connection.status === 'reconnecting') setConfirmingBack(true)
-    else void goBackToManage()
+    else void goBackToRooms()
   }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['live-room', id] })
@@ -249,8 +249,8 @@ export default function RoomLivePage() {
             <Link className="btn btn-sm" to="/">
               回房间列表
             </Link>
-            <Link className="btn btn-ghost btn-sm" to={`/rooms/${id}`}>
-              回房间管理
+            <Link className="btn btn-ghost btn-sm" to="/">
+              回房间列表
             </Link>
           </div>
         </div>
@@ -271,9 +271,9 @@ export default function RoomLivePage() {
       <div className={`live-shell${chromeIdle ? ' live-chrome-idle' : ''}`}>
         <header className="live-statusbar">
           <div className="live-statusbar-left">
-            <button className="live-back" onClick={requestBack} title="回到房间管理">
+            <button className="live-back" onClick={requestBack} title="回到房间列表">
               <ArrowLeft {...ICON} />
-              房间管理
+              房间列表
             </button>
             <span className="live-sep" aria-hidden />
             <span className="live-title">{room?.title ?? '交流页'}</span>
@@ -389,10 +389,10 @@ export default function RoomLivePage() {
         {confirmingBack && (
           <div className="live-confirm" role="dialog" aria-modal="true">
             <p style={{ margin: 0 }}>
-              回到房间管理会<strong>离开当前讨论</strong>（音视频断开），确定吗？
+              回到房间列表会<strong>离开当前讨论</strong>（音视频断开），确定吗？
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-primary btn-sm" onClick={() => void goBackToManage()}>
+              <button className="btn btn-primary btn-sm" onClick={() => void goBackToRooms()}>
                 确认返回
               </button>
               <button className="btn btn-ghost btn-sm" onClick={() => setConfirmingBack(false)}>

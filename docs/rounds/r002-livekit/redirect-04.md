@@ -7,6 +7,9 @@ decided_by: 用户 2026-09-18「这项加入 r002 任务中」＋「现在的房
 
 # redirect r002-04：页面职责三分（管理页 / 交流页 / 等待页）与两种情绪取向
 
+> 追记（2026-09-18，`redirect-06` confirmed-delete）：文中提到的「房间管理页（`/rooms/:id`）」已在实现期删除；治理动作只保留在交流页的「成员与管理」抽屉，页面清单变为「列表页 / 交流页 / 等待页」。本文件其余内容为当时的设计记录，不改写。
+
+
 ## 1. 用户原话 / 现象
 
 > 「现在的房间页就当房间管理页，然后再设计交流页和等待页，交流页要体现出专注感，等待页要有温暖的感觉，搜索这方面的优秀设计网站例子，不只从 github，还可以找 awesome-inspiration、awesome-ui-libraries、dev-resources、design-resources-for-developers、awesome-web-design、design-systems、Awwwards、CSS Design Awards」

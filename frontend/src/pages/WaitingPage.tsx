@@ -153,9 +153,9 @@ export default function WaitingPage() {
               重新申请
             </button>
           )}
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/rooms/${id}`)} disabled={busy}>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/')} disabled={busy}>
             <ArrowLeft {...ICON} />
-            回房间页
+            回房间列表
           </button>
           {isFetching && <span className="dim" style={{ fontSize: 12 }}>刷新中…</span>}
         </div>

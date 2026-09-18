@@ -51,7 +51,7 @@ export default function NewRoomPage() {
           error={createRoom.error}
           onSubmit={(body) =>
             createRoom.mutate(body, {
-              onSuccess: (room) => navigate(`/rooms/${room.id}`, { state: { flash: '房间已创建，你是房主' } }),
+              onSuccess: (room) => navigate(`/rooms/${room.id}/live`, { state: { flash: '房间已创建，你是房主' } }),
             })
           }
         />

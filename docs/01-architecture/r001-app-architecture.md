@@ -224,7 +224,7 @@ LearningGuide-LiveKit/
 | `api/auth.ts` | `register(body)`、`login(body)`、`logout()`、`me()` | 认证接口封装 |
 | `hooks/useSession.ts` | `useSession()` → `{user, isLoading, login, logout, register}` | 会话状态（`react-query` 缓存 `['me']`） |
 | `vite.config.ts` | `server.proxy['/api'] → http://127.0.0.1:8000` | 开发期同源（解决 Cookie/跨域） |
-| `App.tsx` | `<Routes>` 5 条路由（`/`、`/login`、`/register`、`/rooms/new`、`/rooms/:id`） | 路由与布局 |
+| `App.tsx` | `<Routes>` 路由（r001 为 5 条：`/`、`/login`、`/register`、`/rooms/new`、`/rooms/:id`；**r002 `redirect-06` 起删除 `/rooms/:id`**，改为 `/rooms/:id/live` 与 `/rooms/:id/wait`） | 路由与布局 |
 
 ## 10. 请求生命周期与事务边界
 

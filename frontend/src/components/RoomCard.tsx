@@ -1,8 +1,11 @@
-import { ArrowUpRight, CalendarX2, Clock, Crown, Hash, ShieldCheck, UserRound, Users } from 'lucide-react'
-import { useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { CalendarX2, Clock, Crown, Hash, LogIn, Radio, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { ROLE_LABEL, type Room } from '../api/rooms'
+import { ApiError } from '../api/http'
+import { ROLE_LABEL, roomsApi, type Room } from '../api/rooms'
+import { useSession } from '../hooks/useSession'
 
 const ICON = { size: 13, strokeWidth: 1.75 } as const
 
@@ -18,9 +21,28 @@ function truncate(text: string, limit = 68) {
 
 /**
  * 房间卡：指针跟随聚光 + 轻微倾斜（写 CSS 变量，动效由样式表接管；减少动效时自动降级）。
+ *
+ * 卡片动作（redirect-06 定稿：房间管理页已删除，列表页是唯一入口）：
+ *   - 在册成员 →「回到讨论」（直接进交流页）
+ *   - 有待批申请 →「去等待室」
+ *   - 未申请 →「申请加入」（提交后直接落等待室，获批自动进入；没有手动"进入房间"这一步）
+ *   - 已结束 → 无动作（回看/纪要由 M4 的纪要页承载）
  */
 export default function RoomCard({ room, index = 0 }: { room: Room; index?: number }) {
   const ref = useRef<HTMLElement | null>(null)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { user } = useSession()
+  const [error, setError] = useState<string | null>(null)
+
+  const join = useMutation({
+    mutationFn: () => roomsApi.requestJoin(room.id, ''),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      navigate(`/rooms/${room.id}/wait`)
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : '申请失败，请稍后重试'),
+  })
 
   const onPointerMove = useCallback((event: React.PointerEvent<HTMLElement>) => {
     const node = ref.current
@@ -43,6 +65,44 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
 
   const filled = room.capacity > 0 ? Math.min(100, Math.round((room.memberCount / room.capacity) * 100)) : 0
   const ended = room.status === 'ended'
+  const pending = !room.myRole && room.myRequestStatus === 'pending'
+
+  const primary = () => {
+    if (ended) return null
+    if (room.myRole) {
+      return (
+        <button className="btn btn-primary btn-sm" onClick={() => navigate(`/rooms/${room.id}/live`)}>
+          <Radio {...ICON} />
+          回到讨论
+        </button>
+      )
+    }
+    if (pending) {
+      return (
+        <button className="btn btn-sm" onClick={() => navigate(`/rooms/${room.id}/wait`)}>
+          <Clock {...ICON} />
+          去等待室
+        </button>
+      )
+    }
+    return (
+      <button
+        className="btn btn-primary btn-sm"
+        disabled={join.isPending}
+        onClick={() => {
+          setError(null)
+          if (!user) {
+            navigate(`/login?returnTo=${encodeURIComponent('/')}`)
+            return
+          }
+          join.mutate()
+        }}
+      >
+        <LogIn {...ICON} />
+        {join.isPending ? '提交中…' : '申请加入'}
+      </button>
+    )
+  }
 
   return (
     <article
@@ -71,7 +131,7 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
             {ROLE_LABEL[room.myRole]}
           </span>
         )}
-        {!room.myRole && room.myRequestStatus === 'pending' && (
+        {pending && (
           <span className="chip chip-warn">
             <Clock {...ICON} />
             已申请
@@ -85,12 +145,7 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
         )}
       </div>
 
-      <Link to={`/rooms/${room.id}`} style={{ display: 'block' }}>
-        <h3 style={{ fontSize: 20, display: 'flex', alignItems: 'baseline', gap: 8 }}>
-          {room.title}
-          <ArrowUpRight size={16} strokeWidth={1.75} style={{ color: 'var(--text-mute)', flex: '0 0 16px' }} />
-        </h3>
-      </Link>
+      <h3 style={{ fontSize: 20 }}>{room.title}</h3>
 
       {room.description && (
         <p className="muted" style={{ margin: '8px 0 16px', fontSize: 14 }}>
@@ -107,12 +162,20 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
           {room.memberCount}/{room.capacity}
         </span>
       </div>
+
+      {error && (
+        <p style={{ color: 'var(--danger)', fontSize: 12, margin: '8px 0 0' }}>{error}</p>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 12 }}>
+        <span className="mono dim" style={{ fontSize: 11 }}>
+          {room.roomCode}
+        </span>
+        {primary()}
+      </div>
       <div className="meter" style={{ marginTop: 12 }} aria-hidden>
         <i style={{ width: `${filled}%` }} />
       </div>
-      <span className="mono dim" style={{ fontSize: 11, display: 'block', marginTop: 8 }}>
-        {room.roomCode}
-      </span>
     </article>
   )
 }

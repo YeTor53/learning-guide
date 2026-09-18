@@ -1,8 +1,8 @@
 ---
 redirect: r002-06
-status: proposed
+status: confirmed-delete（用户 2026-09-18：「删了吧」）
 raised_at: ae959bd（2026-09-18，实现期）
-decided_by: 待你批复
+decided_by: 用户 2026-09-18「删了吧」——直接删除 `/rooms/:id` 路由与页面（此前建议的「降级保留」被否）
 ---
 
 # redirect r002-06：房间管理页是否移除？——建议「不删，降型为门口页」
