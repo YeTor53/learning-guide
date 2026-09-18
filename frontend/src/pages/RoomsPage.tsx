@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { TOPIC_OPTIONS, type RoomStatus, type Topic } from '../api/rooms'
 import FlowField from '../components/FlowField'
+import ThinkerStatue from '../components/ThinkerStatue'
 import RoomCard from '../components/RoomCard'
 import { useSession } from '../hooks/useSession'
 import { useRooms } from '../hooks/useRooms'
@@ -63,6 +64,7 @@ export default function RoomsPage() {
     <div>
       <section className="hero">
         <FlowField />
+        <ThinkerStatue className="hero-thinker" />
         <div className="hero-inner">
           <span className="kicker">
             <Hash {...ICON} />

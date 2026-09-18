@@ -380,6 +380,20 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 /* ---------- Hero ---------- */
 .hero { position: relative; margin-bottom: var(--s-6); padding: var(--s-6) 0 var(--s-5); }
 .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.85; }
+
+/* 首屏右侧《思想者》图版：随滚动轻微位移（位移逻辑在 ThinkerStatue.tsx） */
+.hero-thinker {
+  position: absolute;
+  top: -5%;
+  right: -3%;
+  width: clamp(210px, 23vw, 350px);
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.95;
+  will-change: transform;
+}
 .hero::before {
   content: "";
   position: absolute;
@@ -411,7 +425,7 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 }
 .display .ch { display: inline-block; animation: rise var(--t-slow) var(--ease) both; animation-delay: calc(var(--i, 0) * 28ms); }
 .display em { font-family: var(--font-serif); font-style: italic; font-weight: 400; letter-spacing: -0.01em; color: var(--accent); }
-.hero-sub { max-width: 62ch; color: var(--text-dim); margin: var(--s-4) 0 var(--s-5); font-size: 15px; }
+.hero-sub { max-width: 56ch; color: var(--text-dim); margin: var(--s-4) 0 var(--s-5); font-size: 15px; }
 .stats { display: flex; flex-wrap: wrap; gap: var(--s-6); padding-top: var(--s-4); border-top: 1px solid var(--line-soft); }
 .stat-value { font-family: var(--font-display); font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stat-label { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-mute); }
@@ -508,6 +522,7 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 /* ---------- 窄屏 ---------- */
 @media (max-width: 900px) {
   .auth-wrap { grid-template-columns: 1fr; }
+  .hero-thinker { width: clamp(150px, 40vw, 220px); right: -8%; top: -3%; opacity: 0.5; }
   .layout { flex-direction: column; }
   .sidebar, .sidebar.collapsed {
     position: static;

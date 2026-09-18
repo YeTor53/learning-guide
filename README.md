@@ -30,6 +30,7 @@
 - 实施节奏、里程碑与验收证据：`docs/00-project/global-roadmap.md`
 - 需求单与逐条验收：`docs/00-requirements/`
 - 提交前检查命令、禁区与提交规范：`AGENTS.md`
+- 视觉资产：`frontend/public/thinker.webp` —— 罗丹《思想者》，克利夫兰艺术博物馆藏品照（Wikimedia Commons，CC0），处理方式见 `docs/03-decisions/r001-adr-0010-visual-assets.md`
 
 ## 怎么跑（本机）
 
