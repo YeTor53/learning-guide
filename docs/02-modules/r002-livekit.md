@@ -215,6 +215,7 @@ backend/app/
 
 | 编号 | 情形 | 处理 |
 | --- | --- | --- |
+| 8.0 | **容量口径（ADR-0012）** | 座位 = `room_members.status='active'` 的行（含**已批准未入场**）；**退场即释放**（离开 / 被移出 → `inactive`）；满员时 `request_join` **仍可提交**（申请保留 `pending`），**批准**时才拦（`ROOM_FULL`）；**不自动放行**（顺序由房主判断，backlog） |
 | 8.1 | 8 人上限 | 三道闸：① r001 批准时应用层校验 `capacity`；② Token 内 `RoomConfiguration(max_participants=capacity)` 由 LiveKit 硬限；③ 连接失败（`max_participants` 触发）前端提示「房间已满（上限 N 人）」。**演示口径**：浏览器只有 2~3 个，用 `capacity=2~3` 的房间复现「满员被拒」，并在演示脚本里写明这是同一套校验（真实上限 8） |
 | 8.2 | 踢人与被踢者「离开」竞态 | 两者都走 `lock_room`；先到者生效，后到者遇到目标 `status='inactive'` → `NOT_MEMBER`（不 500） |
 | 8.3 | Cloud 不可达 | 踢人/删房失败：库照常提交，响应 `livekitApplied=false`，日志留证；**进房失败**：前端显示「实时服务暂时不可用，请稍后重试」+ 重试按钮，不影响房间详情的其他功能 |

@@ -18,6 +18,9 @@ updated: 2026-09-18
 | JWT（JSON Web Token） | 「自包含的签名凭证」：`header.payload.signature` 三段，前两段 base64 可读、第三段用密钥签名。LiveKit 用它确认「这张进房票是我们发的、没被改过、还没过期」，无需查库。详见 `docs/03-decisions/r002-adr-0011-realtime-presence-model.md` 条 3 |
 | TTL（time to live） | 凭证的保质期：JWT 里的 `exp`。本项目 `cloud` 模式 3600 秒、`self` 模式 300 秒（自建无法撤销 Token，靠短保质期兜底） |
 | 进房 Token | 后端为某个成员现签的 LiveKit 准入凭证（JWT，identity = `user_id`）；每次连接/重连现签，不入库 |
+| 在册（active member） | 库口径：`room_members.status = 'active'`，表示「本场讨论仍占着座位」（含已到场与已批准未入场两种）。容量校验按在册数算 |
+| 座位（seat） | 容量的单位：一个在册成员占一个座位；离开 / 被移出立即释放；单房间上限 8 |
+| 等候队列 | 就是本房间 `pending` 的加入申请列表（不另建队列实体）：满员时申请可提交但批准受限，房主在有人退场后逐个批准 |
 | 活跃用户（在房间里） | 此刻正连着房间的人（LiveKit 在场，瞬时口径）。**与库里的 `room_members.status = 'active'` 不是一回事**：那是「成员身份有效」，这是「此刻在不在」 |
 | 非活跃用户（不在房间内） | 此刻不在房间里的人：可能是离线（仍是成员，可随时回来），也可能是已离开 / 被移出 / 房间已结束（已不是成员，原因见 `exit_reason`） |
 | 房间管理页（room admin page） | 房间的治理页（`/rooms/:id`）：房间信息、成员与角色、待批申请处理、离开 / 结束、只读回访；「进入房间」入口指向交流页。情绪取向：克制、工具感 |
