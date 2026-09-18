@@ -57,7 +57,7 @@ A: POST /api/rooms/{id}/members/{uid}/kick
    └─ 事务提交（此时库真相已确定：该成员 inactive/kicked）
    └─ livekit.remove_participant(room, uid, revoke_token_ts=now)   ← Cloud：旧 Token 立即失效
    └─ 200 {livekitApplied: true|false}
-被踢者：LiveKit 断开 → 前端 Disconnected → 再取一次 Token → 403 NOT_MEMBER → 「你已被移出房间」
+被踢者：LiveKit 断开 → 前端 Disconnected(reason=PARTICIPANT_REMOVED) → 「你已被移出房间」（原因取 SDK，取 Token 兜底）
 ```
 
 结束房间（r001 的三件事 + 本轮新增的第四件）
@@ -66,7 +66,21 @@ A: POST /api/rooms/{id}/members/{uid}/kick
 A: POST /api/rooms/{id}/end
    └─ 事务：rooms.ended + 成员 inactive/room_ended + pending 申请 cancelled（r001，不变）
    └─ 事务提交后：livekit.delete_room(room)   ← 强制断开全部连接（失败只记日志）
-所有人：Disconnected → 再取 Token → 409 ROOM_ENDED → 「房间已结束」
+所有人：Disconnected(reason=ROOM_DELETED) → 「房间已结束」（原因取 SDK，取 Token 兜底）
+```
+
+重连（网络抖动 / 短时断网；`redirect-01` 承诺）
+
+```
+客户端：网络中断
+  ├─ 抖动轻微 → SDK 静默做 ICE restart（通常几乎无感，界面不打断）
+  └─ 需要全量重连 → 事件序列：
+       Reconnecting（房内页显示「正在重连…」，不退出页面）
+       → 对其他成员表现为该成员「离开又回来」（ParticipantDisconnected → ParticipantConnected）
+       → 本地已发布的轨道被重新发布（LocalTrackPublished）
+       → Reconnected（界面回到「已连接」，重新发布/恢复设备状态）
+  └─ 重连彻底失败 → Disconnected(reason) → 按上面「踢人/结束」同一套归因出提示
+库侧：**全程不变**（不写 room_members、不产生 inactive；成员身份始终以库为准）
 ```
 
 ## 3. 配置增量（`.env`）
@@ -105,6 +119,7 @@ A: POST /api/rooms/{id}/end
 | 冒烟 | `python backend/scripts/smoke.py` | 追加「取 Token 200 → 非成员 403 → 踢人后 403 → 结束后 409」四步，末尾 `PASS n/n` |
 | 密钥 | `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src`；构建后 `git grep` 或检索 `frontend/dist` | 除 `config.py` 变量名外无命中；前端产物内无 Secret |
 | 实时（人工） | 双浏览器 + 可选手机扫 Cloud 链接 | 功能页 §6 的 11 步全部可复现，含满员拒绝、踢人真断开、结束房间广播断开 |
+| 断网重连（人工） | 双浏览器进房后，一端断网 5~10 秒再恢复 | 自动回到房间（无需点按钮）、声画恢复；期间「正在重连…」可见；库侧 `room_members` 无新记录；关摄像头者回来仍关闭 |
 | 降级（人工/排障） | 把 `LIVEKIT_*` 指向自建 `livekit-server --dev` | 进房/踢人可用（区别：踢人靠短 TTL，旧 Token 在 TTL 内可重入——如实写进设计说明） |
 
 ## 7. 失败与边界（架构级）
@@ -117,6 +132,8 @@ A: POST /api/rooms/{id}/end
 | 额度用尽（Build 免费） | 连接被拒，前端显示通用实时错误；超额是**失败而非计费** | ADR-0003 |
 | 局域网/真设备演示 | 浏览器只在 `https` 或 `localhost` 允许采集；Cloud 自带 TLS，手机扫链接即可进 | ADR-0003 |
 | 演示形态 Cookie | `APP_ENV=demo` 时 Cookie 带 `Secure`，脚本客户端不回传（坑已记 r001）；实时演示建议 dev 形态或 `localhost` | r001 实测 |
+| 重复身份（同账号在第二个窗口进入同一房间） | 后进连接把先进连接踢掉（`DisconnectReason.DUPLICATE_IDENTITY`），先进窗口显示「同一账号已在别处进入本房间」；不做真双开 | 官方 SDK 行为（`redirect-01` C-2 修正 r002 原 FQ-8 口径） |
+| 异常退出（未调 `disconnect()`） | LiveKit 侧该参与者在约 15 秒后消失；库侧仍算成员（离线显示），房主可移出清位 | 官方文档；与本页 §4「外部调用在提交后」同一套哲学：库是身份事实源 |
 
 ## 8. 环境准备与人工步骤（需你操作）
 
@@ -133,6 +150,11 @@ A: POST /api/rooms/{id}/end
 - r001 页继续作为**基线与长期机制**的事实源（分层、数据层、会话、信封、错误码基线、PostgreSQL 环境）。
 - 本页是**本轮增量**：新增一段拓扑、三条时序、配置必填项、外部调用纪律、验证矩阵追加。
 - 两份都不重复描述同一件事；出现冲突时以本页为准，并在 r001 页「变更记录」留一行指针（本轮收官时执行）。
+
+## 10. 变更记录
+
+- 2026-09-18 建立（`status: draft`）。
+- 2026-09-18 按 `redirect-01`（用户批复「设计进行」）增补：§2 新增「重连」时序一段；踢人/结束两条链路的断线归因改为 **SDK `DisconnectReason` 优先、取 Token 兜底**；§6 验证矩阵加「断网重连（人工）」；§7 加「重复身份」与「异常退出 15 秒」两行。
 
 ## What's next
 

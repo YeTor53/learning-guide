@@ -175,9 +175,10 @@ backend/app/
 | --- | --- | --- |
 | `src/api/livekit.ts` | `livekitApi.{issueToken,kickMember,setMemberRole,transferHost}` | 4 个接口调用（走既有 `http.ts`，错误直接抛服务端 message） |
 | `src/hooks/useRoomToken.ts` | `useRoomToken(roomId)` | 取 Token 的 query（`staleTime: 0`、失败按错误码归因：401/403`NOT_MEMBER`/409`ROOM_ENDED`） |
-| `src/hooks/useRoomConnection.ts` | `useRoomConnection(tokenInfo)` | 建 `Room` 实例、`connect(url, token)`、`disconnect()`；监听 `Disconnected` 事件 → 调一次 `useRoomToken` 归因（§8.4） |
+| `src/hooks/useRoomConnection.ts` | `useRoomConnection(tokenInfo)` | 建 `Room` 实例、`connect(url, token)`、`disconnect()`；维护连接状态机 `connecting → connected → reconnecting → closed`；监听 `Reconnecting` / `Reconnected` / `Disconnected(reason)`（归因见 §8.4、重连见 §8.9） |
+| `src/hooks/useLocalDeviceState.ts` | `useLocalDeviceState(room)` | 记麦克风/摄像头开关（React state，不落 storage）；`Reconnected` 后按记忆值重放（§8.10） |
 | `src/hooks/useLiveParticipants.ts` | `useLiveParticipants(room)` | `useTracks([{source:'camera'},{source:'microphone'},{source:'screen_share'}])` → 与库成员列表按 `identity == user_id` 求交，产出 `{member, tracks, isOnline}` 列表 |
-| `src/pages/RoomLivePage.tsx` | `RoomLivePage` | 路由 `/rooms/:id/live`；装配 `RoomContext`、布局、错误态（未获批 / 房间已结束 / 实时服务不可用） |
+| `src/pages/RoomLivePage.tsx` | `RoomLivePage` | 路由 `/rooms/:id/live`；装配 `RoomContext`、布局、连接状态徽标（已连接 / 正在重连… / 已断开）、错误态（未获批 / 房间已结束 / 实时服务不可用） |
 | `src/components/live/LiveStage.tsx` | `LiveStage` | 视频格网格（1 人铺满、2 人并排、≥3 人自动网格）；焦点/共享的布局切换属 M3 |
 | `src/components/live/ParticipantTile.tsx` | `ParticipantTile` | 单个格子：视频或（无摄像头时）姓名首字头像块、麦克风静音徽标、角色徽标、行内「移出房间 / 设为协管 / 取消协管 / 移交房主」（按角色显示） |
 | `src/components/live/DeviceBar.tsx` | `DeviceBar` | 麦克风开关、摄像头开关、「离开房间」；`prejoin` 一律不做，进页面即连接 |
@@ -191,7 +192,7 @@ backend/app/
 
 1. **不引 `@livekit/components-styles`**：只用 SDK 与 hooks（`useTracks`/`VideoTrack`/`RoomAudioRenderer`），样式按 `docs/04-style/global-style.md` 自绘（暗色编辑风、Lucide 图标、零 emoji）。理由：默认主题与 ADR-0008 的视觉体系冲突，且交付要求「不得直接用 LiveKit 默认页面」。
 2. **`RoomAudioRenderer` 必须挂**（组件库提供的远端音频播放器），否则别人说话听不见——这是最容易被漏掉的一步。
-3. **断开归因统一走「再取一次 Token」**（§8.4）：不引入 Webhook、不加推送通道，用已有接口的错误码区分「被移出 / 房间已结束 / 网络问题」。
+3. **断开归因以 SDK 的 `DisconnectReason` 为准**（§8.4），「再取一次 Token」只作兜底：不引入 Webhook、不加推送通道；网络真断时本来也取不到 Token，所以不能把它当主路径。
 4. 房内页**不做轮询**：成员与在场由 SDK 事件驱动；待批申请仍用 r001 的 5s 轮询（M3 再统一）。
 
 ## 8. 并发、边界与失败
@@ -201,10 +202,12 @@ backend/app/
 | 8.1 | 8 人上限 | 三道闸：① r001 批准时应用层校验 `capacity`；② Token 内 `RoomConfiguration(max_participants=capacity)` 由 LiveKit 硬限；③ 连接失败（`max_participants` 触发）前端提示「房间已满（上限 N 人）」。**演示口径**：浏览器只有 2~3 个，用 `capacity=2~3` 的房间复现「满员被拒」，并在演示脚本里写明这是同一套校验（真实上限 8） |
 | 8.2 | 踢人与被踢者「离开」竞态 | 两者都走 `lock_room`；先到者生效，后到者遇到目标 `status='inactive'` → `NOT_MEMBER`（不 500） |
 | 8.3 | Cloud 不可达 | 踢人/删房失败：库照常提交，响应 `livekitApplied=false`，日志留证；**进房失败**：前端显示「实时服务暂时不可用，请稍后重试」+ 重试按钮，不影响房间详情的其他功能 |
-| 8.4 | 断开来源归因（前端） | `Disconnected` 事件后**再取一次 Token**：403 `NOT_MEMBER` → 「你已被移出房间」；409 `ROOM_ENDED` → 「房间已结束」；401 → 「登录已失效，请重新登录」；其他（网络）→ 「连接已断开」+ 重连按钮 |
+| 8.4 | 断开来源归因（前端） | **① 先看 SDK 原因**（`Disconnected(reason)`）：`PARTICIPANT_REMOVED` → 「你已被移出房间」；`ROOM_DELETED` → 「房间已结束」；`DUPLICATE_IDENTITY` → 「同一账号已在别处进入本房间」；`CLIENT_INITIATED`（我们主动 `disconnect()`）→ 不提示；`JOIN_FAILURE` / `ROOM_CLOSED` / 无原因 → 走 ②。**② 兜底再取一次 Token**：401 → 「登录已失效，请重新登录」；403 `NOT_MEMBER` → 被移出；409 `ROOM_ENDED` → 房间已结束；网络失败 → 「连接已断开」+ 重连按钮 |
 | 8.5 | 重入与 Token 复用 | 每次连接现签 Token；`cloud` 模式下被踢者的旧 Token 因 `revoke_token_ts` 失效（刷新页面也回不来，除再次获批）；`self` 模式下靠 5 分钟 TTL + 成员校验拦「已不是成员」的签发请求 |
 | 8.6 | 关标签页 / 断网 | 库侧**不自动置 inactive**（判定留 M5）：成员仍在名单里但显示「离线」；房主可对其「移出房间」清位 |
-| 8.7 | 一人多开 | 不禁止（跨房间「在场唯一」约束已在 r001 §9.1 定为不做）；同一账号两标签页会形成两个 `participant`（identity 相同），前端按 identity 聚合显示为一个在线成员（音视频格按 track 展示） |
+| 8.7 | 一人多开（同账号） | **不做真双开**：identity 用 `user_id`，同一账号在第二个窗口进入同一房间时，LiveKit 按 `DUPLICATE_IDENTITY` **把先进的那条连接踢掉**（先进窗口提示「同一账号已在别处进入本房间」）。跨房间的「在场唯一」约束仍按 r001 §9.1 不做 |
+| 8.9 | **断线重连（连接层）** | 网络抖动：SDK 自动先做 ICE restart（通常无感）；需要全量重连时触发 `Reconnecting` → 房内页显示「正在重连…」且**不退出页面** → `Reconnected` 后回到「已连接」。对房内他人的表现是该成员「离开又回来」（`ParticipantDisconnected` → `ParticipantConnected`），**库侧全程不变**（不写成员状态）。只有彻底失败才走 §8.4 的闭线流程与提示 |
+| 8.10 | **设备状态保持（设备层）** | 麦克风/摄像头开关记在 `useLocalDeviceState`（React state）；`Reconnected` 后按记忆值重放。**待实测（C-3）**：官方文档只写明「已发布的本地轨道会被重新发布」，未说明「已关闭（未发布）」状态的恢复行为 → cp-r002-3 实测两种情形（关摄像头后重连、静音后重连）并把结论写回本行；实测前不写结论 |
 | 8.8 | 移交后原 Host 的 `room_admin` | Token 内 `room_admin` 只在签发时确定：原 Host 手里的旧 Token 仍是 `room_admin`（LiveKit 侧权限），但**应用层按钮与服务端判定立即按新角色**（库为准）。属已知取舍：真实项目可配 `UpdateParticipant` 同步权限，本项目不引入（避免更多外部调用） |
 
 ## 9. 验证矩阵（本模块）
@@ -216,6 +219,7 @@ backend/app/
 | 冒烟（真实 HTTP） | `python backend/scripts/smoke.py` | 新增步骤：成员取 Token 200 且 JWT 可解析 → 非成员取 Token 403 → 踢人后目标再取 Token 403 → 结束后取 Token 409；末尾仍 `PASS n/n` |
 | 密钥检索 | `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` | 除 `config.py` 变量名外无命中；前端产物内无 Secret（`npm run build` 后再检索一次 `dist/`） |
 | 前端类型与构建 | `cd frontend && npx tsc --noEmit && npm run build` | 无类型错误；`dist/` 产出 |
+| 断线重连（人工） | 双浏览器进房后，一端断网 5~10 秒再恢复 | 自动回到房间（无需点按钮）、声画恢复、期间「正在重连…」可见；`room_members` 无新记录；关摄像头者回来仍关闭（C-3 的实测结论在此记录） |
 | 人工（双浏览器，§功能页 §6） | 两个浏览器 / 一台手机扫 Cloud 链接 | 声画互通；第 N+1 人被拒并提示「房间已满」；Host 踢人后对方页面立刻断开并显示「你已被移出房间」；结束房间后所有端断开并显示「房间已结束」；被踢者再申请可获批重进 |
 
 ## 10. 分支点与待拍板
@@ -231,3 +235,4 @@ backend/app/
 ## 11. 变更记录
 
 - 2026-09-18 建立（`status: draft`）：由 r001 的 M2 归档页移回并按 r002 重写；剥离邀请（→ `docs/99-archive/r002-ahead-invites.md`），新增进房 Token、在场口径、断开归因、前端房内页与「实时调用不回滚业务状态」等 r002 设计。
+- 2026-09-18 按 `redirect-01`（批复「设计进行」）：§8.4 改为 **SDK `DisconnectReason` 优先**、取 Token 兜底；§8.7 同账号双开改为「后进踢掉先进 + 提示」；新增 §8.9 断线重连（连接层）与 §8.10 设备状态保持（设备层，含待实测项 C-3）；§7 增 `useLocalDeviceState` 与连接状态徽标；§9 加断网重连验收行。
