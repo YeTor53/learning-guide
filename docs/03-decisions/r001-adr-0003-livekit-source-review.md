@@ -122,3 +122,4 @@ updated: 2026-09-16
 
 - 2026-09-16 建立（proposed，待拍板）。
 - 2026-09-17 拍板 C（Cloud 为主 + 自建留档），状态转 accepted。
+- 2026-09-18 补两条实施事实（控制台实测 + 官方文档）：① Cloud 建项目时**区域只有欧洲 / 美国可选**，且 data region **创建后不可更改** → 建议 US（延迟）或 EU（数据驻留）；② **Agent Observability**（Agent insights / traces / log drains）只对「用 LiveKit Agents SDK 部署的 AI agent」生效，自托管媒体服务器不支持；本项目房间内无 agent，**不配置**该项。

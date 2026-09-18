@@ -180,7 +180,8 @@ updated: 2026-09-18
 | --- | --- | --- |
 | 后端依赖 | conda 环境 `learningguide` 下 `pip install livekit-api` | **需你批准** |
 | 前端依赖 | `cd frontend && npm install livekit-client @livekit/components-react` | **需你批准** |
-| LiveKit Cloud | 注册 → 建项目 → 记录 `wss://` 地址与 API Key/Secret | **你操作** |
+| LiveKit Cloud | 注册 → 建项目 → 记录 `wss://` 地址与 API Key/Secret。**区域只有欧洲 / 美国可选**（2026-09-18 控制台实测），且 **data region 创建后不可更改** → 建议 US（跨太平洋延迟通常低于跨大西洋；演示用）或 EU（若在意数据驻留）。延迟只影响媒体质量，不影响功能演示 | **你操作** |
+| Agent Observability（LiveKit Cloud 的 Agent insights / traces / log drains） | **本项目不涉及、不配置**：它只对**用 LiveKit Agents SDK 部署的 AI agent**收集数据，房间里没有 agent 就没有数据；且自托管媒体服务器（`LIVEKIT_MODE=self`）完全不支持。若将来 M5 真的在房里加 AI agent，再按「项目设置 → Data and privacy → 开启 Agent observability」配置 | 无需操作 |
 | 填 `.env` | 三项写入仓库根 `.env`（`LIVEKIT_MODE=cloud`）；agent 不回显、不写进文档/提交 | **你操作** |
 | 双浏览器演示 | 功能页 §6 的 11 步（含设备授权） | 你操作（agent 给操作路径） |
 | 交付物 | zip/GitHub/npm 细则（P11） | 暂缓，不阻塞本轮 |
