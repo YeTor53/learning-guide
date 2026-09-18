@@ -123,3 +123,4 @@ updated: 2026-09-16
 - 2026-09-16 建立（proposed，待拍板）。
 - 2026-09-17 拍板 C（Cloud 为主 + 自建留档），状态转 accepted。
 - 2026-09-18 补两条实施事实（控制台实测 + 官方文档）：① Cloud 建项目时**区域只有欧洲 / 美国可选**，且 data region **创建后不可更改** → 建议 US（延迟）或 EU（数据驻留）；② **Agent Observability**（Agent insights / traces / log drains）只对「用 LiveKit Agents SDK 部署的 AI agent」生效，自托管媒体服务器不支持；本项目房间内无 agent，**不配置**该项。
+- 2026-09-18 补齐「撤销」与「刷新」两条官方机制（原文依据，供实现与验收引用）：① **Token revocation 是 Cloud-only**——按 token 的 `nbf` 设撤销截止，**默认截止带 1 分钟缓冲**，要严格拒绝重连必须显式传 `revoke_token_ts`；对已离开者同样可撤销（默认报 participant does not exist 但撤销生效）。② 官方对**自建**的原文口径：「移除参与者或更新权限不会让已有 token 失效；要防止其重连同一房间或用过时权限的 token，**用短 TTL 签发 token**，移除后**不要再**为其签发新 token」——与本 ADR 的降级方案一致。③ 附带事实：LiveKit 会**主动给在线客户端刷新 token**（刷新票有效期 = `max(10 分钟, 原票剩余寿命)`），因此自建模式下短 TTL 的实际封锁窗口受刷新票影响，设计说明需如实表述。

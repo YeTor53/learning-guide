@@ -138,7 +138,7 @@ backend/app/
 | 函数 | 签名 | 职责 / 返回 |
 | --- | --- | --- |
 | `issue_token` | `(room_name: str, user_id: str, display_name: str, role: str, ttl_seconds: int, max_participants: int) -> str` | `AccessToken(api_key, api_secret).with_identity(user_id).with_name(display_name).with_grants(VideoGrants(room_join=True, room=room_name, can_publish=True, can_subscribe=True, can_publish_data=True, room_admin=(role=='host'))).with_room_config(RoomConfiguration(max_participants=max_participants)).with_ttl(timedelta(seconds=ttl_seconds)).to_jwt()`；**纯本地签名，不联网** |
-| `remove_participant` | `(room_name: str, user_id: str) -> bool` | 异步 `LiveKitAPI.room.remove_participant(RemoveParticipantRequest(room=room_name, identity=user_id, revoke_token_ts=now))`（`cloud` 模式）；`self` 模式不传 `revoke_token_ts`（该字段在自建无同等效果，靠短 TTL）。返回是否成功，异常记日志返回 `False` |
+| `remove_participant` | `(room_name: str, user_id: str) -> bool` | 异步 `LiveKitAPI.room.remove_participant(RemoveParticipantRequest(room=room_name, identity=user_id, revoke_token_ts=now))`（`cloud` 模式）——**必须显式传 `revoke_token_ts`**：撤销按 token 的 `nbf` 判定，默认截止时间带 1 分钟缓冲，用默认值时被踢者在约 1 分钟内仍能拿旧票重连（官方文档原文）；`self` 模式不传该字段（自建无撤销能力，官方写法是短 TTL + 移除后不再签发）。返回是否成功，异常记日志返回 `False` |
 | `delete_room` | `(room_name: str) -> bool` | `DeleteRoomRequest`：房间结束时强制断开全部连接 |
 | `list_participant_identities` | `(room_name: str) -> list[str]` | `ListParticipantsRequest` → identity 列表；**供演示取证与排障用**（前端在场状态由 SDK 直接拿，不经过本函数） |
 | `_run`（内部） | `(coro) -> object` | 把 `livekit-api` 的 async 调用跑在事件循环里（`asyncio.run` / 已有 loop 时 `run_until_complete`），并施加 `livekit_timeout_seconds`；**本项目后端是同步 `def` 路由**（架构页 §2），此处是唯一的 async 边界 |
@@ -210,7 +210,7 @@ backend/app/
 | 8.2 | 踢人与被踢者「离开」竞态 | 两者都走 `lock_room`；先到者生效，后到者遇到目标 `status='inactive'` → `NOT_MEMBER`（不 500） |
 | 8.3 | Cloud 不可达 | 踢人/删房失败：库照常提交，响应 `livekitApplied=false`，日志留证；**进房失败**：前端显示「实时服务暂时不可用，请稍后重试」+ 重试按钮，不影响房间详情的其他功能 |
 | 8.4 | 断开来源归因（前端） | **① 先看 SDK 原因**（`Disconnected(reason)`）：`PARTICIPANT_REMOVED` → 「你已被移出房间」；`ROOM_DELETED` → 「房间已结束」；`DUPLICATE_IDENTITY` → 「同一账号已在别处进入本房间」；`CLIENT_INITIATED`（我们主动 `disconnect()`）→ 不提示；`JOIN_FAILURE` / `ROOM_CLOSED` / 无原因 → 走 ②。**② 兜底再取一次 Token**：401 → 「登录已失效，请重新登录」；403 `NOT_MEMBER` → 被移出；409 `ROOM_ENDED` → 房间已结束；网络失败 → 「连接已断开」+ 重连按钮 |
-| 8.5 | 重入与 Token 复用 | 每次连接现签 Token；`cloud` 模式下被踢者的旧 Token 因 `revoke_token_ts` 失效（刷新页面也回不来，除再次获批）；`self` 模式下靠 5 分钟 TTL + 成员校验拦「已不是成员」的签发请求 |
+| 8.5 | 重入与 Token 复用 | 每次连接现签 Token；`cloud` 模式下踢人时**显式传 `revoke_token_ts`**，被踢者的旧 Token 立即失效（刷新也回不来，除再次获批）。`self` 模式：**LiveKit 会主动给在线客户端刷新 Token（刷新票有效期 = max(10 分钟, 原票剩余寿命)）**，所以短 TTL 只压「未刷新票」的窗口；按官方对自建的写法，靠「短 TTL（300s）+ 移除后不再签发（403 `NOT_MEMBER`）」处理，并在设计说明里如实写明这一能力边界 |
 | 8.6 | 关标签页 / 断网 | 库侧**不自动置 inactive**（判定留 M5）：成员仍在名单里但显示「离线」；房主可对其「移出房间」清位 |
 | 8.7 | 一人多开（同账号） | **不做真双开**：identity 用 `user_id`，同一账号在第二个窗口进入同一房间时，LiveKit 按 `DUPLICATE_IDENTITY` **把先进的那条连接踢掉**（先进窗口提示「同一账号已在别处进入本房间」）。跨房间的「在场唯一」约束仍按 r001 §9.1 不做 |
 | 8.8 | 移交后原 Host 的 `room_admin` | Token 内 `room_admin` 只在签发时确定：原 Host 手里的旧 Token 仍是 `room_admin`（LiveKit 侧权限），但**应用层按钮与服务端判定立即按新角色**（库为准）。属已知取舍：真实项目可配 `UpdateParticipant` 同步权限，本项目不引入（避免更多外部调用） |
