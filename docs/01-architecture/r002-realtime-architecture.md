@@ -104,6 +104,8 @@ A: POST /api/rooms/{id}/end
 | 同步边界 | 后端是同步 `def` 路由；`livekit-api` 的 async 调用收敛在 `services/livekit.py` 的 `_run()` 一处，带超时 |
 | 数据归属 | 「谁有资格进房」由 PostgreSQL 决定；「此刻谁连着」由 LiveKit 决定，两者不互相写入（实现页 §2） |
 
+> 本节与 §2 的约定已固定为 ADR：`docs/03-decisions/r002-adr-0011-realtime-presence-model.md`（9 条：双事实源、identity 唯一、Token 无状态、外部调用在提交后、断线归因、重连分层、唯一出口、上限口径）。
+
 ## 5. 接口与错误码增量
 
 - 新增 4 条路由（清单见 `docs/02-modules/r002-livekit.md` §5），全部沿用 `{ok, data}` / `{ok:false, error:{code, message}}` 信封。

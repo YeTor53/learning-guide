@@ -37,6 +37,7 @@ updated: 2026-09-18
 - 房内页把两者**求交**：以库成员列表为骨架，用 LiveKit 在场 identity 打「在线」标记（§7）。
 - 「房间已满」只由成员侧判定（r001 的 `capacity` 校验）+ Token 内 `max_participants` 兜底，**不看在场数**（在场数会因断线残留十几秒而误判）。
 - 应用层房间状态 `rooms.status`（`active`/`ended`）由 Host 显式结束决定；LiveKit 房间的空置超时与本状态无关（ADR-0003 已记）。
+- 本节与 §8 的约定（双事实源、identity 唯一、Token 无状态、外部调用时机、断线归因与重连）已固定为 ADR：见 `docs/03-decisions/r002-adr-0011-realtime-presence-model.md`。
 
 ## 3. 数据模型（本轮增量）
 

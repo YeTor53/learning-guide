@@ -42,7 +42,8 @@ updated: 2026-09-18
 
 ## 3. 本轮已定口径
 
-来源：2026-09-18 你回复「出设计」；下列 Q 的取值即 **`docs/00-project/global-roadmap.md` 建议值**（未另行指明的按建议值执行）。**如有任一条与你的意图不符，改本表后再动代码。**
+来源：2026-09-18 你回复「出设计」；下列 Q 的取值即 **`docs/00-project/global-roadmap.md` 建议值**（未另行指明的按建议值执行）。
+本表口径的**决策依据**已固定为 `docs/03-decisions/r002-adr-0011-realtime-presence-model.md`（9 条约定），与 `redirect-01` 冲突时以本页为准。**如有任一条与你的意图不符，改本表后再动代码。**
 
 | 编号 | 事项 | 本轮取值 | 理由 / 依据 |
 | --- | --- | --- | --- |
@@ -154,7 +155,8 @@ updated: 2026-09-18
 | C | 使用者教学页 | `docs/tutorials/r002-livekit-demo.md`（怎么进房、怎么演示 11 步、常见现象与排障） | planned | cp-r002-4（跑通后写） |
 | D | 开发者教学页 | `docs/tutorials/r002-livekit-dev-guide.md`（Token 策略怎么换、自助加一个自定义能力、调试实时链路与打桩方式） | planned | cp-r002-4（跑通后写） |
 | E | 项目级文档 | `README.md`（当前状态 + 怎么跑补实时段）、`AGENTS.md`（`<check>` 增补）、`global-roadmap.md`（§3 M2 台账、§9 遗留）、`docs/00-requirements/README.md`（索引加 r002 行） | 索引行本批；其余随 cp/收官 | cp-r002-1 / 收官 |
-| F | 决策记录 | ADR：实时权限与踢人语义（若实现中出现需要定级的取舍）、R-6 索引决策 | 待实现期判断 | 按 CR 流程 |
+| F | 决策记录 | `docs/03-decisions/r002-adr-0011-realtime-presence-model.md`（双事实源 / identity 唯一 / Token 无状态 / 外部调用在提交后 / 断线归因与重连 / 上限口径，共 9 条） | **landed（本批，`status: proposed`，随本设计一起批）** | cp-r002-1 |
+| F′ | 决策记录（实现期） | 实现中若出现需要定级的取舍，按 CR 流程补 ADR + 模块页变更记录 | planned | 按 CR 流程 |
 
 - 覆盖矩阵判据：收官时 A~F 无 `planned` 残留；教学页示例实跑并附输出（铁律 2 与阶段 3 文档对账）。
 
