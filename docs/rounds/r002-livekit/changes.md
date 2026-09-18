@@ -57,6 +57,25 @@ updated: 2026-09-18
 | `redirect-02.md` | 用户新意见（等候室是否没设计） | 设计待批阶段，用户问「等待间是否没有设计」 | C（G1/G2/G3 都未设计）+ G1 提前做（按 L3 看待） | **proposed（待你一次批复）** | 覆盖地图：审批链路 r001 已批准已实现（F-04/F-05 + 9 步实操）；缺口三块——G1「等候态」（提交后无等候区、批准不自动进房）· G2 批准后无通知（只有 5s 轮询）· G3 等待队列/满员排队。建议：G1 进本轮（无后端改动，只加前端等候态与自动进入），G2/G3 只记账 |
 | `redirect-01.md` | 用户新意见（断线重连与状态保持） | 设计待批阶段，用户问「断线重连，状态保持有码」 | C（后续工作）+ 其中「连接层/设备层」属提前做＝范围变更（按 L3 看待） | **confirmed-C（2026-09-18 批复「设计进行」）** | 断线重连（连接层）+ 设备状态保持（设备层）进 r002；业务状态恢复留 M3/M5 ①；C-1 断线归因改用 SDK reason、C-2 同账号双开改为「后进踢掉先进 + 提示」、C-3 重连后本地轨道恢复行为待 cp-r002-3 实测 |
 
+### cp-r002-2（后端，进行中）
+
+**已完成（提交见下方证据）**
+
+| 文件 | 内容 |
+| --- | --- |
+| `backend/app/config.py` | `VALID_LIVEKIT_MODES` / `LIVEKIT_TOKEN_TTL_SECONDS = {cloud:3600, self:300}` / `DEFAULT_LIVEKIT_TIMEOUT_SECONDS = 10`；`Settings` 新增派生属性 `livekit_token_ttl_seconds`、`livekit_timeout_seconds`；`validate_startup` 追加：`LIVEKIT_MODE ∈ {cloud,self}`、三项必填（只报键名）、URL 必须 `ws(s)://` |
+| `backend/app/services/livekit.py`（新增） | `issue_token`（纯本地签名）/ `remove_participant`（cloud 传显式 `revoke_token_ts`）/ `delete_room` / `list_participant_identities` / `_run`（循环内构造 LiveKitAPI + 超时 + 失败只记日志） |
+| `backend/tests/test_livekit_token.py`（新增 9 项） | Token 契约（grants/roomConfig/TTL 按模式派生/显式覆盖/验签/secret 不出现在 token）+ 配置校验（三项缺失、模式非法、URL 非法、派生项单点） |
+
+**实测证据（2026-09-18）**
+
+- `pytest backend/tests -q` → **81 passed**（r001 基线 72 + 本步 9），rc 0
+- 真机（Cloud，`.env` 已填）：`issue_token` ✓ 长度 448；`list_participant_identities("room_demo_epicurus")` → `[]`（房间不存在，上游 404 被 `_run` 记日志降级）；`remove_participant(...)` → `True`（传了 `revoke_token_ts`，官方行为：房间/参与者不存在也返回成功）
+- 依赖：`livekit-api 1.2.1`（→ `livekit-protocol 1.1.27`、`aiohttp 3.14.3`、`protobuf 7.36.1`、`PyJWT 2.14.0`）；前端 `livekit-client 2.22.3` + `@livekit/components-react 2.9.24`，`npx tsc --noEmit` 全绿
+- 实现期发现（已回填设计）：① `LiveKitAPI.__init__` 需在事件循环内调用（否则 `RuntimeError: no running event loop`）→ `_api()` 同步工厂作废，改为 `_run(call)` 包一层；② 本版 SDK 的移除请求类名是 `livekit.protocol.room.RoomParticipantIdentity`；③ Token 用 `nbf`/`exp`（无 `iat`），TTL 断言应为 `exp - nbf`
+
+**未完成（继续）**：`services/rooms.py`（`issue_room_token`/`kick_member`/`set_member_role`/`transfer_host`/`end_room` 增量）、`repositories/rooms.py`（`update_member_role`/`update_room_host`/`count_active_hosts`）、`schemas/rooms.py`（`RoomTokenVO`/`RoleIn`/`TransferHostIn`）、4 条路由、接口层用例（打桩外部调用）、r001 两条测试欠账、`003_r002_host_uniqueness.sql`、`requirements*.txt` 更新、smoke 四步。
+
 ## 无文档变更的提交（若有）
 
 （实现期若某步确实无对外行为变化，在此登记一行并说明原因。）

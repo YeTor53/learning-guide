@@ -26,6 +26,11 @@ DEFAULT_ROOM_CAPACITY = 8
 VALID_APP_ENVS = ("dev", "demo")
 MIN_SESSION_SECRET_LEN = 32
 
+# LiveKit（r002）：TTL 与超时由模式派生（单点可调，见 docs/02-modules/r002-livekit.md §6.1）
+VALID_LIVEKIT_MODES = ("cloud", "self")
+LIVEKIT_TOKEN_TTL_SECONDS = {"cloud": 3600, "self": 300}
+DEFAULT_LIVEKIT_TIMEOUT_SECONDS = 10
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -48,6 +53,16 @@ class Settings:
     def is_demo(self) -> bool:
         """演示环境：Cookie 加 Secure、由后端托管前端静态产物。"""
         return self.app_env == "demo"
+
+    @property
+    def livekit_token_ttl_seconds(self) -> int:
+        """进房 Token 的有效期（秒）：cloud 3600 / self 300（ADR-0011 条 3，下限 60 秒）。"""
+        return LIVEKIT_TOKEN_TTL_SECONDS.get(self.livekit_mode, LIVEKIT_TOKEN_TTL_SECONDS["cloud"])
+
+    @property
+    def livekit_timeout_seconds(self) -> int:
+        """LiveKit 管控调用的超时（秒）。"""
+        return DEFAULT_LIVEKIT_TIMEOUT_SECONDS
 
 
 def require_env(name: str, default: Optional[str] = None) -> str:
@@ -85,6 +100,14 @@ def validate_startup(s: Settings) -> None:
         raise AppError(ERR_CONFIG_MISSING, f"ROOM_CAPACITY 必须在 2~{DEFAULT_ROOM_CAPACITY} 之间", status=500)
     if not s.database_url.startswith("postgresql://"):
         raise AppError(ERR_CONFIG_MISSING, "DATABASE_URL 必须是 postgresql:// 连接串", status=500)
+    # r002 起：实时房间是核心能力，LiveKit 三项必填（只报键名，不回显值）
+    if s.livekit_mode not in VALID_LIVEKIT_MODES:
+        raise AppError(ERR_CONFIG_MISSING, f"LIVEKIT_MODE 只能是 {'/'.join(VALID_LIVEKIT_MODES)}", status=500)
+    for _key, _value in (("LIVEKIT_URL", s.livekit_url), ("LIVEKIT_API_KEY", s.livekit_api_key), ("LIVEKIT_API_SECRET", s.livekit_api_secret)):
+        if not _value:
+            raise AppError(ERR_CONFIG_MISSING, f"缺少环境变量 {_key}（见 .env.example）", status=500)
+    if not (s.livekit_url.startswith("wss://") or s.livekit_url.startswith("ws://")):
+        raise AppError(ERR_CONFIG_MISSING, "LIVEKIT_URL 必须是 ws:// 或 wss:// 地址", status=500)
 
 
 @lru_cache(maxsize=1)
