@@ -47,6 +47,8 @@ class RoomVO(CamelModel):
     my_request_status: Optional[str] = None
     created_at: datetime
     ended_at: Optional[datetime] = None
+    livekit_applied: Optional[bool] = None
+    """仅「结束房间」等触达外部服务的响应会带上：外部调用是否成功（失败不回滚库状态，ADR-0011 条 4）。"""
 
 
 class RoomListItem(RoomVO):
@@ -94,3 +96,37 @@ class RoomDetail(CamelModel):
 class ApprovalResult(CamelModel):
     request: JoinRequestVO
     member: MemberVO
+
+
+class RoomTokenVO(CamelModel):
+    """进房 Token（前端拿它连 LiveKit；Server Secret 永不出现在响应里）。"""
+
+    token: str
+    url: str
+    room_name: str
+    expires_in: int
+
+
+class RoleIn(CamelModel):
+    """任命 / 取消协管：只允许在 moderator 与 participant 之间切换（房主移交走单独接口）。"""
+
+    role: Literal["moderator", "participant"]
+
+
+class TransferHostIn(CamelModel):
+    user_id: str = Field(min_length=1)
+
+
+class KickResult(CamelModel):
+    """移出成员：库侧结果 + 外部调用是否成功。"""
+
+    member: MemberVO
+    livekit_applied: bool
+
+
+class TransferHostResult(CamelModel):
+    """移交房主：库侧结果（**不同步 LiveKit 权限**——旧 Token 的 `room_admin` 到 TTL 为止，ADR-0011 §8.8）。"""
+
+    room: RoomVO
+    previous_host: MemberVO
+    new_host: MemberVO

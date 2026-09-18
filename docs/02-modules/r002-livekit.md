@@ -141,6 +141,7 @@ backend/app/
 | `remove_participant` | `(room_name: str, user_id: str, settings=None) -> bool` | 异步 `LiveKitAPI.room.remove_participant(proto_room.RoomParticipantIdentity(room=..., identity=..., revoke_token_ts=now))`（`cloud` 模式；**本版 SDK 的请求类是 `livekit.protocol.room.RoomParticipantIdentity`，不是 `RemoveParticipantRequest`**——实现期实测）。返回值语义 = 「调用是否成功」而非「确实移除了谁」：传了 `revoke_token_ts` 后，即使房间/参与者都不存在也会返回成功（官方文档行为，用于事后撤销 Token）——**必须显式传 `revoke_token_ts`**：撤销按 token 的 `nbf` 判定，默认截止时间带 1 分钟缓冲，用默认值时被踢者在约 1 分钟内仍能拿旧票重连（官方文档原文）；`self` 模式不传该字段（自建无撤销能力，官方写法是短 TTL + 移除后不再签发）。返回是否成功，异常记日志返回 `False` |
 | `delete_room` | `(room_name: str) -> bool` | `DeleteRoomRequest`：房间结束时强制断开全部连接 |
 | `list_participant_identities` | `(room_name: str) -> list[str]` | `ListParticipantsRequest` → identity 列表；**供演示取证与排障用**（前端在场状态由 SDK 直接拿，不经过本函数） |
+| `_safe_livekit`（内部） | `(call: Callable[[], bool]) -> bool` | 外部调用兜底：LiveKit 层已有 try/except，本层再加一道，保证**任何**异常都不影响已提交的库状态（返回 `livekitApplied`）。`kick_member` / `end_room` 用 |
 | `_run`（内部） | `(call: Callable[[LiveKitAPI], Any], settings=None) -> Any` | **在事件循环内**构造 `LiveKitAPI` → 调用 → `aclose()`，并施加 `livekit_timeout_seconds`；异常记日志返回 `None`。实测约束：`LiveKitAPI.__init__` 会建 `aiohttp.ClientSession`，**在循环外构造会 `RuntimeError: no running event loop`**，所以「构造」必须发生在 `async def _wrap()` 内部（原设计的 `_api()` 纯同步工厂作废）；**本项目后端是同步 `def` 路由**（架构页 §2），此处是唯一的 async 边界 |
 | `list_participant_identities` | `(room_name: str, settings=None) -> list[str]` | 房间内在场 identity 列表；房间不存在时上游 404 → `_run` 记日志返回 `None` → 本函数返回 `[]`（失败降级，不阻塞调用方） |
 

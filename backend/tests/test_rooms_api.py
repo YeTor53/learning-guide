@@ -209,3 +209,45 @@ def test_approve_missing_request_returns_404(client, db) -> None:
     host = register_user(db, "房主")
     _login_as(client, host)
     assert client.post("/api/join-requests/req_missing/approve").status_code == 404
+
+# ---------------- 偿还 r001 欠账（r002 cp-2）：列表分页 + 房间码冲突重试 ----------------
+
+def test_list_rooms_pagination(client, db) -> None:
+    """列表分页：limit/offset 生效、页间不重叠、越界页返回空数组（r001 欠账）。"""
+    host = register_user(db, "分页房主")
+    _login_as(client, host)
+    created = {_create_room(client, f"分页房间{i}")["id"] for i in range(3)}
+
+    page1 = client.get("/api/rooms", params={"limit": 2, "offset": 0}).json()["data"]
+    assert page1["limit"] == 2 and page1["offset"] == 0
+    assert len(page1["rooms"]) == 2
+    assert page1["total"] >= 3
+
+    page2 = client.get("/api/rooms", params={"limit": 2, "offset": 2}).json()["data"]
+    ids1 = {r["id"] for r in page1["rooms"]}
+    ids2 = {r["id"] for r in page2["rooms"]}
+    assert len(ids2) >= 1
+    assert not (ids1 & ids2), "相邻两页不应重叠"
+    assert created <= (ids1 | ids2) | {r["id"] for r in client.get("/api/rooms", params={"limit": 100}).json()["data"]["rooms"]}
+
+    far = client.get("/api/rooms", params={"limit": 2, "offset": 500}).json()["data"]
+    assert far["rooms"] == []
+
+
+def test_room_code_collision_retries_then_gives_up(client, db, monkeypatch) -> None:
+    """房间码撞车：前两次冲突第三次成功；连续 3 次冲突 → 500 INTERNAL（r001 欠账）。"""
+    from app.services import rooms as rooms_service
+
+    host = register_user(db, "撞码房主")
+    _login_as(client, host)
+    taken = _create_room(client, "先占地")["roomCode"]
+
+    seq = [taken, taken, "ZZZ234"]
+    monkeypatch.setattr(rooms_service, "new_code", lambda: seq.pop(0))
+    retried = _create_room(client, "撞两次后成功")
+    assert retried["roomCode"] == "ZZZ234"
+
+    monkeypatch.setattr(rooms_service, "new_code", lambda: taken)
+    resp = client.post("/api/rooms", json={"topic": "custom", "topicLabel": "自定", "title": "必失败"})
+    assert resp.status_code == 500
+    assert resp.json()["error"]["code"] == "INTERNAL"

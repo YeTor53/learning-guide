@@ -167,8 +167,8 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 项 | 类型 | 去向 |
 | --- | --- | --- |
 | ~~前端 9 步演示（含未登录访问 `/rooms/new` 的引导与 `returnTo` 回跳）~~ | ~~本轮未完成的验收项~~ | **2026-09-18 已闭合并取证（需求单 §3.1 的 E9 / E10）** |
-| 列表分页 `limit/offset` 无专门用例（用例只验了 `total` 与筛选） | 测试欠账（低风险） | **已并入 r002 偿还**（需求单 §10 的 cp-r002-2 判据） |
-| 房间码冲突重试 3 次的分支无用例（碰撞概率极低） | 测试欠账（低风险） | **已并入 r002 偿还**（需求单 §10 的 cp-r002-2 判据） |
+| 列表分页 `limit/offset` 无专门用例（用例只验了 `total` 与筛选） | 测试欠账（低风险） | **已偿还（r002 cp-2，提交见台账）**：`test_rooms_api.py::test_list_rooms_pagination`（分页不重叠 / 越界页返回空数组） |
+| 房间码冲突重试 3 次的分支无用例（碰撞概率极低） | 测试欠账（低风险） | **已偿还（r002 cp-2）**：`test_rooms_api.py::test_room_code_collision_retries_then_gives_up`（撞两次成功 / 连续三次 → 500 INTERNAL） |
 | 房间结束后 `myRole` 为 `null`（历史角色不显示徽标，如「曾是协管」） | 行为待定 | r002 决定是否在只读视图显示历史角色 |
 | `pytest` 输出 Starlette/httpx 弃用告警（提示 `httpx2`） | 上游噪音 | 待 starlette 正式版；届时升 `httpx` |
 | LiveKit：Cloud 项目与 Token 签发、`max_participants` 兜底、踢人（Cloud 上移除即失效 vs 自建只能短 TTL）、角色任命/移交 | M2 范围 → **r002 进行中** | 设计已归位至 `docs/02-modules/r002-livekit.md`；实现按需求单 §10 推进 |

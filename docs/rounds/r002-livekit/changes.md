@@ -74,7 +74,23 @@ updated: 2026-09-18
 - 依赖：`livekit-api 1.2.1`（→ `livekit-protocol 1.1.27`、`aiohttp 3.14.3`、`protobuf 7.36.1`、`PyJWT 2.14.0`）；前端 `livekit-client 2.22.3` + `@livekit/components-react 2.9.24`，`npx tsc --noEmit` 全绿
 - 实现期发现（已回填设计）：① `LiveKitAPI.__init__` 需在事件循环内调用（否则 `RuntimeError: no running event loop`）→ `_api()` 同步工厂作废，改为 `_run(call)` 包一层；② 本版 SDK 的移除请求类名是 `livekit.protocol.room.RoomParticipantIdentity`；③ Token 用 `nbf`/`exp`（无 `iat`），TTL 断言应为 `exp - nbf`
 
-**未完成（继续）**：`services/rooms.py`（`issue_room_token`/`kick_member`/`set_member_role`/`transfer_host`/`end_room` 增量）、`repositories/rooms.py`（`update_member_role`/`update_room_host`/`count_active_hosts`）、`schemas/rooms.py`（`RoomTokenVO`/`RoleIn`/`TransferHostIn`）、4 条路由、接口层用例（打桩外部调用）、r001 两条测试欠账、`003_r002_host_uniqueness.sql`、`requirements*.txt` 更新、smoke 四步。
+**第二步（cp-r002-2 完成，本提交）**
+
+| 文件 | 内容 |
+| --- | --- |
+| `backend/app/services/rooms.py` | 新增 `issue_room_token`（拦截顺序 401→404→409 `ROOM_ENDED`→403 `NOT_MEMBER`；本地签票）/ `kick_member`（Host 任意、Moderator 只能踢普通成员；库侧 `inactive/kicked` 先落，外部移除在提交后）/ `set_member_role`（仅 Host，仅 moderator⇄participant）/ `transfer_host`（事务内改双方角色 + `rooms.host_id` + 不变量断言 `count_active_hosts == 1`）；`end_room` 追加「事务提交后 `delete_room`」并回填 `livekitApplied`；新增 `_safe_livekit` 兜底 |
+| `backend/app/repositories/rooms.py` | `update_room_host` / `update_member_role` / `count_active_hosts` |
+| `backend/app/schemas/rooms.py` | `RoomVO.livekit_applied`（仅触达外部服务的响应带）、`RoomTokenVO`、`RoleIn`、`TransferHostIn`、`KickResult`、`TransferHostResult` |
+| `backend/app/api/routers/rooms.py` | 新增 4 条：`POST /rooms/{id}/token`、`DELETE /rooms/{id}/members/{uid}`、`PATCH /rooms/{id}/members/{uid}/role`、`POST /rooms/{id}/transfer-host` |
+| `backend/app/db/sql/003_r002_host_uniqueness.sql` | R-6：活跃 Host 唯一部分唯一索引（幂等；已应用到本机库） |
+| `backend/tests/test_rooms_members_api.py`（新增 9 项） | Token 三态 + grants 按角色、踢人（成功/外部失败/权限矩阵）、角色守卫、移交、结束房间 `livekitApplied` |
+| `backend/tests/test_schema.py`（+2、改 1） | 迁移清单加 003；R-6 两个方向断言（两个活跃 Host 拒绝 / 历史 Host 可并存） |
+| `backend/tests/test_rooms_api.py`（+2） | 偿还 r001 两条欠账：列表分页、房间码冲突重试 |
+| `backend/requirements.txt` | 追加 `livekit-api` / `livekit-protocol` / `aiohttp`（+其依赖）/ `protobuf` / `PyJWT` / `types-protobuf` |
+
+**实测证据**：`pytest backend/tests -q` → **94 passed**（r001 基线 72 + 本轮 22），rc 0；`003` 迁移幂等且索引已在库中（`ux_room_members_one_active_host ... WHERE status='active' AND role='host'`）；接口层用例全程打桩（`app.services.livekit.*`），无真实外呼。
+
+**cp-r002-2 判据核对**：pytest 全绿且含新增断言 ✅；迁移可重复执行 ✅；打桩下不产生真实外呼 ✅。
 
 ## 无文档变更的提交（若有）
 

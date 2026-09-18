@@ -14,7 +14,7 @@ from app.api.envelope import ok
 from app.api.errors import ERR_UNAUTHORIZED, AppError
 from app.repositories.rooms import RoomFilter
 from app.schemas.auth import UserVO
-from app.schemas.rooms import CreateRoomIn, JoinRequestIn, TOPICS
+from app.schemas.rooms import CreateRoomIn, JoinRequestIn, RoleIn, TOPICS, TransferHostIn
 from app.services import rooms as rooms_service
 
 router = APIRouter(tags=["rooms"])
@@ -120,3 +120,52 @@ def leave_room(room_id: str, actor: UserVO = Depends(current_user), conn: Connec
 def end_room(room_id: str, actor: UserVO = Depends(current_user), conn: Connection = Depends(db_conn)):
     """结束房间：房间置 ended + 活跃成员转 inactive/room_ended + 待批申请转 cancelled（同事务）。"""
     return ok(_dump(rooms_service.end_room(conn, actor, room_id)), status=200)
+
+
+@router.post("/rooms/{room_id}/token", status_code=200)
+def issue_room_token(
+    room_id: str,
+    actor: Optional[UserVO] = Depends(current_user_optional),
+    conn: Connection = Depends(db_conn),
+):
+    """取进房 Token（活跃成员才可；响应里只有 token 与 wss 地址，Server Secret 永不出后端）。"""
+    return ok(_dump(rooms_service.issue_room_token(conn, actor, room_id)), status=200)
+
+
+@router.delete("/rooms/{room_id}/members/{user_id}", status_code=200)
+def kick_member(
+    room_id: str,
+    user_id: str,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """移出成员：返回 {member, livekitApplied}（外部调用失败不回滚库状态）。"""
+    result = rooms_service.kick_member(conn, actor, room_id, user_id)
+    return ok({"member": _dump(result.member), "livekitApplied": result.livekit_applied}, status=200)
+
+
+@router.patch("/rooms/{room_id}/members/{user_id}/role", status_code=200)
+def set_member_role(
+    room_id: str,
+    user_id: str,
+    payload: RoleIn,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """任命 / 取消协管（仅房主）。"""
+    return ok({"member": _dump(rooms_service.set_member_role(conn, actor, room_id, user_id, payload.role))}, status=200)
+
+
+@router.post("/rooms/{room_id}/transfer-host", status_code=200)
+def transfer_host(
+    room_id: str,
+    payload: TransferHostIn,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """移交房主：返回 {room, previousHost, newHost}。"""
+    result = rooms_service.transfer_host(conn, actor, room_id, payload.user_id)
+    return ok(
+        {"room": _dump(result.room), "previousHost": _dump(result.previous_host), "newHost": _dump(result.new_host)},
+        status=200,
+    )
