@@ -230,7 +230,9 @@ export default function RoomLivePage() {
             </button>
             <span className="live-sep" aria-hidden />
             <span className="live-title">{room?.title ?? '交流页'}</span>
-            <span className="live-quiet mono">{members.filter((m) => m.status === 'active').length} / {room?.capacity ?? 8}</span>
+            <span className="live-quiet mono" title="此刻在房间里的人数（在场口径，不是成员总数）">
+              {onlineIds.length} / {room?.capacity ?? 8} 在房间
+            </span>
             <span className="live-quiet mono">{room?.roomCode}</span>
             {connection.status === 'connected' && (
               <span className="live-focus-timer mono" title="你在房间里的时长">
@@ -279,6 +281,7 @@ export default function RoomLivePage() {
           {room && (
             <LiveStage
               room={room}
+              connected={connection.status === 'connected' || connection.status === 'reconnecting'}
               members={members}
               speakerIdentity={speaker?.identity ?? null}
               localIdentity={connection.room.localParticipant?.identity ?? ''}

@@ -14,12 +14,14 @@ import ParticipantTile from './ParticipantTile'
 
 interface Props {
   room: Room
+  /** 是否已连上实时服务：未连接时不渲染任何格子（否则会渲染出无名占位格）。 */
+  connected: boolean
   members: Member[]
   speakerIdentity: string | null
   localIdentity: string
 }
 
-export default function LiveStage({ room, members, speakerIdentity, localIdentity }: Props) {
+export default function LiveStage({ room, connected, members, speakerIdentity, localIdentity }: Props) {
   const tracks = useTracks(
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }, { source: Track.Source.Camera, withPlaceholder: true }],
     { onlySubscribed: false },
@@ -35,10 +37,10 @@ export default function LiveStage({ room, members, speakerIdentity, localIdentit
   )
   const roleOf = (identity: string): Role | null => byIdentity.get(identity)?.role ?? null
 
-  if (tracks.length === 0) {
+  if (!connected || tracks.length === 0) {
     return (
       <div className="live-stage live-stage-empty">
-        <p className="live-empty-title">等待其他成员加入</p>
+        <p className="live-empty-title">{connected ? '等待其他成员加入' : '还没有连上实时服务'}</p>
         <p className="live-empty-sub">今天的主题：{room.topicLabel}</p>
         <span className="live-empty-code mono">房间码 {room.roomCode}</span>
       </div>

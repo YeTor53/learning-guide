@@ -1,10 +1,10 @@
-/** 管理抽屉（默认收起）：成员 + 待批申请 + 房间信息 + 管理动作。
+/** 管理抽屉（默认收起）：**活跃 / 非活跃**成员 + 待批申请 + 房间码。
  *
- * 设计事实源：docs/02-modules/r002-livekit-features.md §3 F-16、§4.2（按钮矩阵）、§4.6（按钮设计决策表）、FQ-14。
- * 按钮原则（r002 定稿）：
- * - 可逆的、常用的 → 文字按钮直接给（移出 / 设为协管 / 取消协管）；
- * - 不可逆且影响全房的（移交房主）→ 收进「更多」菜单，不与其他按钮并排；
- * - 每个动作都有中文文字（不裸图标），危险动作由父组件收口做二次确认。
+ * 设计事实源：docs/02-modules/r002-livekit-features.md §3 F-16、§4.2（按钮矩阵）、§4.6（按钮决策表）、§4.9（与管理页分工）。
+ * 口径（用户 2026-09-18 定）：成员按**在不在房间内**分两类——
+ *   - 活跃（在房间里）= 此刻连着房间（LiveKit 在场，ADR-0011 条 1 的"瞬时事实源"）；
+ *   - 非活跃（不在房间内）= 此刻不在房间里（离线，或已离开 / 被移出 / 房间结束）。
+ * 注意与库里的 `room_members.status` 区分：那是"成员身份是否有效"，不是"此刻在不在"。
  */
 import { useState } from 'react'
 import { Check, Copy, MoreHorizontal, ShieldCheck, ShieldOff, UserMinus, X } from 'lucide-react'
@@ -30,6 +30,12 @@ interface Props {
   onReject: (requestId: string) => void
 }
 
+/** 副行只讲「为什么不在」：仍是成员但离线 → 不写（chip 已经说了不在房间）；已不是成员 → 写原因。 */
+function inactiveReason(member: Member): string | null {
+  if (member.status !== 'inactive') return null
+  return member.exitReason ? `${EXIT_REASON_LABEL[member.exitReason]} · 已不是成员` : '已不是成员'
+}
+
 export default function RoomSidePanel({
   room,
   members,
@@ -50,6 +56,9 @@ export default function RoomSidePanel({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
+  const activeMembers = members.filter((member) => online.has(member.userId))
+  const inactiveMembers = members.filter((member) => !online.has(member.userId))
+
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(room.roomCode)
@@ -59,6 +68,71 @@ export default function RoomSidePanel({
       setCopied(false)
     }
   }
+
+  const renderRow = (member: Member, active: boolean) => (
+    <div className={`member-row${active ? '' : ' member-row-quiet'}`} key={member.id}>
+      <div style={{ minWidth: 0 }}>
+        <div className="member-name">
+          {member.displayName}
+          <span className={`chip ${member.role === 'host' ? 'chip-warn' : 'chip-quiet'}`}>{ROLE_LABEL[member.role]}</span>
+          <span className={`chip ${active ? 'chip-accent' : 'chip-quiet'}`}>{active ? '在房间里' : '不在房间'}</span>
+        </div>
+        {!active && inactiveReason(member) && (
+          <span className="dim mono" style={{ fontSize: 11 }}>{inactiveReason(member)}</span>
+        )}
+      </div>
+      {isManager && member.userId !== room.hostId && (
+        <div className="member-actions">
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={busyId === member.userId}
+            onClick={() => onKick(member.userId)}
+            title={`把 ${member.displayName} 移出房间`}
+          >
+            <UserMinus {...ICON} />
+            移出
+          </button>
+          {isHost && (
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={busyId === member.userId}
+              onClick={() => onSetRole(member.userId, member.role === 'moderator' ? 'participant' : 'moderator')}
+              title={member.role === 'moderator' ? `取消 ${member.displayName} 的协管` : `把 ${member.displayName} 设为协管`}
+            >
+              {member.role === 'moderator' ? <ShieldOff {...ICON} /> : <ShieldCheck {...ICON} />}
+              {member.role === 'moderator' ? '取消协管' : '设为协管'}
+            </button>
+          )}
+          {isHost && (
+            <div className="more-menu">
+              <button
+                className="icon-btn"
+                aria-haspopup="menu"
+                aria-expanded={openMenuId === member.userId}
+                title="更多"
+                onClick={() => setOpenMenuId(openMenuId === member.userId ? null : member.userId)}
+              >
+                <MoreHorizontal {...ICON} />
+              </button>
+              {openMenuId === member.userId && (
+                <div className="more-menu-pop" role="menu">
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setOpenMenuId(null)
+                      onTransferHost(member.userId)
+                    }}
+                  >
+                    移交房主给 {member.displayName}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <aside className="live-drawer">
@@ -70,78 +144,31 @@ export default function RoomSidePanel({
       </div>
 
       <section className="panel">
-        <h2 className="panel-title">成员 {members.length} / {room.capacity}</h2>
-        {members.map((member) => (
-          <div className="member-row" key={member.id}>
-            <div style={{ minWidth: 0 }}>
-              <div className="member-name">
-                {member.displayName}
-                <span className={`chip ${member.role === 'host' ? 'chip-warn' : 'chip-quiet'}`}>
-                  {ROLE_LABEL[member.role]}
-                </span>
-              </div>
-              <span className="dim mono" style={{ fontSize: 11 }}>
-                {online.has(member.userId)
-                  ? '在线'
-                  : member.status === 'inactive'
-                    ? member.exitReason
-                      ? EXIT_REASON_LABEL[member.exitReason]
-                      : '已离开'
-                    : '离线'}
-              </span>
-            </div>
-            {isManager && member.userId !== room.hostId && (
-              <div className="member-actions">
-                <button
-                  className="btn btn-ghost btn-sm"
-                  disabled={busyId === member.userId}
-                  onClick={() => onKick(member.userId)}
-                  title={`把 ${member.displayName} 移出房间`}
-                >
-                  <UserMinus {...ICON} />
-                  移出
-                </button>
-                {isHost && (
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    disabled={busyId === member.userId}
-                    onClick={() => onSetRole(member.userId, member.role === 'moderator' ? 'participant' : 'moderator')}
-                    title={member.role === 'moderator' ? `取消 ${member.displayName} 的协管` : `把 ${member.displayName} 设为协管`}
-                  >
-                    {member.role === 'moderator' ? <ShieldOff {...ICON} /> : <ShieldCheck {...ICON} />}
-                    {member.role === 'moderator' ? '取消协管' : '设为协管'}
-                  </button>
-                )}
-                {isHost && (
-                  <div className="more-menu">
-                    <button
-                      className="icon-btn"
-                      aria-haspopup="menu"
-                      aria-expanded={openMenuId === member.userId}
-                      title="更多"
-                      onClick={() => setOpenMenuId(openMenuId === member.userId ? null : member.userId)}
-                    >
-                      <MoreHorizontal {...ICON} />
-                    </button>
-                    {openMenuId === member.userId && (
-                      <div className="more-menu-pop" role="menu">
-                        <button
-                          role="menuitem"
-                          onClick={() => {
-                            setOpenMenuId(null)
-                            onTransferHost(member.userId)
-                          }}
-                        >
-                          移交房主给 {member.displayName}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+        <h2 className="panel-title">
+          活跃（在房间里）· {activeMembers.length}
+          <span className="dim" style={{ fontSize: 12, fontWeight: 400, marginLeft: 8 }}>
+            上限 {room.capacity} 人
+          </span>
+        </h2>
+        {activeMembers.length === 0 ? (
+          <p className="muted" style={{ fontSize: 13, margin: 0 }}>此刻没有人在房间里</p>
+        ) : (
+          activeMembers.map((member) => renderRow(member, true))
+        )}
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">
+          非活跃（不在房间内）· {inactiveMembers.length}
+          <span className="dim" style={{ fontSize: 12, fontWeight: 400, marginLeft: 8 }}>
+            成员共 {members.length} 人
+          </span>
+        </h2>
+        {inactiveMembers.length === 0 ? (
+          <p className="muted" style={{ fontSize: 13, margin: 0 }}>全部成员都在房间里</p>
+        ) : (
+          inactiveMembers.map((member) => renderRow(member, false))
+        )}
       </section>
 
       {isManager && (
@@ -151,8 +178,7 @@ export default function RoomSidePanel({
         </section>
       )}
 
-      {/* 只留「讨论中要用到」的东西：房间码（口头传播）。主题/简介/成员历史等归房间管理页，
-          避免两处维护同一份信息（分工原则见功能页 §4.9）。 */}
+      {/* 只留「讨论中要用到」的东西：房间码（口头传播）。主题/简介/时间等归房间管理页（§4.9）。 */}
       <div className="live-code-row">
         <span className="dim mono" style={{ fontSize: 12 }}>房间码 {room.roomCode}</span>
         <button className="btn btn-ghost btn-sm" onClick={() => void copyCode()} title="复制房间码">
