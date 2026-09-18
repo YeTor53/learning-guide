@@ -64,7 +64,7 @@ export default function RoomsPage() {
     <div>
       <section className="hero">
         <FlowField />
-        <ThinkerStatue className="hero-thinker" />
+        <ThinkerStatue />
         <div className="hero-inner">
           <span className="kicker">
             <Hash {...ICON} />

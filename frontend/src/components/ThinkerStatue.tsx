@@ -6,19 +6,24 @@ interface Props {
 
 /** 下移速率：滚动量的 10%（用户向下滚 100px，图版向下 10px） */
 const FACTOR = 0.1
+/** 虚拟下界 = 图版高度的 RATIO（与页面布局无关，保证任何页面尺寸下都有可用行程） */
+const RATIO = 0.35
+const MIN_LIMIT = 90
+const MAX_LIMIT = 200
 
 /**
  * 首屏右侧的《思想者》图版（罗丹，已镜像）。
  *
- * 位移规则（用户指定）：
- * - 页面在顶部时，图版在**最高位**（位移 0）；
- * - 向下滚动时，图版按滚动量的 **10%** 向下移动（相对内容呈「变慢」的视差）；
- * - **下界**：图版底边不得越过房间列表区顶部（即 `.hero` 底边），到界即停；
+ * 位移规则：
+ * - **虚拟上界 0**：页面在顶部时图版在最高位；
+ * - 向下滚动时按滚动量的 **10%** 向下移动；
+ * - **虚拟下界 = 图版高度 × 35%（90–200px）**：与页面布局无关，不随页面长短/大小失效；
+ * - **允许被下方遮挡**：图版外层有一个裁剪容器，下边正好落在房间列表区顶线，
+ *   所以越过该线的部分会被「吃掉」（视觉上像滑到列表区下面），不会压住列表内容；
  * - `prefers-reduced-motion: reduce` 时不绑定滚动，静止在最高位。
  *
- * 实现：滚动用 rAF 合帧 + passive 监听；可移动行程在挂载与窗口尺寸变化时实测一次
- * （临时清空 transform 量取未位移的几何，再还原），避免每帧触发布局抖动。
- * 资材来源、许可与处理见 `docs/03-decisions/r001-adr-0010-visual-assets.md`。
+ * 实现：滚动用 rAF 合帧 + passive 监听；虚拟下界按图版自身高度测算（高度不随位移变化，
+ * 因此无需清空 transform 即可测量）。资材与许可见 `docs/03-decisions/r001-adr-0010-visual-assets.md`。
  */
 export default function ThinkerStatue({ className }: Props) {
   const ref = useRef<HTMLImageElement | null>(null)
@@ -28,24 +33,17 @@ export default function ThinkerStatue({ className }: Props) {
     if (!node) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-    const hero = node.parentElement
-    if (!hero) return
-
     let frame = 0
-    let maxTravel = 0
+    let limit = MIN_LIMIT
 
     const measure = () => {
-      const previous = node.style.transform
-      node.style.transform = 'none'
-      const statue = node.getBoundingClientRect()
-      const boundary = hero.getBoundingClientRect()
-      node.style.transform = previous
-      maxTravel = Math.max(0, boundary.bottom - statue.bottom)
+      const height = node.getBoundingClientRect().height
+      limit = Math.min(MAX_LIMIT, Math.max(MIN_LIMIT, Math.round(height * RATIO)))
     }
 
     const apply = () => {
       frame = 0
-      const offset = Math.min(window.scrollY * FACTOR, maxTravel)
+      const offset = Math.max(0, Math.min(window.scrollY * FACTOR, limit))
       node.style.transform = `translate3d(0, ${offset.toFixed(2)}px, 0)`
     }
 
@@ -69,15 +67,16 @@ export default function ThinkerStatue({ className }: Props) {
   }, [])
 
   return (
-    <img
-      ref={ref}
-      className={className}
-      src="/thinker.webp"
-      alt=""
-      aria-hidden
-      draggable={false}
-      decoding="async"
-      title="《思想者》· 奥古斯特·罗丹（罗丹博物馆藏）"
-    />
+    <div className={`hero-thinker-clip ${className ?? ''}`.trim()} aria-hidden>
+      <img
+        ref={ref}
+        className="hero-thinker"
+        src="/thinker.webp"
+        alt=""
+        draggable={false}
+        decoding="async"
+        title="《思想者》· 奥古斯特·罗丹（罗丹博物馆藏）"
+      />
+    </div>
   )
 }
