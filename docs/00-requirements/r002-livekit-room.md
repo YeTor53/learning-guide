@@ -71,6 +71,8 @@ updated: 2026-09-18
 
 ## 4. 验收清单（逐条给证据；勾选处必须引编号证据）
 
+> **勾选口径（2026-09-18 收官）**：自动可验项（后端单测 95 / 冒烟 22-22 / 前端 tsc 与 build / 四项浏览器实测）已完成并有证据表（§4.1），**逐条勾选与「双浏览器九步演示」在演示日一次性完成并留痕**（脚本见 `docs/tutorials/r002-livekit-demo.md`）；未做项已在 §4.1 末尾列明并全部入 roadmap §9 台账。**不预勾未实测项。**
+
 **后端 · LiveKit 接入与 Token**
 
 - [ ] `pytest backend/tests/test_livekit_token.py -q` 全绿：解 JWT 断言 `identity=user_id`、`name=显示名`、`video.room=room_id`、`roomJoin`、`roomAdmin` 仅 Host 为真、`roomConfig.max_participants=capacity`、`exp-iat` 等于 TTL（贴真实输出）
