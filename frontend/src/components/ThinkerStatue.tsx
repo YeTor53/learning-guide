@@ -1,49 +1,52 @@
 import { useEffect, useRef } from 'react'
 
-interface Props {
-  className?: string
-}
+/**
+ * 位移幅度：可调参数（用户要求「幅度很小且可调」）
+ * - 值 = 图版向下位移占滚动量的比例，建议区间 0.04 ~ 0.25；
+ * - 位移永远被容器夹住：offset = clamp(scrollY × AMPLITUDE, 0, 容器高 − 图版高)。
+ */
+const AMPLITUDE = 0.12
 
-/** 下移速率：滚动量的 10%（用户向下滚 100px，图版向下 10px） */
-const FACTOR = 0.1
-/** 虚拟下界 = 图版高度的 RATIO（与页面布局无关，保证任何页面尺寸下都有可用行程） */
-const RATIO = 0.35
-const MIN_LIMIT = 90
-const MAX_LIMIT = 200
+/** 系统开启「减少动效」时幅度打这个折扣（不彻底关掉，保证仍能看到位移） */
+const REDUCED_MOTION_SCALE = 0.5
 
 /**
- * 首屏右侧的《思想者》图版（罗丹，已镜像）。
+ * 首屏右侧的《思想者》图版：**在一个固定容器内滑动**。
  *
- * 位移规则：
- * - **虚拟上界 0**：页面在顶部时图版在最高位；
- * - 向下滚动时按滚动量的 **10%** 向下移动；
- * - **虚拟下界 = 图版高度 × 35%（90–200px）**：与页面布局无关，不随页面长短/大小失效；
- * - **允许被下方遮挡**：图版外层有一个裁剪容器，下边正好落在房间列表区顶线，
- *   所以越过该线的部分会被「吃掉」（视觉上像滑到列表区下面），不会压住列表内容；
- * - `prefers-reduced-motion: reduce` 时不绑定滚动，静止在最高位。
+ * 容器（`.thinker-box`，几何全在 CSS 参数区里，改那几个数即可）：
+ * - 宽 = 图版宽（等宽）；
+ * - 高 = 图版高 × 1.4 → 多出来的 0.4 倍就是图版的可滑动行程；
+ * - 顶部略高于页面顶；底部略低于房间块的底边；`overflow: clip` 保证图版不越出容器。
  *
- * 实现：滚动用 rAF 合帧 + passive 监听；虚拟下界按图版自身高度测算（高度不随位移变化，
- * 因此无需清空 transform 即可测量）。资材与许可见 `docs/03-decisions/r001-adr-0010-visual-assets.md`。
+ * 行为：
+ * - 页面在顶部 → 图版在容器内的最高位；
+ * - 向下滚动 → 图版按 `AMPLITUDE` 的比例向下走（幅度很小、可调），到达容器底部即停；
+ * - 位移只在容器内部发生，图版既不会跑出首屏，也不会压住下方内容之外的区域。
+ *
+ * 资材来源与许可见 `docs/03-decisions/r001-adr-0010-visual-assets.md`。
  */
-export default function ThinkerStatue({ className }: Props) {
-  const ref = useRef<HTMLImageElement | null>(null)
+export default function ThinkerStatue() {
+  const imgRef = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const node = imgRef.current
+    const box = node?.parentElement
+    if (!node || !box) return
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const amplitude = AMPLITUDE * (reduced ? REDUCED_MOTION_SCALE : 1)
 
     let frame = 0
-    let limit = MIN_LIMIT
+    /** 可滑动行程 = 容器高 − 图版高（由 CSS 参数区决定） */
+    let travel = 0
 
     const measure = () => {
-      const height = node.getBoundingClientRect().height
-      limit = Math.min(MAX_LIMIT, Math.max(MIN_LIMIT, Math.round(height * RATIO)))
+      travel = Math.max(0, box.clientHeight - node.clientHeight)
     }
 
     const apply = () => {
       frame = 0
-      const offset = Math.max(0, Math.min(window.scrollY * FACTOR, limit))
+      const offset = Math.max(0, Math.min(window.scrollY * amplitude, travel))
       node.style.transform = `translate3d(0, ${offset.toFixed(2)}px, 0)`
     }
 
@@ -67,12 +70,13 @@ export default function ThinkerStatue({ className }: Props) {
   }, [])
 
   return (
-    <div className={`hero-thinker-clip ${className ?? ''}`.trim()} aria-hidden>
+    <div className="thinker-box">
       <img
-        ref={ref}
-        className="hero-thinker"
+        ref={imgRef}
+        className="thinker-img"
         src="/thinker.webp"
         alt=""
+        aria-hidden
         draggable={false}
         decoding="async"
         title="《思想者》· 奥古斯特·罗丹（罗丹博物馆藏）"
