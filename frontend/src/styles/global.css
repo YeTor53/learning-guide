@@ -384,9 +384,9 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 /* 首屏右侧《思想者》图版：随滚动轻微位移（位移逻辑在 ThinkerStatue.tsx） */
 .hero-thinker {
   position: absolute;
-  top: -5%;
-  right: -3%;
-  width: clamp(210px, 23vw, 350px);
+  top: -7%;
+  right: 0;
+  width: clamp(262px, 28.75vw, 437px);
   height: auto;
   z-index: 0;
   pointer-events: none;
@@ -522,7 +522,7 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 /* ---------- 窄屏 ---------- */
 @media (max-width: 900px) {
   .auth-wrap { grid-template-columns: 1fr; }
-  .hero-thinker { width: clamp(150px, 40vw, 220px); right: -8%; top: -3%; opacity: 0.5; }
+  .hero-thinker { width: clamp(187px, 50vw, 275px); right: 0; top: -4%; opacity: 0.5; }
   .layout { flex-direction: column; }
   .sidebar, .sidebar.collapsed {
     position: static;

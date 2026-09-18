@@ -18,9 +18,10 @@ updated: 2026-09-18
 1. **素材**：Wikimedia Commons 上克利夫兰艺术博物馆（Cleveland Museum of Art）藏《思想者》藏品照，**CC0**（公有领域贡献），原图 1920×2275。
    来源文件：`Auguste_Rodin_-_The_Thinker_-_1917.42_-_Cleveland_Museum_of_Art.tif`（Commons 缩略图，取宽 1400）。
 2. **处理管线**（离线用 Pillow 跑一次，产物入库、脚本不入库）：
-   裁掉台座与空档 → 灰度 → gamma 2.75 压暗中灰背景 → 双色调 `ink(7,9,13) → 强调色(196,255,236)` → 内缩圆角矩形遮罩 + 大模糊，**四边 alpha 收敛到 0** → 缩放至 780×949 → WebP q80。
-   最终产物：`frontend/public/thinker.webp`（74 KB，带透明通道）。
-3. **放置与动效**：`.hero-thinker` 绝对定位在大标题右侧（`clamp(210px, 23vw, 350px)`，`pointer-events: none`，`z-index` 低于正文）；`ThinkerStatue.tsx` 在滚动时 `translate3d(0, clamp(-scrollY × 0.14, ±48px), 0)`，rAF 合帧、滚动监听 passive、`prefers-reduced-motion: reduce` 时完全不绑定滚动。
+   裁掉台座与空档 → 灰度 → gamma 2.75 压暗中灰背景 → 双色调 `ink(7,9,13) → 强调色(196,255,236)` → 内缩圆角矩形遮罩 + 大模糊 + **四边线性衰减**（保证边界 alpha 严格为 0）→ 裁紧 → **水平镜像** → 缩放至 900×1094 → WebP q82。
+   最终产物：`frontend/public/thinker.webp`（84 KB，带透明通道，已镜像）。
+3. **放置与动效**（2026-09-18 按用户要求修订）：`.hero-thinker` 绝对定位在大标题右侧，宽 `clamp(262px, 28.75vw, 437px)`（**比首版大 25%**，`right: 0` 以避免横向溢出），`pointer-events: none`，`z-index` 低于正文。
+   位移规则：**顶部时在最高位（位移 0）**；向下滚动时按滚动量的 **10%** 向下移动（`translate3d(0, min(scrollY × 0.10, travel), 0)`）；**下界 = 房间列表区顶部**——`travel = .hero 底边 − 图版底边`（挂载与 resize 时实测，超出即停）。rAF 合帧、滚动监听 passive、`prefers-reduced-motion: reduce` 时完全不绑定滚动（静止在最高位）。
 4. **可达性**：纯装饰图 → `alt=""` + `aria-hidden`，不参与键盘与语义；`title` 给出作品名与作者。
 
 ## 被否的替代方案
@@ -28,6 +29,7 @@ updated: 2026-09-18
 | 方案 | 为什么否掉 |
 | --- | --- |
 | **抠图**（只保留雕像，背景全透明） | 试了三种：大核模糊差分、饱和度（色度）键、边界连通域填充。候选馆藏照的背景都是**非均匀**的渐变摄影棚背景（四角亮度 58–250 不等），三条路径都留下明显光晕或把雕像暗部掏空（见处理日志的预览图）。要达到可用质量需要专门的抠图模型/服务，超出本轮成本 |
+| 首版视差「向上 −14%、上限 ±48px」 | 方向与用户预期相反（往下滚它反而往上走），且上限过早触顶，观感上等于「没有偏移效果」；已按用户要求改为向下 10% + 下界约束 |
 | 用 CSS `mix-blend-mode` 直接混照片 | 背景亮度接近正文灰，混合后整块发亮，等于把照片贴上去 |
 | 引入 three.js / WebGL 把雕像做成 3D | 体积与离线风险大（ADR-0008 已否掉 WebGL 路径），且素材与建模成本更高 |
 | 用 SVG 线描或剪影代替照片 | 视觉重量不够，用户明确要「图片」 |
@@ -36,7 +38,8 @@ updated: 2026-09-18
 
 ## 影响与待办
 
-- 新增静态资产 `frontend/public/thinker.webp`（74 KB）；前端代码新增 `components/ThinkerStatue.tsx`；`styles/global.css` 新增 `.hero-thinker`。
+- 新增静态资产 `frontend/public/thinker.webp`（84 KB，已镜像）；前端代码新增 `components/ThinkerStatue.tsx`；`styles/global.css` 新增 `.hero-thinker`。
+- 2026-09-18 修订记录：资材改为镜像并放大 25%（`right: -3% → 0`，修掉放大后 4px 横向溢出造成的横向滚动条）；位移方向与规则按用户要求重写（见上）。
 - 风格指南新增 §11「图像与资产规范」（来源与许可登记、统一处理管线、体积上限、装饰图可达性、位移上限）。
 - 换图流程：把新图按同一管线处理成 780×949 左右的带透明 WebP，覆盖 `frontend/public/thinker.webp` 即可，组件与样式无需改动。
 - 未做：图片懒加载（首屏元素，按需加载反而更慢）；响应式多尺寸（窄屏用 CSS 缩放，未生成多套 srcset）。
