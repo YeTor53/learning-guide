@@ -37,8 +37,13 @@ updated: 2026-09-18
 ### cp-r002-1（文档先行）
 
 - 文件：`docs/00-requirements/r002-livekit-room.md`、`docs/01-architecture/r002-realtime-architecture.md`、`docs/02-modules/r002-livekit.md`、`docs/02-modules/r002-livekit-features.md`、`docs/99-archive/r002-ahead-invites.md`、`docs/rounds/r002-livekit/{design,changes,review}.md`；改 `docs/00-requirements/README.md`、`README.md`、`docs/00-project/global-roadmap.md`、`docs/02-modules/r001-rooms*.md`、`docs/00-requirements/r001-*.md`、`docs/rounds/r001-skeleton/{design,review}.md`（旧归档路径指针同步）。
-- 验证：`git grep -n "r001-ahead-m2-m3-rooms"` 无命中（除 roadmap 的历史执行记录，标为历史）；本页与索引一致；四件套矩阵状态正确。
-- 证据：待提交后贴 `git log`/`git status`。
+- 验证（实测输出）：
+  - front matter 解析：8 个新建/改写页全部通过；代码围栏成对（另修掉 r001 功能页 1 处未闭合围栏）。
+  - 全库内部链接扫描：仅剩 2 个**有意**的 planned 链接（`docs/tutorials/r002-livekit-demo.md`、`r002-livekit-dev-guide.md`，随 cp-r002-4 落地），其余全部解析成功；顺手修掉风格指南里 1 处 ADR 占位路径。
+  - `git grep -n "r001-ahead-m2-m3-rooms"`：无命中（历史迁移注记已改写为叙述式，避免假装是活链接）。
+- 提交：`603049e`（归档页 `git mv` 重命名）→ `d1b62df`（内容与同步，17 文件 +1004/-102）。
+  - 说明：首次 `git add` 因列表中含「已被重命名、工作区已不存在」的旧路径而整批失败，只提交了 `git mv` 那一步；故本 cp 落为两次提交（重命名 / 内容），**未使用 `amend`**（AGENTS 硬规矩 5：历史 append-only）。
+- 状态：工作区只剩未跟踪的 `frontend/.vite/`（Vite 缓存；是否加进 `.gitignore` 待你一句话）。
 
 ## 无文档变更的提交（若有）
 
