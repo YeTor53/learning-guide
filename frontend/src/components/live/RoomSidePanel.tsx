@@ -173,7 +173,9 @@ export default function RoomSidePanel({
 
       {isManager && (
         <section className="panel">
-          <h2 className="panel-title">待处理申请</h2>
+          <h2 className="panel-title">
+            待处理申请 · {requests.filter((item) => item.status === 'pending').length}
+          </h2>
           <JoinRequestList requests={requests} busyId={busyId} onApprove={onApprove} onReject={onReject} pendingOnly />
         </section>
       )}

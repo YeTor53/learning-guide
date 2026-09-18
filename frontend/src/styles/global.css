@@ -1131,3 +1131,61 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 @media (prefers-reduced-motion: reduce) {
   .wait-glow { animation: none; }
 }
+/* 房内管理入口：带文字 + 未处理申请徽标（原来只有一个图标，用户找不到；有新申请时强调色 + 一次脉冲） */
+.live-drawer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.live-drawer-toggle:hover { background: var(--panel-strong); color: var(--text); }
+.live-drawer-toggle.has-pending {
+  color: #06100c;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.live-toggle-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.live-drawer-toggle.has-pending .live-toggle-badge { background: #06100c; color: var(--accent); }
+
+.live-attention { animation: live-attention 2.4s var(--ease) 1; }
+@keyframes live-attention {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 240, 196, 0); }
+  35% { box-shadow: 0 0 0 6px rgba(124, 240, 196, 0.22); }
+}
+
+.live-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 240, 196, 0.3);
+  background: rgba(124, 240, 196, 0.08);
+  color: var(--text);
+  font-size: 12px;
+}
+.live-notice .btn { padding: 2px 8px; font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .live-attention { animation: none; }
+}

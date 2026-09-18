@@ -4,10 +4,10 @@
  *             ADR-0011 条 4（外部调用）、§8.4 归因、§8.5a 准入判定、§8.9 重连、§8.10 设备保持、§8.11 专注态。
  * 口径：连接前**先取票**（服务端校验成员身份）→ 未获批不发连接请求；成功连接后由 SDK 驱动在场。
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ArrowLeft, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
+import { AlertCircle, ArrowLeft, BellRing, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react'
 
 import { ApiError } from '../api/http'
@@ -68,7 +68,30 @@ export default function RoomLivePage() {
   const micLevel = useMicLevel(connection.room, devices.micEnabled && connection.status === 'connected')
   const chromeIdle = useChromeIdle(CHROME_IDLE_SECONDS, Boolean(speaker))
 
-  const requests = useMemo(() => detail.data?.messages ?? [], [detail.data])
+  const isManager = myRole === 'host' || myRole === 'moderator'
+  // 申请列表（真源）：只有管理者需要，5 秒轮询——门口有人等时要能立刻看到（修：原来误读了 messages，抽屉永远显示空）
+  const requestsQuery = useQuery({
+    queryKey: ['live-room-requests', id],
+    queryFn: () => roomsApi.listRequests(id),
+    enabled: isManager && Boolean(room),
+    refetchInterval: 5_000,
+    retry: false,
+  })
+  const pendingRequests = (requestsQuery.data ?? []).filter((item) => item.status === 'pending')
+  const pendingCount = pendingRequests.length
+
+  // 新申请到达 → 一次可见的提示（脉冲 + 状态条说明），不弹窗（redirect-03 未批前不引 toast）
+  const [attention, setAttention] = useState(false)
+  const [seenCount, setSeenCount] = useState(0)
+  useEffect(() => {
+    if (pendingCount > seenCount) {
+      setAttention(true)
+      const timer = window.setTimeout(() => setAttention(false), 2_400)
+      setSeenCount(pendingCount)
+      return () => window.clearTimeout(timer)
+    }
+    setSeenCount(pendingCount)
+  }, [pendingCount, seenCount])
 
   // 取票成功后再连接（不准入则压根不发连接请求）
   useEffect(() => {
@@ -269,11 +292,29 @@ export default function RoomLivePage() {
               {connection.status === 'reconnecting' && <RotateCw {...ICON} className="spin" />}
               {STATUS_LABEL[connection.status]}
             </span>
-            <button className="icon-btn" title="成员与管理" aria-label="成员与管理" onClick={() => setDrawerOpen((open) => !open)}>
+            <button
+              className={`live-drawer-toggle${pendingCount > 0 ? ' has-pending' : ''}${attention ? ' live-attention' : ''}`}
+              aria-label={`成员与管理${pendingCount > 0 ? `，有 ${pendingCount} 条待处理申请` : ''}`}
+              aria-expanded={drawerOpen}
+              title={pendingCount > 0 ? `门口有 ${pendingCount} 位在等待批准` : '成员与管理'}
+              onClick={() => setDrawerOpen((open) => !open)}
+            >
               <PanelRightOpen {...ICON} />
+              成员与管理
+              {pendingCount > 0 && <span className="live-toggle-badge">{pendingCount}</span>}
             </button>
           </div>
         </header>
+
+        {isManager && pendingCount > 0 && !drawerOpen && (
+          <div className="live-notice" role="status">
+            <BellRing {...ICON} />
+            门口有 {pendingCount} 位在等房主批准
+            <button className="btn btn-sm" onClick={() => setDrawerOpen(true)}>
+              去处理
+            </button>
+          </div>
+        )}
 
         {connection.reason && (
           <div className="alert alert-warn live-alert" role="status">
@@ -317,7 +358,7 @@ export default function RoomLivePage() {
               members={members}
               myRole={myRole}
               onlineIds={onlineIds}
-              requests={requests.filter((item) => item.kind === 'request') as never}
+              requests={requestsQuery.data ?? []}
               busyId={busyId}
               onClose={() => setDrawerOpen(false)}
               onKick={(userId) => setConfirming({ userId, action: 'kick' })}
@@ -326,6 +367,7 @@ export default function RoomLivePage() {
               onApprove={async (requestId) => {
                 try {
                   await roomsApi.approve(requestId)
+                  queryClient.invalidateQueries({ queryKey: ['live-room-requests', id] })
                   refresh()
                 } catch (error) {
                   setNotice(error instanceof ApiError ? error.message : '操作失败，请重试')
@@ -334,6 +376,7 @@ export default function RoomLivePage() {
               onReject={async (requestId) => {
                 try {
                   await roomsApi.reject(requestId)
+                  queryClient.invalidateQueries({ queryKey: ['live-room-requests', id] })
                   refresh()
                 } catch (error) {
                   setNotice(error instanceof ApiError ? error.message : '操作失败，请重试')
