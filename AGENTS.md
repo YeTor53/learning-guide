@@ -36,3 +36,15 @@
 - 新建文档写 front matter：`title / description / type / status / owner / updated`。
 - 一个概念只在一处讲，别处链接（禁双源）。
 - 仓库文档只写本项目方案与决策，不夹带外部出处、研究笔记、外部案例对照。
+
+## r002 起新增的验证命令（实时房间）
+
+```bash
+pytest backend/tests -q                                  # 95 项
+npx tsc --noEmit --project frontend                      # 前端类型
+python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # PASS 22/22
+```
+
+- 实时凭据只在 `.env`（`LIVEKIT_MODE` / `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`）；**不得写进代码、文档、提交信息或聊天**。
+- 禁区不变：装依赖需先问；helper 不接触明文密钥；不用 `git commit --amend`。
+- 现状口径（改动前必读）：房间 = **一次性讨论**（ADR-0012）；治理动作**只在交流页抽屉**（房间管理页已删除，redirect-06）；容量按**在场人数**在**取票时**校验。

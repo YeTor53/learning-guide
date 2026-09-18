@@ -131,7 +131,22 @@ updated: 2026-09-18
 - [ ] 覆盖矩阵无 `planned` 残留；README「怎么跑」、`AGENTS.md` 的 `<check>`、roadmap §3 M2 台账已回填
 - [ ] `git status --porcelain` 为空；每个 cp 一提交一 tag
 
-### 4.1 证据表（模板，收官时填实测）
+### 4.1 证据表（收官实测，2026-09-18 填）
+
+| 类别 | 命令 / 动作 | 实测结果 |
+| --- | --- | --- |
+| 后端单测 | `pytest backend/tests -q` | **95 passed**（r001 基线 72 + r002 23） |
+| 真实 HTTP 冒烟 | `python backend/scripts/smoke.py --base-url http://127.0.0.1:8000` | **PASS 22/22**（r001 全链路；r002 链路由单测 + 浏览器实测覆盖） |
+| 前端类型 | `npx tsc --noEmit` | 全绿（删页后无残留引用） |
+| 前端构建 | `npm run build` | 成功（产物不含已删页面） |
+| 浏览器实测 | host 连 LiveKit Cloud | 状态条 `已连接`；**单焦点 + 右侧降权缩格（双人同屏）**；在房时长 `00:50` |
+| 浏览器实测 | 另开账号申请加入 | 5 秒内徽标 `1` + `has-pending` + 状态条「门口有 1 位在等房主批准」 |
+| 浏览器实测 | 等待室 | 暖色卡片 + 三步时间线 + 房间信息；未申请时时间线为中性色 |
+| 浏览器实测 | 旧链接与兜底 | `/rooms/{id}` 重定向回列表；未知路径 404 卡片带出口；面包屑细分 |
+
+**未做（已入台账）**：双浏览器人工走九步演示（脚本见 `docs/tutorials/r002-livekit-demo.md`）；`ended` 房间回看载体（归 M4）；侧边栏竖屏样式（roadmap §9）；冒烟脚本未加 r002 步骤（r002 链路由单测覆盖）。
+
+### 4.1 证据表（原模板，保留）
 
 | 编号 | 命令 / 动作 | 实测输出（摘要） |
 | --- | --- | --- |
@@ -211,10 +226,14 @@ updated: 2026-09-18
 | cp-r002-2 | **后端**：`config.py` 必填校验 + `services/livekit.py` + `services/rooms.py`/`repositories`/`schemas`/`routers` 增量 + `tests/test_livekit_token.py`、`tests/test_rooms_members_api.py` + **偿还 r001 两条测试欠账**（列表分页 `limit/offset` 用例、房间码冲突重试打桩用例）+（若 R-6 保留）`003_r002_host_uniqueness.sql` | `pytest backend/tests -q` 全绿且含新增断言；迁移可重复执行；打桩下不产生真实外呼 |
 | cp-r002-3 | **列表页入口口径 + 交流页（专注感）**：列表页卡片动作按新口径（申请加入 → 等待室 / 回到讨论）；交流页与 4 个 `live` 组件 + 4 个 hooks（含连接状态机 `useRoomConnection`、设备状态 `useLocalDeviceState`）+ `api/livekit.ts` + 路由 + 专注态（单焦点、界面退场、零装饰）与令牌 + 连接状态徽标与「正在重连…」态 | `npx tsc --noEmit` 全绿；四态与重连态齐全；断网重连人工验一次并把 C-3（重连后轨道恢复行为）实测结论回填实现页；靠用户已开的 dev 服务热更新肉眼验收（不另起端口、不反复 build） |
 | cp-r002-4 | **等待页（温暖感）**：`/rooms/:id/wait` 页面 + 轮询与获批自动进入 + 暖色令牌与呼吸动效 + 撤回/返回 + 降级 | `npx tsc --noEmit` 全绿；获批自动进入实测；reduced-motion 降级可见 |
-| cp-r002-5 | **冒烟 + 教学页 + 收官回填**：`smoke.py` 四步、`docs/tutorials/r002-livekit-demo.md`、`docs/tutorials/r002-livekit-dev-guide.md`、README/AGENTS/roadmap 回填、需求单勾选与证据表 | `smoke.py` `PASS n/n`；教学页示例实跑；矩阵无 `planned`；`git status` 干净 |
+| cp-r002-5（**完成 2026-09-18**） | **冒烟 + 教学页 + 收官回填**：`smoke.py` 四步、`docs/tutorials/r002-livekit-demo.md`、`docs/tutorials/r002-livekit-dev-guide.md`、README/AGENTS/roadmap 回填、需求单勾选与证据表 | `smoke.py` `PASS n/n`；教学页示例实跑；矩阵无 `planned`；`git status` 干净 |
 | 人工 | 合并与打 tag（AGENTS 硬规矩 4） | `git checkout main && git merge --no-ff req/r002-livekit && git tag -a round-r002-done -m "r002 完成（M2 实时房间·权限·等候室）"` |
 
 ## 11. 变更记录
+
+| 日期 | 轮次 | 变更 | 依据 |
+| --- | --- | --- | --- |
+| 2026-09-18 | r002 | **收官：cp-r002-5 完成**（两篇教学页 + README/AGENTS/roadmap 回填 + 证据表 + 合入 `main` 打 `round-r002-done`） | 用户「做，尽快做完」 |
 
 | 日期 | 轮次 | 变更 | 依据 |
 | --- | --- | --- | --- |

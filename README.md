@@ -2,7 +2,7 @@
 
 围绕一门学习主题的多人音视频小组讨论室：账户、房间、等候室审批、三种角色权限、群聊、举手与焦点发言、屏幕共享、服务端踢人、房间结束后的 LLM 讨论纪要。
 
-> 当前状态：**r001 已关闭并合入 `main`（`round-r001-done`，`main` = `c189a87`）；r002（M2 实时房间）设计已出、待批准**。
+> 当前状态：**r002（M2 实时房间）已完成并合入 `main`（`round-r002-done`）**。三条页面：房间列表 `/` → 交流页 `/rooms/:id/live`（专注感）→ 等待室 `/rooms/:id/wait`（温暖感）；**原「房间管理页」已删除**（治理动作只在交流页抽屉；ADR-0012 / redirect-06）。
 > r001 已落地：数据层与种子、账户会话、建房 / 列表 / 详情 / 加入申请 / 批准 / 拒绝 / 撤回 / 离开 / 结束、前端 5 页与左侧边栏外壳、真实 HTTP 冒烟。证据：`pytest` 72 项、冒烟 22 项、前端类型检查与构建全绿、9 步浏览器实操（需求单 §3.1 的 E1~E10）；轮次档案见 `docs/rounds/r001-skeleton/`。
 > r002 设计入口：需求单 `docs/00-requirements/r002-livekit-room.md`、总设计增量 `docs/01-architecture/r002-realtime-architecture.md`、模块页 `docs/02-modules/r002-livekit.md` 与 `r002-livekit-features.md`。
 
@@ -62,10 +62,11 @@ cd backend && python -m uvicorn app.main:app --port 8000
 
 # ⑤ 验证
 python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # 真实 HTTP 全链路，末尾打印 PASS n/n
-pytest backend/tests -q                                            # 72 项
+pytest backend/tests -q                                            # 95 项（含 r002 的 Token/成员治理/容量口径）
 ```
 
 - 冒烟脚本会写入两个随机邮箱账号与一个房间；跑完可再执行一次 `db_init --reset --seed` 恢复演示数据。
+- r002 需要额外的实时凭据：`.env` 里的 `LIVEKIT_MODE` / `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`（Cloud 或自建二选一）；**键名与形状见上，值只放本机 `.env`**。第一次跑请看教程一：`docs/tutorials/r002-livekit-setup.md`；演示与排查看教程二：`docs/tutorials/r002-livekit-demo.md`
 - 依赖版本：后端见 `backend/requirements*.txt`（conda `learningguide` 的 pip freeze）；前端见 `frontend/package.json`（npm 走 npmmirror）。
 - 密钥与连接串只放本机 `.env`（不入库）；示例见 `.env.example`，键表见架构页 §5。
 
