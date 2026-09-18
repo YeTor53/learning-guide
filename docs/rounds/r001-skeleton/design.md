@@ -35,4 +35,4 @@ updated: 2026-09-18
 
 ## What's next
 
-下一轮（r002 = M2）的设计起点见 `docs/99-archive/r001-ahead-m2-m3-rooms.md`（届时移回 `docs/02-modules/` 并改 `r002-` 前缀）。
+下一轮（r002 = M2）的设计入口：轮次设计 `docs/rounds/r002-livekit/design.md`；模块页 `docs/02-modules/r002-livekit.md` 与 `r002-livekit-features.md`；总设计增量 `docs/01-architecture/r002-realtime-architecture.md`。

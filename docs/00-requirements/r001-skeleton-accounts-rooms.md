@@ -27,7 +27,7 @@ updated: 2026-09-18
 - 验证：`pytest`（schema 断言 + 服务层 + 接口层）、`smoke.py`（真实 HTTP 全链路）、密钥检索、文档同步。
 
 **不做（本轮不碰）**
-- LiveKit 一切（起服务、签 Token、音视频、屏幕共享）→ M2；邀请/踢人/角色任命/移交 → M2（已归档 `docs/99-archive/r001-ahead-m2-m3-rooms.md`）。
+- LiveKit 一切（起服务、签 Token、音视频、屏幕共享）→ M2；邀请/踢人/角色任命/移交 → M2（2026-09-18 已随 r002 归位：踢人/角色见 `docs/02-modules/r002-livekit.md`，邀请仍 backlog 见 `docs/99-archive/r002-ahead-invites.md`）。
 - 文字群聊实时收发 → M3（本轮详情页只读展示种子里的最近 20 条消息）。
 - 举手 / 焦点发言 → M3；LLM 纪要 → M4（归档页已备设计）。
 - 公网部署、Docker/Compose、管理后台 → M5 加分项（按余力）。

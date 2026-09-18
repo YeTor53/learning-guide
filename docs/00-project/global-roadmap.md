@@ -4,7 +4,7 @@ description: 本项目唯一的项目级规划：起点现状、终局目的、�
 type: concept
 status: draft
 owner: 陀梓皓
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 <!-- overview -->
@@ -53,7 +53,11 @@ updated: 2026-09-17
 
 > **M1（r001）状态回填（2026-09-18 定稿）**：轮次已关闭（需求单 `status: closed`）。实现共 13 个 checkpoint（`cp-r001-1`~`cp-r001-13`，含侧边栏与视觉体系、首屏图版等轮内增量）。
 > 实测：`db_init --reset --seed` 打印 7 表行数；`pytest backend/tests -q` 72 passed；`smoke.py` PASS 22/22；前端 `tsc --noEmit` + `npm run build` 全绿；9 步浏览器实操与未登录引导均已跑通（E9/E10）。需求单 §3 的 20 项验收**全部闭合**。
-> 剩余：由人 `merge --no-ff` 并打 `round-r001-done`（AGENTS 硬规矩 4）。轮次档案见 `docs/rounds/r001-skeleton/`。
+> 剩余：已由人 `merge --no-ff` 合入 `main` 并打 `round-r001-done`（`main` = `c189a87`，2026-09-18 实测）。轮次档案见 `docs/rounds/r001-skeleton/`。
+>
+> **M2（r002）状态回填（2026-09-18）**：**文档阶段**（设计待你批准）。轮次号 `r002`、分支 `req/r002-livekit`、需求单 `docs/00-requirements/r002-livekit-room.md`（draft）、轮次档案 `docs/rounds/r002-livekit/`。
+> 设计入口：轮次设计 `docs/rounds/r002-livekit/design.md`；总设计增量 `docs/01-architecture/r002-realtime-architecture.md`；模块页 `docs/02-modules/r002-livekit.md` 与 `r002-livekit-features.md`（归档设计已按 §7 第 3 条归位）。
+> 本轮范围外的邀请已拆出为 `docs/99-archive/r002-ahead-invites.md`（`status: backlog`）。硬前置：`livekit-api` / `livekit-client` / `@livekit/components-react` 三项依赖需你批准、LiveKit Cloud 项目与 `.env` 三项需你填写。
 
 ## 4. 已决事项
 
@@ -92,10 +96,9 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 
 ## 7. What's next
 
-1. 人工复核 r001：按 README「怎么跑」起前后端，走 `docs/02-modules/r001-rooms-features.md` §6 的 9 步演示脚本（含未登录引导与回跳）；通过后把需求单 §3 余下 2 项勾上。
-2. 人审通过后由人合并（历史 append-only，不 rebase）：
-   `git checkout main && git merge --no-ff req/r001-skeleton && git tag -a round-r001-done -m "r001 完成（M1 骨架·账户·房间）"`
-3. 开 r002 = M2：LiveKit Cloud 接线（服务端签 Token、`RoomConfiguration.max_participants=8` 兜底、`RemoveParticipant` 踢人与 `LIVEKIT_MODE` 分支）、批准后真正进房、三角色权限矩阵落地、踢人。届时把 `docs/99-archive/r001-ahead-m2-m3-rooms.md` 移回 `docs/02-modules/` 并改为 `r002-` 前缀。
+1. ~~人工复核 r001~~ 已完成：r001 已合入 `main` 并打 `round-r001-done`（2026-09-18）。
+2. **r002（M2）当前：设计已出，待你复核与批准**。复核入口 `docs/00-requirements/r002-livekit-room.md`（§2 边界、§3 口径表、§4 验收、§10 cp 表）+ `docs/01-architecture/r002-realtime-architecture.md` + `docs/02-modules/r002-livekit-features.md` §6 演示脚本。
+3. 批准后：① 批准三项依赖安装（需求单 §9）；② 你注册 LiveKit Cloud 并把 `LIVEKIT_URL/API_KEY/API_SECRET` 填进 `.env`；③ 回「按设计做」→ 建分支 `req/r002-livekit`，按 cp-r002-2（后端）→ cp-r002-3（前端）→ cp-r002-4（冒烟+教学页+收官）推进。
 4. P11（npm 发布对象 / 仓库公开性 / zip 主次）仍**暂缓**：达到提交阶段再拍，届时补 README 交付章节与可能的包目录。
 
 ## 8. 文档产出顺序与现状盘点（2026-09-17）
@@ -121,8 +124,8 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | `docs/02-modules/r001-rooms-features.md`（功能） | r001 | r001 | approved（**已剥离 M2/M3**，只含 M1） | 正常 |
 | `docs/02-modules/r001-accounts.md`（实现） | r001 | r001 | **已新建**（approved，cp-r001-2 后按代码回填） | 补齐账户模块的接口/函数签名事实源 |
 | `docs/02-modules/r001-accounts-features.md`（功能） | r001 | r001 | **已新建**（approved） | 补齐账户模块的行为与文案事实源 |
-| ~~`docs/02-modules/r001-summaries.md`~~ → `docs/99-archive/r001-ahead-m4-summaries.md` | r001 | **M4** | **已归档**（backlog） | 提前产出（属 M4），已按 §8.3 B 归位 |
-| ~~`docs/02-modules/r001-summaries-features.md`~~ → `docs/99-archive/r001-ahead-m4-summaries-features.md` | r001 | **M4** | **已归档**（backlog） | 同上 |
+| 原 `r001-summaries.md`（历史注记）→ `docs/99-archive/r001-ahead-m4-summaries.md` | r001 | **M4** | **已归档**（backlog） | 提前产出（属 M4），已按 §8.3 B 归位 |
+| 原 `r001-summaries-features.md`（历史注记）→ `docs/99-archive/r001-ahead-m4-summaries-features.md` | r001 | **M4** | **已归档**（backlog） | 同上 |
 | `docs/03-decisions/` ADR-0001~0006 | 混合 | 决策记录 | 0001~0003/0005/0006 accepted；0004 proposed（P11 暂缓） | 正常 |
 
 **结论**：跳步发生在「总设计（架构页）仍作废未重写」的情况下先产出了模块级功能/实现设计，且把 M4 的纪要设计、M2/M3 的房间能力混进了 r001 命名空间。
@@ -132,7 +135,7 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 方案 | 内容 | 代价 | 结果 |
 | --- | --- | --- | --- |
 | **A 轻标注** | 文件不动；纪要两页标 `status: backlog` + 顶部注明「M4 设计预告，非本轮方案」；房间两页把 M2/M3 小节标为「M2 预告」 | 零搬迁；代价是「跨轮内容混页」长期存在，之后每轮都要读大页 | 快，但不符合「一页一轮次」 |
-| **B 彻底归位**（建议） | ① 纪要两页 `git mv` 到 `docs/99-archive/` 标 `status: backlog`（M4 立轮次时移回 `02-modules/` 并改名）；② 房间两页中 M2/M3 项（邀请/踢人/角色/移交）拆到 `docs/99-archive/r001-ahead-m2-m3-rooms.md`，r001 页只留 M1 项；③ 同步 README 与互链引用 | 一次搬迁 + 引用同步（当前引用仅 README、页面互链、本页，成本低） | 目录即真相：`01-architecture/` 只放本轮总设计、`02-modules/` 只放本轮模块，未开轮次的未来设计一律 `99-archive/` 标 backlog |
+| **B 彻底归位**（建议，历史注记） | ① 纪要两页 `git mv` 到 `docs/99-archive/` 标 `status: backlog`（M4 立轮次时移回 `02-modules/` 并改名）；② 房间两页中 M2/M3 项（邀请/踢人/角色/移交）拆到 `docs/99-archive/` 的归档页（2026-09-18 已随 r002 移回），r001 页只留 M1 项；③ 同步 README 与互链引用 | 一次搬迁 + 引用同步（当前引用仅 README、页面互链、本页，成本低） | 目录即真相：`01-architecture/` 只放本轮总设计、`02-modules/` 只放本轮模块，未开轮次的未来设计一律 `99-archive/` 标 backlog |
 
 拍板 B 后立即执行，然后**回到总设计**：重写 `docs/01-architecture/r001-app-architecture.md`（React + Python + PostgreSQL 的总体架构）。
 
@@ -152,7 +155,7 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 动作 | 结果 |
 | --- | --- |
 | 纪要两页归档 | `git mv` → `docs/99-archive/r001-ahead-m4-summaries.md`、`r001-ahead-m4-summaries-features.md`；两页 `status: backlog` + 顶部归位注记 |
-| 房间两页剥离 M2/M3 | 抽出 M2 内容 → `docs/99-archive/r001-ahead-m2-m3-rooms.md`（实现页 37 行：邀请/踢人/角色/移交/livekit 段；功能页 F-06/F-07/F-10/F-11 及按钮矩阵行、文案行、FQ-3/FQ-6） |
+| 房间两页剥离 M2/M3 | 抽出 M2 内容到归档页（历史注记：实现页 37 行含邀请/踢人/角色/移交/livekit 段；功能页 F-06/F-07/F-10/F-11 及按钮矩阵行、文案行、FQ-3/FQ-6）；**2026-09-18 已随 r002 移回 `docs/02-modules/r002-livekit*.md`** |
 | 引用同步 | README 索引、`r001-rooms.md`（2 处）、`r001-rooms-features.md`（1 处）改为归档路径；全库无指向旧路径的引用 |
 | 范围收敛 | r001 = M1：建房 / 列表 / 详情 / 申请 / 批准 / 拒绝 / 离开 / 结束（详情页只读展示最近 20 条消息；写入与实时收发属 M3） |
 | 决策入档 | P9=A（本机安装）、P3′=C（Cloud 为主 + 自建留档） |
@@ -164,11 +167,12 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 项 | 类型 | 去向 |
 | --- | --- | --- |
 | ~~前端 9 步演示（含未登录访问 `/rooms/new` 的引导与 `returnTo` 回跳）~~ | ~~本轮未完成的验收项~~ | **2026-09-18 已闭合并取证（需求单 §3.1 的 E9 / E10）** |
-| 列表分页 `limit/offset` 无专门用例（用例只验了 `total` 与筛选） | 测试欠账（低风险） | r002 顺手补一条分页用例 |
-| 房间码冲突重试 3 次的分支无用例（碰撞概率极低） | 测试欠账（低风险） | r002 用可注入的 `new_code` 打桩补一条 |
+| 列表分页 `limit/offset` 无专门用例（用例只验了 `total` 与筛选） | 测试欠账（低风险） | **已并入 r002 偿还**（需求单 §10 的 cp-r002-2 判据） |
+| 房间码冲突重试 3 次的分支无用例（碰撞概率极低） | 测试欠账（低风险） | **已并入 r002 偿还**（需求单 §10 的 cp-r002-2 判据） |
 | 房间结束后 `myRole` 为 `null`（历史角色不显示徽标，如「曾是协管」） | 行为待定 | r002 决定是否在只读视图显示历史角色 |
 | `pytest` 输出 Starlette/httpx 弃用告警（提示 `httpx2`） | 上游噪音 | 待 starlette 正式版；届时升 `httpx` |
-| LiveKit：Cloud 项目与 Token 签发、`max_participants` 兜底、踢人（Cloud 上移除即失效 vs 自建只能短 TTL）、角色任命/移交、邀请（`invites` 表已建未用） | M2 范围 | 开 r002 时从 `docs/99-archive/r001-ahead-m2-m3-rooms.md` 移回并改前缀 |
+| LiveKit：Cloud 项目与 Token 签发、`max_participants` 兜底、踢人（Cloud 上移除即失效 vs 自建只能短 TTL）、角色任命/移交 | M2 范围 → **r002 进行中** | 设计已归位至 `docs/02-modules/r002-livekit.md`；实现按需求单 §10 推进 |
+| 邀请（`invites` 表已建未用） | 延后 | 拆出为 `docs/99-archive/r002-ahead-invites.md`（`status: backlog`），不进 r002 |
 | 群聊实时收发落库、举手、焦点发言、屏幕共享与「焦点 × 共享」优先级规则 | M3 范围 | 按 §3 里程碑表推进 |
 | LLM 纪要（触发链路、Prompt 契约、落库与重试） | M4 范围 | 设计与实现方案已在 `docs/99-archive/r001-ahead-m4-summaries*.md` |
 | 加分项：断线重连恢复、录制转写、Compose、管理后台、录屏 | M5 增量 | 按剩余时间取舍 |

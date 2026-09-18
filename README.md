@@ -2,13 +2,16 @@
 
 围绕一门学习主题的多人音视频小组讨论室：账户、房间、等候室审批、三种角色权限、群聊、举手与焦点发言、屏幕共享、服务端踢人、房间结束后的 LLM 讨论纪要。
 
-> 当前状态：**r001 已关闭（需求单 status: closed），待人合并**。核心闭环全部落地并验证：数据层与种子、账户会话、建房 / 列表 / 详情 / 加入申请 / 批准 / 拒绝 / 撤回 / 离开 / 结束、前端 5 页与左侧边栏外壳、真实 HTTP 冒烟。证据：`pytest` 72 项、冒烟 22 项、前端类型检查与构建全绿、9 步浏览器实操（需求单 §3.1 的 E1~E10）；轮次档案见 `docs/rounds/r001-skeleton/`。
+> 当前状态：**r001 已关闭并合入 `main`（`round-r001-done`，`main` = `c189a87`）；r002（M2 实时房间）设计已出、待批准**。
+> r001 已落地：数据层与种子、账户会话、建房 / 列表 / 详情 / 加入申请 / 批准 / 拒绝 / 撤回 / 离开 / 结束、前端 5 页与左侧边栏外壳、真实 HTTP 冒烟。证据：`pytest` 72 项、冒烟 22 项、前端类型检查与构建全绿、9 步浏览器实操（需求单 §3.1 的 E1~E10）；轮次档案见 `docs/rounds/r001-skeleton/`。
+> r002 设计入口：需求单 `docs/00-requirements/r002-livekit-room.md`、总设计增量 `docs/01-architecture/r002-realtime-architecture.md`、模块页 `docs/02-modules/r002-livekit.md` 与 `r002-livekit-features.md`。
 
 ## 项目地图
 
 | 位置 | 内容 |
 | --- | --- |
 | `docs/00-project/global-roadmap.md` | 项目级规划：终点、里程碑与验收点 |
+| `docs/rounds/` | 轮次档案（`rNNN-*/`：design / changes / review / CR） |
 | `docs/00-requirements/` | 需求单（`rNNN-*.md`）与变更记录 |
 | `docs/01-architecture/` | 总体架构、模块图、数据流 |
 | `docs/02-modules/` | 每个模块一份：设计 + 实现 |

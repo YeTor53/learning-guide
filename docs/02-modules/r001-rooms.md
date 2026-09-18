@@ -13,7 +13,7 @@ updated: 2026-09-17
 本文对三项待拍板保持中立，只在 §10 标出分支点：LiveKit 来源（P3′）、PostgreSQL 落地（P9）、后端框架与迁移工具（P10）。
 
 > 功能行为、交互状态、按钮与提示文案以 **功能页** `docs/02-modules/r001-rooms-features.md` 为准；本页只讲怎么实现（数据模型 / 接口 / 函数路径）。
-> **范围**：本文只覆盖 r001（M1）；邀请/踢人/角色/移交等 M2 内容已移至 `docs/99-archive/r001-ahead-m2-m3-rooms.md`（`status: backlog`）。
+> **范围**：本文只覆盖 r001（M1）；踢人/角色任命/移交已在 r002 落地（见 `docs/02-modules/r002-livekit.md`），邀请仍延后（见 `docs/99-archive/r002-ahead-invites.md`，`status: backlog`）。
 
 ## 1. 范围与里程碑归属
 
@@ -23,7 +23,8 @@ updated: 2026-09-17
 | 加入申请：提交 / 列表 / 批准 / 拒绝 | M1 | ✅ |
 | 离开房间、结束房间（含连带动作） | M1 | ✅ |
 | 入房环节「房间已满」提示、音视频/屏幕共享/举手/焦点（LiveKit 能力） | M2/M3 | 不在本文（见各自能力页） |
-| 房间码与邀请（限时链接）、踢人、角色任命、Host 移交 | M2 | **已移出本文** → `docs/99-archive/r001-ahead-m2-m3-rooms.md` |
+| 踢人、角色任命、Host 移交 | M2 → **r002** | 已移出本文 → `docs/02-modules/r002-livekit.md` |
+| 邀请（限时链接 / 房间码） | 延后 | 仍在 backlog → `docs/99-archive/r002-ahead-invites.md` |
 | 文字群聊实时收发 | M3 | 本文只保留「详情页只读展示最近 20 条」（表与读路径）；写入与实时收发属 M3 |
 
 明确不做：房间删除、重开已结束房间、房间自动结束、公网部署、多租户。
@@ -249,7 +250,7 @@ backend/
 
 事务约定：`create_room / approve_join_request / reject_join_request / leave_room / end_room / kick_member / set_member_role / transfer_host / redeem_invite` 全部在**单个事务**内完成（service 内 `with conn.transaction():`）；只读函数不显式开事务。
 
-> 本页不设 §6.5：原 §6.5 `app/services/livekit.py` 属 M2，已随邀请/踢人一起移出 → `docs/99-archive/r001-ahead-m2-m3-rooms.md` §6.5。
+> 本页不设 §6.5：原 §6.5 `app/services/livekit.py` 属 M2，已随踢人/角色一起移出 → `docs/02-modules/r002-livekit.md` §6.4。
 
 ### 6.6 `app/schemas/rooms.py`（Pydantic v2）
 

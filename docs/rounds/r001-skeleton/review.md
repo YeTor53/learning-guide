@@ -48,4 +48,4 @@ cd frontend && npx tsc --noEmit && npm run build
 
 ## What's next
 
-r002 = M2：LiveKit 接线（服务端签 Token、`max_participants` 兜底、踢人的 Token 失效分支）、批准后真正进房、三角色权限矩阵落地、踢人；设计起点见 `docs/99-archive/r001-ahead-m2-m3-rooms.md`。
+r002 = M2：LiveKit 接线（服务端签 Token、`max_participants` 兜底、踢人的 Token 失效分支）、批准后真正进房、三角色权限矩阵落地、踢人；轮次设计见 `docs/rounds/r002-livekit/design.md`（模块页 `docs/02-modules/r002-livekit.md`）。
