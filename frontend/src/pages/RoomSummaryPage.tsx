@@ -7,6 +7,7 @@
  * - 正文按 markdown 纯文本渲染（`white-space: pre-wrap`，不引入 markdown 依赖）。
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { AlertCircle, ArrowLeft, FileText, RefreshCw, Sparkles } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
@@ -29,15 +30,28 @@ export default function RoomSummaryPage() {
   const myRole = room?.myRole ?? room?.myRoleAny ?? null // 结束后 myRole 为空，用 myRoleAny 兜底（r008）
   const canManage = myRole === 'host' || myRole === 'moderator'
 
+  // 错误提示走显式状态：不依赖 mutation.error 的引用比较（首轮实测过这一步，提示块不渲染）
+  const [notConfigured, setNotConfigured] = useState(false)
+  const [errorText, setErrorText] = useState<string | null>(null)
+
   const generate = useMutation({
     mutationFn: () => summaryApi.generate(id),
     onSuccess: () => {
+      setNotConfigured(false)
+      setErrorText(null)
       queryClient.invalidateQueries({ queryKey: ['room-summary', id] })
+    },
+    onError: (err: unknown) => {
+      if (err instanceof ApiError && err.code === 'LLM_NOT_CONFIGURED') {
+        setNotConfigured(true)
+        setErrorText(null)
+        return
+      }
+      setNotConfigured(false)
+      setErrorText(err instanceof ApiError ? err.message : '生成失败，请稍后重试')
     },
   })
 
-  const error = generate.error
-  const notConfigured = error instanceof ApiError && error.code === 'LLM_NOT_CONFIGURED'
   const summary = summaryQuery.data?.summary ?? null
 
   return (
@@ -83,10 +97,10 @@ export default function RoomSummaryPage() {
             </span>
           </div>
         )}
-        {error && !notConfigured && (
+        {errorText && (
           <div className="alert" role="alert">
             <AlertCircle {...ICON} style={{ marginTop: 2, flex: '0 0 16px' }} />
-            {error instanceof ApiError ? error.message : '生成失败，请稍后重试'}
+            {errorText}
           </div>
         )}
 

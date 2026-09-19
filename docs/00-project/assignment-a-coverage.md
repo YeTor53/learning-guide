@@ -12,7 +12,7 @@ updated: 2026-09-19
 
 ## 1. 结论（2026-09-19）
 
-- **必做：13 / 15 条完成**；两个缺口：① **限时邀请链接/房间码（含过期）** ② **会后产出：LLM 讨论纪要链路**（含 `session_summaries` 表与详情页查看）。
+- **必做：14 / 15 条完成**（2026-09-19 更新：**LLM 纪要链路已落地并真机取证**）；剩一个缺口：① **限时邀请链接/房间码（含过期）**（r008 cp-3 正在做）。
 - **加分：0 / 5 条完成**（「断线重连后举手/焦点恢复」为**部分**：状态落库 + 重连/聚焦刷新 + 30 秒兜底已做，本地真断演练未做）。
 - **交付物：3 / 4 项齐**；缺「使用的 AI 工具与模型列表」。
 - 另有两处**文档漂移**需修：README 写「`pytest` 95 项 / `schema_migrations` 2 / 示例主题 3 个」，现为 **113 项 / 迁移 6 个 / 主题 14 个**。
@@ -30,8 +30,8 @@ updated: 2026-09-19
 | 举手：实时同步 + 列表展示 + 协管/房主可放下他人举手 | **完成** | r004；`services/hands.py`（`lower_hand` by other）+ 路由「房主/协管放下他人的举手」+ 抽屉可见 |
 | 焦点发言：指定焦点、画面放大、取消恢复、**与共享并存的优先级规则** | **完成** | r004；`services/focus.py`、`FocusBadge`，ADR-0014 写明优先级并按规则实现 |
 | 服务端管控：LiveKit Server API 真踢人（非前端假踢） | **完成** | r002；`livekit.remove_participant` + `services/rooms.kick_member` + `livekit_applied` 如实标记 |
-| **会后产出：结束后自动/一键生成讨论纪要（LLM API）并落库、详情页可查看** | **未做** | `.env.example` 已留 `LLM_*` 键位、README 写「纪要：DeepSeek」，但**无代码**：无 `session_summaries` 表、无服务、无路由、无前端页 |
-| 数据层：可运行 Schema + 迁移/初始化；至少含 users / rooms / room_members / join_requests / chat_messages / **session_summaries** | **部分** | 前 5 张齐（+ `room_hand_raises` / `room_focus` / `invites`），迁移 6 个；**缺 `session_summaries`** |
+| **会后产出：结束后自动/一键生成讨论纪要（LLM API）并落库、详情页可查看** | **完成（r008，2026-09-19）** | 迁移 `007_r008_session_summaries` + `services/summary.py`（唯一 LLM 出口，失败留痕）+ `POST/GET /rooms/{id}/summary` + 前端纪要页（`/rooms/{id}/summary`，已结束后卡片入口）；真机生成 **6.0 秒 / 632 字 / 不编造** |
+| 数据层：可运行 Schema + 迁移/初始化；至少含 users / rooms / room_members / join_requests / chat_messages / **session_summaries** | **完成** | 六张必备表齐（+ `room_hand_raises` / `room_focus` / `invites`），迁移 **7 个** |
 | 种子数据：一键演示账号 + 示例房间 + 历史消息 | **完成** | `002_seed.sql` + `db_init --reset --seed`（3 演示账号 / 3 房间 / 历史消息） |
 | 基础自动化验证（≥1 API/集成测试或冒烟：创建用户→建房→签发 Token→写聊天→**生成纪要**） | **部分** | `pytest` **113 passed**；`smoke` **PASS 40/40**（真实 HTTP，含建房/取票/聊天/满员拒绝/进出留痕）；**缺「生成纪要」一步**（因上一项未做） |
 | 设计说明：架构 / 权限矩阵 / 表结构 / 两个自定义能力 / 等候室与踢人 / **纪要生成链路** / 失败与边界 / 安全 / 未完成项 | **部分** | docs 极全：`01-architecture/`、`02-modules/`（逐轮实现页+功能页）、`03-decisions/`（ADR-0009~0017）、教学页；**纪要链路无内容可写** |
