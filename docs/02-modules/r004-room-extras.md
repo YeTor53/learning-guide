@@ -9,7 +9,7 @@ updated: 2026-09-19
 
 <!-- overview -->
 本页是 r004（M3）的**实现事实**：文件、签名、SQL、边界、验证证据。设计与口径见 `docs/rounds/r004-room-extras/design.md`；需求与验收见 `docs/00-requirements/r004-room-extras.md`。
-**当前进度**：cp-4（数据层 + 后端）、cp-5（前端实时层）已完成；cp-6（前端界面）落地后在本页追加。
+**当前进度**：cp-4（数据层 + 后端）、cp-5（前端实时层）、cp-6（前端界面）已完成；cp-7（取证 / 教学页 / 收官）待做。
 
 ## 1. 文件与分层落点
 
@@ -141,9 +141,50 @@ room_focus(id PK, room_id FK→rooms, subject_user_id FK→users NULL, actor_use
 - **双浏览器真机（两个真实浏览器上下文，同一个 LiveKit 房间 `room_6026ed81aee50a24`）**：两端 `__lgRoom.state === 'connected'`；A 在 `lg.chat` 发布 `{v:1,message:{id:'probe-1'}}` → **B 收到**（`topic=lg.chat`、`from=usr_demo_host`、正文逐字一致）；B 反向发布 → **A 收到**；同源 HTTP `POST /messages` → 201、`GET /messages` → 200 且能回读。
 - **限制（如实）**：`lg.hands` / `lg.focus` / `lg.screen.stop` 三条 topic 只做了载荷形状与代码路径检查，双端实测随 cp-6 的界面一起做（那时才有按钮可点）。
 
+## 10. 前端界面（cp-6）
+
+### 10.1 文件与落点
+
+| 文件 | 变化 | 关键点 |
+| --- | --- | --- |
+| `components/live/stageLayout.ts`（新） | 纯函数 | **全仓唯一**决定「谁被放大、缩格怎么排、框多大」的地方：焦点优先级（ADR-0014）+ 尺寸阶梯（k≤3 单列 / 4~6 双列 / 7 三列 / 竖屏或挤不下→底部横条）+ `metrics` |
+| `components/live/LiveStage.tsx` | 重写 | 只渲染 `computeStageLayout` 的结果；缩格条 4 种模式类名；焦点/共享徽标；「在册但离线」的焦点用头像占位；自带「停止共享」（自己的共享） |
+| `components/live/FocusBadge.tsx`（新） | 徽标 | `.chip-focus`（Crosshair）/ `.chip-share`（MonitorUp）；只标注**人为**状态，说话者不标注 |
+| `components/live/ParticipantTile.tsx` | 扩展 | 新增 `badge` 与 `displayNameOverride` |
+| `components/live/ChatPanel.tsx` + `MessageBubble.tsx`（新） | 讨论区 | Enter 发送 / Shift+Enter 换行 / 500 字计数 / 失败重发 / 更早消息分页 / 时间只在间隔 > 5 分钟时显示 |
+| `components/live/RoomSidePanel.tsx` | 双 tab | 「讨论」（默认：举手条 + ChatPanel）与「成员」（原治理内容）；成员行新增「给焦点 / 取消焦点」「请求停止共享」 |
+| `components/live/DeviceBar.tsx` | 两颗新按钮 | 「举手 / 放下手」（高亮 + 一次性脉冲）、「共享屏幕 / 停止共享」 |
+| `pages/RoomLivePage.tsx` | 装配 | 4 个 hook 接线；状态条「共享 名称 / 焦点 名称 / 焦点已失效」；抽屉按钮未读徽标（`9+` 封顶）；停止共享提示 |
+| `styles/global.css` | 令牌与样式 | §8.9 令牌全表落库；`.chip-focus`/`.chip-share`；缩格固定 176×99 + 四种模式；聊天与举手样式；`prefers-reduced-motion` 扩展 |
+
+### 10.2 实现在意过的两件事
+
+1. **上缘线不能用 box-shadow 做动画**：先写的 `@keyframes` 直接动 `box-shadow`，而动画的填充值优先级高于静态声明 → 共享格的 3px 永远不生效（实测只测到 2px）。改为用 `::before` 画线（2px，共享 3px），动画只做 `scaleX + opacity`。实测：共享格 `::before` 高度 = **3px**、颜色 `rgb(124,240,196)`。
+2. **ChatPanel 的副作用只依赖长度**：`onChanged` 每次都换引用，若进依赖数组会每次渲染都跑；实现里只依赖 `rows.length`，并由父组件传稳定回调。
+
+### 10.3 证据（对应需求单 §5 的 E8~E14）
+
+双浏览器真机（Playwright 两个上下文 + 三个额外成员上下文，同一房间；截图在 `%TEMP%\lg_cp6\`）：
+
+| 条目 | 实测 |
+| --- | --- |
+| E8 群聊双端 | A 点发送 → A 列表出现该条；B 端 1 秒内收到同一条（另跑一次诊断：A/B 两端正文数组逐字相同，含 UI 发送与裸通道两种路径） |
+| E9 刷新与库一致 | 库 `GET /messages` 3 条 vs 刷新后页面 3 条，**内容数组完全相同** |
+| E10 举手双端 | B 点「举手」→ B 按钮变「放下手」；A 端出现「正在举手：王一诺」+「放下 王一诺」；A 放下 → 两端回到未举手 |
+| E11 焦点双端 | A 给 B 焦点 → A 端徽标「焦点 · 王一诺」、B 端「焦点 · 你」、A 状态条「焦点 王一诺」；取消后徽标消失 |
+| E12 共享与优先级 | B 共享 → A 端徽标「共享 · 王一诺」、状态条「共享 王一诺」、共享格上缘线 3px；**「共享中说话不夺焦点」未单独实测**（测试环境无人出声，且该断言由 `computeStageLayout` 的优先级决定，属 cp-7 可补的人工项） |
+| E13 停他人共享 | A（房主）点「请求停止共享」→ B 端按钮回到「共享屏幕」、A 端共享徽标数 0、B 端提示「房主请求你停止共享屏幕（已为你停止）」 |
+| E14 布局动力学 | 5 人在线（焦点外 4 格）→ rail 类名 `live-rail-double`、缩格 4 个且**每个都是 176×99**、焦点格 1016×572；竖屏/满员的横条模式由 `railMode='strip'` 决定（数字量测见 cp-7） |
+| E14b reduced-motion | `emulate_media(reduced_motion=reduce)` 后焦点格 `::before` 与聊天气泡 `animation-name = none` |
+
+### 10.4 顺带修的一个操作面问题
+
+`RoomLivePage` 的抽屉按钮文案由「成员与管理」改为「**讨论与成员**」（现在它是两个 tab 的入口），`aria-label`/`title` 同步带上未读数与门口等待数。
+
 ## 8. 变更记录
 
 | 日期 | 轮次 | 变更 | 依据 |
 | --- | --- | --- | --- |
+| 2026-09-19 | r004 `cp-6` | 追加 §10 前端界面：`stageLayout` 纯函数 + 四级 rail + 徽标 + 讨论区 + 双 tab + 控制坞两颗新按钮 + 令牌落库；记录两处实现坑与 E8~E14 双浏览器证据 | design §5.6、§7、§8；需求单 §5 |
 | 2026-09-19 | r004 `cp-5` | 追加 §9 前端实时层：5 个 hook + `roomExtras` API + dev-only 调试句柄；记录协议收敛规则与双浏览器真机证据 | design §5.5、§6；需求单 E7 |
 | 2026-09-19 | r004 `cp-4` | 建页：迁移 004 + 仓储 + 三条 service + 8 条路由 + 结束房间连带 + 10 个用例；记录 3 处实现差异与迁移工具修复 | design §3~§5、需求单 §5 E1~E6 |

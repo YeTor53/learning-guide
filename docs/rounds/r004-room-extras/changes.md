@@ -19,7 +19,7 @@ updated: 2026-09-19
 | cp-r004-3 | 界面缺陷两项（侧边栏竖屏 + 筛选条上移）+ ADR-0015 | **完成 2026-09-19** | 见本轮 cp-3 提交 | 见下方「cp-3 证据」 |
 | cp-r004-4 | 迁移 004 + 消息/举手/焦点接口 + `end_room` 连带 + 单测 | **完成 2026-09-19** | 见本轮 cp-4 提交 | `pytest` **105 passed**（基线 95 + 新增 10）；`smoke` 29/29；`db_init` 应用 003+004；活服务探针 9 项全通过（见 §2.2） |
 | cp-r004-5 | 前端实时层（`useDataChannel` + 四 hooks + `roomExtras` API + dev-only 调试句柄） | **完成 2026-09-19** | 见本轮 cp-5 提交 | `tsc`/`build` exit 0；双浏览器数据通道双向收发实测；`__lgRoom` 生产产物 0 命中（见 §2.3） |
-| cp-r004-6 | 前端界面（抽屉双 tab / 举手 / 焦点 / 共享 / 优先级 / 视觉） | planned | — | 双浏览器 E8~E14 |
+| cp-r004-6 | 前端界面（抽屉双 tab / 举手 / 焦点 / 共享 / 优先级 / 视觉 + 令牌落库） | **完成 2026-09-19** | 见本轮 cp-6 提交 | 双浏览器 E8~E14 实测（见 §2.4） |
 | cp-r004-7 | 取证 + 教学页 + 审查报告 + 收官 | planned | — | E16~E20 |
 
 ## 2. 文件 × 模块 × 文档锚点
@@ -42,11 +42,11 @@ updated: 2026-09-19
 | `frontend/src/api/roomExtras.ts`（新） | 前端 | 8 个 HTTP 封装 + Hand/Focus 类型 | 实现页 §9.1 | landed（cp-5） |
 | `frontend/src/hooks/useRoomConnection.ts`（改动） | 前端 | dev-only `window.__lgRoom`（U15） | 实现页 §9.1 | landed（cp-5） |
 | `frontend/src/api/roomExtras.ts` | 前端 | HTTP 封装 | 实现页 §4 | planned（cp-5） |
-| `frontend/src/components/live/{ChatPanel,MessageBubble,FocusBadge}.tsx` | 前端 | 新组件 | 功能页 F-18~F-21 | planned（cp-6） |
-| `frontend/src/components/live/{RoomSidePanel,DeviceBar,LiveStage}.tsx`、`pages/RoomLivePage.tsx` | 前端 | 抽屉双 tab / 新按钮 / 优先级 / 装配 | 功能页 §4.2 按钮矩阵 | planned（cp-6） |
+| `frontend/src/components/live/{ChatPanel,MessageBubble,FocusBadge}.tsx`（新）+ `stageLayout.ts`（新） | 前端 | 讨论区 / 单条消息 / 徽标 / **唯一**的布局派生函数 | 功能页 F-18~F-22、实现页 §10 | landed（cp-6） |
+| `frontend/src/components/live/{RoomSidePanel,DeviceBar,LiveStage,ParticipantTile}.tsx`、`pages/RoomLivePage.tsx` | 前端 | 双 tab / 举手与共享按钮 / 按 `computeStageLayout` 渲染 / 状态条指示与未读 / 装配 | 功能页「按钮矩阵」 | landed（cp-6） |
 | `frontend/src/pages/RoomsPage.tsx` | 前端 | 工具栏 DOM 上移到 hero 之前 | 功能页 §4.1 指路 + ADR-0015 | landed（cp-3） |
 | `frontend/src/App.tsx` + `components/SideBar.tsx` + `hooks/useNarrowStrip.ts`（新） | 前端 | 窄屏忽略折叠 + 隐藏折叠按钮 | ADR-0015 §3/§4 | landed（cp-3） |
-| `frontend/src/styles/global.css` | 风格 | 3 个令牌 + 2 处动效；**cp-3** 另加 hero 上内边距 32→16、工具栏下边距 20、竖屏块、窄屏横向条一行 | 风格指南 §12.1 | cp-3 landed（令牌待 cp-6） |
+| `frontend/src/styles/global.css` | 风格 | **cp-6**：§8.9 令牌全表（14 项）+ `.chip-focus`/`.chip-share` + 缩格固定尺寸与四种模式 + 聊天/举手样式 + `::before` 上缘线（2px/共享 3px）+ reduced-motion 扩展 | 风格指南 §12.3 | landed（cp-6） |
 | `backend/scripts/smoke.py` | 脚本 | r002 四步**已补**（实测 29/29）；r004 三步待 cp-7 | README / AGENTS `<check>`；证据见本表 cp-r004-2 行 | landed（cp-2） |
 | `docs/tutorials/r004-room-extras.md` + `r002-livekit-dev-guide.md` 补节 | 教学 | 使用者 + 开发者 | 自身 | planned（cp-7） |
 | `README.md` / `AGENTS.md` / `global-roadmap.md` / `00-requirements/README.md` / `glossary.md` | 项目级 | 状态、命令、台账、术语 | 自身 | planned（散在 cp-2/6/7） |
@@ -108,6 +108,27 @@ updated: 2026-09-19
 
 **顺带**：这次也验证了「HTTP 落库 + 广播加速」这条链路的两条腿都能在真实浏览器里跑通。
 
+## 2.4 cp-6 证据（前端界面，双浏览器真机）
+
+**手段**：Playwright 两个上下文（host / part）+ 三个额外成员上下文，全部通过 API 登录并进入同一房间「r003 权限对照房间」；截图在 `%TEMP%\lg_cp6\`。
+
+| 检查 | 实测结果 |
+| --- | --- |
+| 群聊双端（UI 发送） | A 点「发送」→ A 列表出现该条；B 端 1 秒内收到；诊断跑里 A/B 两端正文数组**逐字相同**（`["cp5 探针消息","cp6 双浏览器消息：你好","诊断消息-1"]`） |
+| 群聊裸通道 | A 用 `__lgRoom` 直接发 `lg.chat` → B 的监听收到同款 JSON（topic 字段正确） |
+| 举手双端 | B 点「举手」→ 按钮变「放下手」；A 端「正在举手：王一诺」+「放下 王一诺」；A 替他人放下后两端回到未举手 |
+| 焦点双端 | A 给 B 焦点 → A 徽标「焦点 · 王一诺」、B 徽标「焦点 · 你」、A 状态条「焦点 王一诺」；取消后徽标数 0 |
+| 共享 + 上缘线 | B 共享 → A 徽标「共享 · 王一诺」、状态条「共享 王一诺」、共享格 `::before` 高度 **3px**、颜色 `rgb(124,240,196)` |
+| 停他人共享（协作式） | A 点「请求停止共享」→ B 端按钮回「共享屏幕」、A 端徽标数 0、B 端提示「房主请求你停止共享屏幕（已为你停止）」 |
+| 刷新与库一致 | 库 3 条 vs 刷新后页面 3 条，内容数组完全相同 |
+| 布局阶梯（5 人） | rail 类名 `live-rail-double`、缩格 4 个且每个 **176×99**、焦点格 1016×572 |
+| 降级 | `reduced_motion=reduce` 焦点格 `::before` 与聊天气泡 `animation-name = none` |
+| tsc / build | 均 exit 0（1988 模块） |
+
+**本次修掉的一个真 bug**：上缘线原先用 `@keyframes` 动 `box-shadow`，而动画填充值优先级高于静态声明 → 共享格的 3px 永远不生效（实测只 2px）。改为 `::before` 画线（动画只做 `scaleX + opacity`）后实测 3px。
+
+**未做到（如实）**：① 「共享中有人说话不夺焦点」没单独实测（测试环境无人出声；该断言由 `computeStageLayout` 的优先级保证，列入 cp-7 人工项）② 竖屏/满员的**横条**模式只做了 `railMode='strip'` 的代码路径与设计表格对齐，尚未在竖屏下量测数字 ③ 共享用的是无头 Chromium 的自动桌面捕获（`--auto-select-desktop-capture-source=Entire screen`），**你真机点一次**才算最终确认。
+
 ## 3. 用户消息台账（首行回执的核对凭据）
 
 | 序号 | 日期 | 用户原话摘要 | 回执分类 | 单号 |
@@ -121,6 +142,8 @@ updated: 2026-09-19
 | 7 | 2026-09-19 | 「2」 | 批准（cp-3：先按代码分析改，事后复看） | 本表 §2.1 |
 | 8 | 2026-09-19 | 「继续」 | 批准（cp-4：按设计实现数据层与后端） | 本表 §2.2 + design §14 的 cp-4-1~4-5 |
 | 9 | 2026-09-19 | 「继续」 | 批准（cp-5：前端实时层） | 本表 §2.3 |
+| 10 | 2026-09-19 | 「不管」 | 免单（否决两项附带提议：skill patch 与 memory） | 回复已跳过 |
+| 11 | 2026-09-19 | （承接上条）继续 cp-6 | 批准（cp-6：前端界面与样式） | 本表 §2.4 |
 
 ## 4. 无文档变更的提交 / 文档整理记录
 

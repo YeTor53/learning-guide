@@ -4,10 +4,10 @@
  *             ADR-0011 条 4（外部调用）、§8.4 归因、§8.5a 准入判定、§8.9 重连、§8.10 设备保持、§8.11 专注态。
  * 口径：连接前**先取票**（服务端校验成员身份）→ 未获批不发连接请求；成功连接后由 SDK 驱动在场。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ArrowLeft, BellRing, Loader2, PanelRightOpen, RotateCw } from 'lucide-react'
+import { AlertCircle, ArrowLeft, BellRing, Crosshair, Loader2, MonitorUp, PanelRightOpen, RotateCw } from 'lucide-react'
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react'
 
 import { ApiError } from '../api/http'
@@ -17,11 +17,15 @@ import DeviceBar from '../components/live/DeviceBar'
 import LiveStage from '../components/live/LiveStage'
 import RoomSidePanel from '../components/live/RoomSidePanel'
 import { useActiveSpeaker } from '../hooks/useActiveSpeaker'
+import { useChatMessages } from '../hooks/useChatMessages'
 import { useChromeIdle } from '../hooks/useChromeIdle'
 import { useLocalDeviceState } from '../hooks/useLocalDeviceState'
+import { useHandRaise } from '../hooks/useHandRaise'
 import { useMicLevel } from '../hooks/useMicLevel'
 import { useOnlineIdentities } from '../hooks/useOnlineIdentities'
 import { useRoomConnection } from '../hooks/useRoomConnection'
+import { useRoomFocus } from '../hooks/useRoomFocus'
+import { useScreenShare } from '../hooks/useScreenShare'
 import { useRoomToken } from '../hooks/useRoomToken'
 
 const ICON = { size: 16, strokeWidth: 1.75 } as const
@@ -68,6 +72,43 @@ export default function RoomLivePage() {
   const onlineIds = useOnlineIdentities(connection.room, connection.status)
   const micLevel = useMicLevel(connection.room, devices.micEnabled && connection.status === 'connected')
   const chromeIdle = useChromeIdle(CHROME_IDLE_SECONDS, Boolean(speaker))
+
+  // r004（M3）：房内扩展能力。三者的「与库一致」由各自 hook 在 `connected` 时拉一次库保证（ADR-0013）
+  const localIdentity = connection.room.localParticipant?.identity ?? ''
+  const liveReady = connection.status === 'connected'
+  const chat = useChatMessages(connection.room, id, liveReady)
+  const hands = useHandRaise(connection.room, id, liveReady, localIdentity || null)
+  const focus = useRoomFocus(connection.room, id, liveReady)
+  const screen = useScreenShare(connection.room, connection.status)
+
+  // 未读：抽屉收起时累积，打开即清零（徽标只在状态条上，不弹 toast）
+  const [unread, setUnread] = useState(0)
+  const lastSeenRef = useRef(0)
+  useEffect(() => {
+    if (drawerOpen) {
+      lastSeenRef.current = chat.messages.length
+      setUnread(0)
+      return
+    }
+    setUnread(Math.max(0, chat.messages.length - lastSeenRef.current))
+  }, [chat.messages.length, drawerOpen])
+
+  // 焦点失效提示（§8.7 边界态）：焦点对象不再是**在册**成员 → 派生时已回落，这里给 3 秒可见提示
+  const focusMemberActive = Boolean(
+    focus.focus.subjectUserId && members.some((m) => m.userId === focus.focus.subjectUserId && m.status === 'active'),
+  )
+  const [focusLost, setFocusLost] = useState(false)
+  useEffect(() => {
+    if (!focus.focus.subjectUserId || focusMemberActive) return
+    setFocusLost(true)
+    const timer = window.setTimeout(() => setFocusLost(false), 3_000)
+    return () => window.clearTimeout(timer)
+  }, [focus.focus.subjectUserId, focusMemberActive])
+
+  // 协作式停止共享：收到房主/协管的请求 → 已自动停止，这里只提示一次
+  useEffect(() => {
+    if (screen.requestedBy) setNotice('房主请求你停止共享屏幕（已为你停止）')
+  }, [screen.requestedBy])
 
   const isManager = myRole === 'host' || myRole === 'moderator'
   // 申请列表（真源）：只有管理者需要，5 秒轮询——门口有人等时要能立刻看到（修：原来误读了 messages，抽屉永远显示空）
@@ -300,6 +341,20 @@ export default function RoomLivePage() {
                 {focusedLabel}
               </span>
             )}
+            {/* r004 §8.4：全局状态指示（抽屉收起时唯一能看到的地方）；共享优先，不并列 */}
+            {focusLost ? (
+              <span className="live-quiet mono">焦点已失效</span>
+            ) : screen.ownerId ? (
+              <span className="live-quiet mono" title="有人正在共享屏幕（共享画面占焦点格）">
+                <MonitorUp size={14} strokeWidth={1.75} style={{ verticalAlign: -2, marginRight: 4 }} />
+                共享 {members.find((m) => m.userId === screen.ownerId)?.displayName ?? screen.ownerId}
+              </span>
+            ) : focus.focus.subjectUserId ? (
+              <span className="live-quiet mono" title="房主/协管指定的发言焦点">
+                <Crosshair size={14} strokeWidth={1.75} style={{ verticalAlign: -2, marginRight: 4 }} />
+                焦点 {focus.focus.subjectName ?? ''}
+              </span>
+            ) : null}
           </div>
           <div className="live-statusbar-right">
             <span className={`live-badge live-badge-${connection.status}`}>
@@ -308,14 +363,15 @@ export default function RoomLivePage() {
             </span>
             <button
               className={`live-drawer-toggle${pendingCount > 0 ? ' has-pending' : ''}${attention ? ' live-attention' : ''}`}
-              aria-label={`成员与管理${pendingCount > 0 ? `，有 ${pendingCount} 条待处理申请` : ''}`}
+              aria-label={`讨论与成员${unread > 0 ? `，有 ${unread} 条未读消息` : ''}${pendingCount > 0 ? `，有 ${pendingCount} 条待处理申请` : ''}`}
               aria-expanded={drawerOpen}
-              title={pendingCount > 0 ? `门口有 ${pendingCount} 位在等待批准` : '成员与管理'}
+              title={`讨论与成员${unread > 0 ? `（${unread} 条未读）` : ''}${pendingCount > 0 ? ` · 门口 ${pendingCount} 位在等` : ''}`}
               onClick={() => setDrawerOpen((open) => !open)}
             >
               <PanelRightOpen {...ICON} />
-              成员与管理
-              {pendingCount > 0 && <span className="live-toggle-badge">{pendingCount}</span>}
+              讨论与成员
+              {unread > 0 && <span className="live-toggle-badge">{unread > 9 ? '9+' : unread}</span>}
+              {pendingCount > 0 && <span className="live-toggle-badge live-toggle-badge-warn">{pendingCount}</span>}
             </button>
           </div>
         </header>
@@ -362,8 +418,13 @@ export default function RoomLivePage() {
               room={room}
               connected={connection.status === 'connected' || connection.status === 'reconnecting'}
               members={members}
+              onlineIds={onlineIds}
               speakerIdentity={speaker?.identity ?? null}
-              localIdentity={connection.room.localParticipant?.identity ?? ''}
+              localIdentity={localIdentity}
+              focusUserId={focus.focus.subjectUserId}
+              screenOwnerId={screen.ownerId}
+              sharing={screen.sharing}
+              onStopShare={() => void screen.stop()}
             />
           )}
           {drawerOpen && room && (
@@ -374,6 +435,15 @@ export default function RoomLivePage() {
               onlineIds={onlineIds}
               requests={requestsQuery.data ?? []}
               busyId={busyId}
+              chat={chat}
+              myUserId={localIdentity || null}
+              hands={hands}
+              focus={focus}
+              screen={screen}
+              onChatChanged={() => {
+                lastSeenRef.current = chat.messages.length
+                setUnread(0)
+              }}
               onClose={() => setDrawerOpen(false)}
               onKick={(userId) => setConfirming({ userId, action: 'kick' })}
               onSetRole={doSetRole}
@@ -452,6 +522,10 @@ export default function RoomLivePage() {
           onRequestEnd={() => setConfirmingEnd(true)}
           onConfirmEnd={() => void doEnd()}
           onCancelEnd={() => setConfirmingEnd(false)}
+          handRaised={hands.mine}
+          sharing={screen.sharing}
+          onToggleHand={() => void (hands.mine ? hands.lower() : hands.raise())}
+          onToggleShare={() => void (screen.sharing ? screen.stop() : screen.start())}
         />
       </div>
     </LiveKitRoom>

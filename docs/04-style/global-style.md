@@ -184,3 +184,28 @@ updated: 2026-09-17
 ## 13. 变更记录
 
 - 2026-09-18 新增 §12（页面情绪取向与页面级令牌）与 §12.4 降级表：口径来自 `docs/rounds/r002-livekit/redirect-04.md`（用户批复「这项加入 r002 任务中」）。
+
+## 12.3 r004 令牌（房内扩展：布局 / 焦点 / 聊天 / 举手）
+
+事实源：`docs/rounds/r004-room-extras/design.md` §8.9（唯一来源）；本表随实现落进 `frontend/src/styles/global.css` 的 `:root`。
+
+| 令牌 | 默认值 | 作用 |
+| --- | --- | --- |
+| `--live-rail-width` | `176px` | 缩格宽（既有） |
+| `--live-rail-tile-h` | `99px` | 缩格高（= 176×9/16，替换「均分 1/3 高」的算法） |
+| `--live-rail-max-rows` | `3` | 单列最多几格，超过就加列 |
+| `--focus-min-width` | `480px` | 焦点格最小宽（低于它就把缩格条改成底部横条） |
+| `--focus-min-width-squeeze` | `320px` | 极窄屏兜底最小宽 |
+| `--focus-accent-line` / `--share-accent-line` | `2px` / `3px` | 焦点格 / 共享格上缘线宽（由 `::before` 绘制） |
+| `--focus-switch-duration` | `240ms` | 焦点易手 / 跨阈值重排的过渡 |
+| `--focus-line-in` | `300ms` | 上缘线的一次性展开 |
+| `--badge-inset` | `12px` | 徽标距焦点格左上角 |
+| `--live-focus-badge-bg` | `var(--live-surface)` | 徽标底材质 |
+| `--chat-bubble-own` | `rgba(124,240,196,0.30)` | 自己气泡的描边 |
+| `--chat-body-size` / `--chat-bubble-max` | `13px` / `420px` | 正文字号 / 单条最大宽 |
+| `--msg-enter` | `120ms` | 消息与徽标的入场时长 |
+| `--live-hand-active` / `--live-hand-line` | 强调色 12% / 35% | 举手激活态底色 / 描边 |
+| `--live-hand-pulse` | `2.4s` | 举手的一次性脉冲（不循环） |
+
+降级：`prefers-reduced-motion: reduce` 下取消上缘线展开、徽标与消息淡入、举手脉冲与所有尺寸过渡（仅保留颜色/透明度变化）。
+

@@ -850,6 +850,7 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 /* 焦点格：按比例限幅居中（上限由视口高推出），画面 contain 不裁切也不撑爆 */
 /* 焦点格：撑满可用宽、但高度被封顶（视口高推出）+ 按比例限宽，画面 contain 不裁切也不撑爆 */
 .live-tile-focus {
+  box-shadow: none; /* 上缘线由 ::before 画（见 r004 段落），这里不再用 inset box-shadow */
   flex: 1 1 auto;
   min-width: 0;
   width: auto;
@@ -1217,4 +1218,190 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 
 @media (prefers-reduced-motion: reduce) {
   .live-attention { animation: none; }
+}
+
+/* ==========================================================================
+   r004 · 房内扩展能力（群聊 / 举手 / 焦点 / 共享）
+   设计事实源：docs/rounds/r004-room-extras/design.md §8（样式与令牌）、§7.4（尺寸阶梯）
+   令牌是本轮的**唯一来源**：风格指南 §12.1 照抄这一节。
+   ========================================================================== */
+:root {
+  /* 布局动力学（§7.4 / §7.5）：缩格尺寸恒定，人数只改「数量与列数」 */
+  --live-rail-tile-h: 99px;        /* 缩格高 = 176 × 9/16 */
+  --live-rail-max-rows: 3;         /* 单列最多几格，超过就加列 */
+  --focus-min-width: 480px;        /* 焦点格最小宽：低于它就把缩格条改成底部横条 */
+  --focus-min-width-squeeze: 320px;/* 极窄屏兜底 */
+  --focus-switch-duration: 240ms;  /* 焦点易手 / 跨阈值重排的过渡 */
+  --focus-line-in: 300ms;          /* 焦点格上缘线的一次性展开 */
+  /* 焦点与共享的样式（§8.2~§8.4） */
+  --badge-inset: 12px;                         /* 徽标距焦点格左上角 */
+  --live-focus-badge-bg: var(--live-surface);  /* 徽标底：与状态条同一材质 */
+  /* 聊天（§8.6） */
+  --chat-bubble-own: rgba(124, 240, 196, 0.30);
+  --msg-enter: 120ms;
+  --chat-body-size: 13px;
+  --chat-bubble-max: 420px;
+  /* 举手（§8.6） */
+  --live-hand-active: rgba(124, 240, 196, 0.12);
+  --live-hand-line: rgba(124, 240, 196, 0.35);
+  --live-hand-pulse: 2.4s;         /* 一次性脉冲，不循环 */
+}
+
+/* ---------- 徽标变体（复用 .chip 体系）---------- */
+.chip-focus { border-color: var(--live-hand-line); background: var(--accent-soft); color: var(--accent); }
+.chip-share { border-color: var(--line); background: rgba(255, 255, 255, 0.06); color: var(--text); }
+.live-focus-badge {
+  position: absolute;
+  top: var(--badge-inset);
+  left: var(--badge-inset);
+  z-index: 3;
+  background: var(--live-focus-badge-bg);
+  backdrop-filter: blur(8px);
+  animation: live-badge-in var(--msg-enter) var(--ease) both;
+}
+@keyframes live-badge-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- 舞台与缩格的尺寸（§7.4）---------- */
+.live-stage { position: relative; }
+.live-focus-slot { display: flex; flex: 1 1 auto; justify-content: center; align-items: center; min-width: 0; }
+.live-tile-focus { max-width: min(100%, var(--focus-max-w, 100%)); }
+/* 上缘线：改由 ::before 画（若把动画放在 box-shadow 上，keyframes 会盖掉静态声明，共享的 3px 永远不生效） */
+.live-tile-focus::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--focus-accent-line, 2px);
+  background: var(--accent);
+  transform-origin: left center;
+  animation: live-focus-line-in var(--focus-line-in) var(--ease) both;
+  z-index: 2;
+}
+/* 共享格的上缘线更宽（3px）：区分「内容」与「人」（§8.2） */
+.live-tile-focus:has(.chip-share)::before { height: var(--share-accent-line, 3px); }
+@keyframes live-focus-line-in { from { transform: scaleX(0.25); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.live-tile-placeholder { border-style: dashed; }
+.live-share-self { position: absolute; right: var(--s-4); bottom: var(--s-4); z-index: 3; }
+
+/* 缩格：**固定尺寸**（不再按 1/3 高度均分——人一多就把格子压扁/藏起来） */
+.live-rail .live-tile { flex: 0 0 auto; width: var(--live-rail-width); height: var(--live-rail-tile-h); min-height: 0; }
+.live-rail-single { flex-direction: column; width: var(--live-rail-width); flex: 0 0 var(--live-rail-width); }
+.live-rail-double, .live-rail-triple {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  overflow-y: auto;
+}
+.live-rail-double { flex: 0 0 calc(var(--live-rail-width) * 2 + var(--live-stage-gap)); width: calc(var(--live-rail-width) * 2 + var(--live-stage-gap)); }
+.live-rail-triple { flex: 0 0 calc(var(--live-rail-width) * 3 + var(--live-stage-gap) * 2); width: calc(var(--live-rail-width) * 3 + var(--live-stage-gap) * 2); }
+
+/* 横条模式：竖屏 / 满员且焦点格会被挤到 480px 以下时（§7.4 最后一行） */
+.live-stage-strip { flex-direction: column; align-items: stretch; justify-content: flex-start; }
+.live-rail-strip {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--live-stage-gap);
+  width: 100%;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+/* 过渡：焦点易手与跨阈值重排（§7.6） */
+.live-focus-slot, .live-rail, .live-tile-focus { transition: width var(--focus-switch-duration) var(--ease), max-width var(--focus-switch-duration) var(--ease); }
+
+/* ---------- 控制坞：举手与共享 ---------- */
+.live-ctrl-hand-on {
+  background: var(--live-hand-active);
+  border-color: var(--live-hand-line);
+  color: var(--accent);
+  animation: live-hand-once var(--live-hand-pulse) var(--ease) 1;
+}
+@keyframes live-hand-once { 0% { box-shadow: 0 0 0 0 var(--live-hand-line); } 100% { box-shadow: 0 0 0 10px transparent; } }
+.live-ctrl-share-on { background: var(--live-hand-active); border-color: var(--live-hand-line); color: var(--accent); }
+
+/* ---------- 抽屉：双 tab（U1）---------- */
+.live-drawer-tabs { display: flex; gap: 4px; }
+.live-drawer-tab {
+  position: relative;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.live-drawer-tab.on { background: var(--accent-soft); border-color: var(--live-hand-line); color: var(--accent); }
+.live-toggle-badge-warn { background: var(--warn); color: #1a1205; }
+
+/* ---------- 讨论区（§8.6）---------- */
+.chat-panel { display: flex; flex-direction: column; gap: var(--s-3); }
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(52vh, 460px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.chat-empty, .chat-hint { margin: 0; font-size: 12px; color: var(--text-mute); }
+.chat-more { align-self: center; }
+.chat-row { display: flex; }
+.chat-row-mine { justify-content: flex-end; }
+.chat-bubble {
+  position: relative;
+  max-width: min(var(--chat-bubble-max), 78%);
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-strong);
+  font-size: var(--chat-body-size);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: chat-enter var(--msg-enter) var(--ease) both;
+}
+.chat-row-mine .chat-bubble { border-color: var(--chat-bubble-own); }
+@keyframes chat-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.chat-who { display: block; font-size: 12px; color: var(--text-mute); margin-bottom: 2px; }
+.chat-meta { display: flex; gap: 8px; align-items: center; justify-content: flex-end; min-height: 14px; }
+.chat-time { font-size: 12px; color: var(--text-mute); }
+.chat-retry { border: none; background: none; color: var(--danger); font-size: 12px; padding: 0; }
+.chat-bubble-failed { border-color: rgba(255, 107, 107, 0.55); }
+.chat-system { text-align: center; font-size: 12px; color: var(--text-mute); }
+.chat-input { display: flex; flex-direction: column; gap: 6px; }
+.chat-textarea {
+  min-height: 36px;
+  max-height: 96px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.chat-input-foot { display: flex; align-items: center; justify-content: space-between; }
+.chat-count { font-size: 12px; color: var(--text-mute); font-variant-numeric: tabular-nums; }
+.chat-count-near { color: var(--warn); }
+.chat-error { margin: 0; font-size: 12px; color: var(--danger); }
+.hand-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin-bottom: var(--s-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--live-hand-line);
+  background: var(--live-hand-active);
+  color: var(--accent);
+  font-size: 12px;
+}
+
+/* ---------- 降级：减少动效（含 r004 新增）---------- */
+@media (prefers-reduced-motion: reduce) {
+  .live-focus-slot, .live-rail, .live-tile-focus { transition: none; }
+  .live-tile-focus::before, .live-focus-badge, .chat-bubble, .live-ctrl-hand-on { animation: none; }
 }
