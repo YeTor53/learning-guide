@@ -22,6 +22,8 @@ import { useChromeIdle } from '../hooks/useChromeIdle'
 import { useLocalDeviceState } from '../hooks/useLocalDeviceState'
 import { useHandRaise } from '../hooks/useHandRaise'
 import { useMicLevel } from '../hooks/useMicLevel'
+import { useMicStates } from '../hooks/useMicStates'
+import { useRosterSync } from '../hooks/useRosterSync'
 import { useOnlineIdentities } from '../hooks/useOnlineIdentities'
 import { useRoomConnection } from '../hooks/useRoomConnection'
 import { useRoomFocus } from '../hooks/useRoomFocus'
@@ -70,6 +72,7 @@ export default function RoomLivePage() {
   const speaker = useActiveSpeaker(connection.room)
   const devices = useLocalDeviceState(connection.room, connection.status)
   const onlineIds = useOnlineIdentities(connection.room, connection.status)
+  const micStates = useMicStates(connection.room) // r006：麦徽标的真实状态源（ADR-0017 D1）
   const micLevel = useMicLevel(connection.room, devices.micEnabled && connection.status === 'connected')
   const chromeIdle = useChromeIdle(CHROME_IDLE_SECONDS, Boolean(speaker))
 
@@ -194,14 +197,21 @@ export default function RoomLivePage() {
     else void goBackToRooms()
   }
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['live-room', id] })
+  /** r006（ADR-0017 D2）：人数（房间详情）+ 待批（申请列表）一起重取 —— 别端动作与本端动作共用。 */
+  const refreshRoster = () => {
+    void queryClient.invalidateQueries({ queryKey: ['live-room', id] })
+    void queryClient.invalidateQueries({ queryKey: ['live-room-requests', id] })
+  }
+  /** 本端做完房间动作后广播一次：让别端秒级跟上（收端在 useRosterSync 里）。 */
+  const broadcastRoster = useRosterSync(connection.room, liveReady, refreshRoster)
 
   const doKick = async (userId: string) => {
     setBusyId(userId)
     try {
       const result = await livekitApi.kickMember(id, userId)
       setNotice(result.livekitApplied ? '已移出该成员' : '已移出该成员（实时断开未成功，对方可能仍在房间）')
-      refresh()
+      refreshRoster()
+      void broadcastRoster()
     } catch (error) {
       setNotice(error instanceof ApiError ? error.message : '操作失败，请重试')
     } finally {
@@ -215,7 +225,8 @@ export default function RoomLivePage() {
     try {
       await livekitApi.setMemberRole(id, userId, role)
       setNotice(role === 'moderator' ? '已设为协管' : '已取消协管')
-      refresh()
+      refreshRoster()
+      void broadcastRoster()
     } catch (error) {
       setNotice(error instanceof ApiError ? error.message : '操作失败，请重试')
     } finally {
@@ -228,7 +239,8 @@ export default function RoomLivePage() {
     try {
       await livekitApi.transferHost(id, userId)
       setNotice('已移交房主，你现在的角色是协管')
-      refresh()
+      refreshRoster()
+      void broadcastRoster()
     } catch (error) {
       setNotice(error instanceof ApiError ? error.message : '操作失败，请重试')
     } finally {
@@ -423,6 +435,7 @@ export default function RoomLivePage() {
               onlineIds={onlineIds}
               speakerIdentity={speaker?.identity ?? null}
               localIdentity={localIdentity}
+              micStates={micStates}
               focusUserId={focus.focus.subjectUserId}
               screenOwnerId={screen.ownerId}
               sharing={screen.sharing}
@@ -454,7 +467,8 @@ export default function RoomLivePage() {
                 try {
                   await roomsApi.approve(requestId)
                   queryClient.invalidateQueries({ queryKey: ['live-room-requests', id] })
-                  refresh()
+                  refreshRoster()
+      void broadcastRoster()
                 } catch (error) {
                   setNotice(error instanceof ApiError ? error.message : '操作失败，请重试')
                 }
@@ -463,7 +477,8 @@ export default function RoomLivePage() {
                 try {
                   await roomsApi.reject(requestId)
                   queryClient.invalidateQueries({ queryKey: ['live-room-requests', id] })
-                  refresh()
+                  refreshRoster()
+      void broadcastRoster()
                 } catch (error) {
                   setNotice(error instanceof ApiError ? error.message : '操作失败，请重试')
                 }

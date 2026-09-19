@@ -909,6 +909,13 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 /* 竖排缩格里的小格子：固定高，保持「退到边上」的层级 */
 .live-rail .live-tile { flex: 0 0 auto; height: calc((100% - 2 * var(--live-stage-gap)) / 3); min-height: 96px; }
 
+.live-tile-mic {
+  display: inline-flex;
+  align-items: center;
+  color: var(--danger);
+  flex: 0 0 auto;
+}
+
 .live-tile-bar {
   position: absolute;
   left: 10px;

@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from 'react'
 import { Track } from 'livekit-client'
+import type { Participant } from 'livekit-client'
 import { useTracks } from '@livekit/components-react'
 
 import type { Member, Role, Room } from '../../api/rooms'
@@ -25,6 +26,8 @@ interface Props {
   focusUserId: string | null
   /** 正在共享屏幕的人。 */
   screenOwnerId: string | null
+  /** r006（ADR-0017 D1）：`identity → isMicrophoneEnabled`（空表时按 participant 状态兜底）。 */
+  micStates: Record<string, boolean>
   sharing: boolean
   onStopShare: () => void
 }
@@ -51,12 +54,16 @@ export default function LiveStage({
   screenOwnerId,
   sharing,
   onStopShare,
+  micStates,
 }: Props) {
   const tracks = useTracks(
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }, { source: Track.Source.Camera, withPlaceholder: true }],
     { onlySubscribed: false },
   )
   const viewport = useViewport()
+  // 表里存的是 `isMicrophoneEnabled`（开麦=true），prop 要的是「是否静音」→ 这里取反
+  const micMutedOf = (participant: Participant): boolean =>
+    !(micStates[participant.identity] ?? participant.isMicrophoneEnabled)
   const byIdentity = new Map(members.map((member) => [member.userId, member]))
   const focusMemberActive = Boolean(
     focusUserId && members.some((member) => member.userId === focusUserId && member.status === 'active'),
@@ -113,6 +120,8 @@ export default function LiveStage({
               role={roleOf(focusIdentity)}
               isFocus
               speaking={focusIdentity === speakerIdentity}
+
+              micMuted={micMutedOf(focusTrack.participant)}
               badge={
                 layout.focus && layout.focus.kind !== 'speaker' && layout.focus.kind !== 'self' ? (
                   <FocusBadge
@@ -152,6 +161,8 @@ export default function LiveStage({
               publication={item.track.publication}
               role={roleOf(item.identity)}
               speaking={item.speaking}
+
+              micMuted={micMutedOf(item.track.participant)}
             />
           ))}
         </div>
