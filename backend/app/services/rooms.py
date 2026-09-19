@@ -169,6 +169,11 @@ def _system_message(conn: Connection, room_id: str, actor_id: str, body: str) ->
     )
 
 
+def post_system_message(conn: Connection, room_id: str, actor_id: str, body: str) -> None:
+    """公开薄封装：让其它 service（邀请）也能在**同一事务**里写房间事件消息（r008）。"""
+    _system_message(conn, room_id, actor_id, body)
+
+
 def assert_room_active(room: Optional[RoomRow]) -> RoomRow:
     """存在否则 `NOT_FOUND`；`active` 否则 `ROOM_ENDED`（前置拦截按此顺序）。"""
     if room is None:
