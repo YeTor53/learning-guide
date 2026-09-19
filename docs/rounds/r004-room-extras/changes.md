@@ -17,7 +17,7 @@ updated: 2026-09-19
 | cp-r004-1 | 阶段 1 文档先行（需求单 + 设计 + 架构增量 + ADR-0013/0014 + 档案骨架 + 索引行） | 完成 2026-09-19 | 见本提交 | 你批「按设计做」 |
 | cp-r004-2 | r003 收官回填 + 文档工程体检与三页导览 + 元数据修正 + `smoke.py` 补 r002 四步 | **完成 2026-09-19** | 见本轮 docs 提交 | 索引表 r003 转 closed；需求单 r003 转 closed；roadmap §7/§9 回填；`smoke.py` 实测 **PASS 29/29**（原 22/22，新增 7 项：成员取票 200 / 非成员 403 / 踢人 200+livekitApplied=True / 被移出后 403 / 被移出者 exit_reason=kicked / 结束后取票 409 / 已含结束 409） |
 | cp-r004-3 | 界面缺陷两项（侧边栏竖屏 + 筛选条上移）+ ADR-0015 | **完成 2026-09-19** | 见本轮 cp-3 提交 | 见下方「cp-3 证据」 |
-| cp-r004-4 | 迁移 004 + 消息/举手/焦点接口 + `end_room` 连带 + 单测 | planned | — | `pytest` 全绿 |
+| cp-r004-4 | 迁移 004 + 消息/举手/焦点接口 + `end_room` 连带 + 单测 | **完成 2026-09-19** | 见本轮 cp-4 提交 | `pytest` **105 passed**（基线 95 + 新增 10）；`smoke` 29/29；`db_init` 应用 003+004；活服务探针 9 项全通过（见 §2.2） |
 | cp-r004-5 | 前端实时层（`useDataChannel` + 四 hooks + `roomExtras` API） | planned | — | `tsc` 全绿 |
 | cp-r004-6 | 前端界面（抽屉双 tab / 举手 / 焦点 / 共享 / 优先级 / 视觉） | planned | — | 双浏览器 E8~E14 |
 | cp-r004-7 | 取证 + 教学页 + 审查报告 + 收官 | planned | — | E16~E20 |
@@ -31,11 +31,13 @@ updated: 2026-09-19
 | `docs/01-architecture/r004-realtime-extras-architecture.md` | 设计 | 通道与真相源的分层与时序 | 自身 | landed（cp-1） |
 | `docs/03-decisions/r004-adr-0013-*.md` / `r004-adr-0014-*.md` | 决策 | 通道真相源 / 焦点优先级 | 自身 | landed（cp-1） |
 | `docs/03-decisions/r004-adr-0015-home-first-screen.md` | 决策 | 首屏优先级 / 竖屏 hero 收敛 / 窄屏侧边栏 | 自身 | landed（cp-3） |
-| `backend/app/db/sql/004_r004_realtime_extras.sql` | 数据层 | `room_hand_raises` + `room_focus` | 实现页 §3 | planned（cp-4） |
-| `backend/app/services/{messages,hands,focus}.py` | 后端 | 三组能力的服务函数 | 实现页 §5 | planned（cp-4） |
-| `backend/app/api/routers/room_extras.py` | 后端 | 8 个路由 | 实现页 §4 | planned（cp-4） |
+| `backend/app/db/sql/004_r004_realtime_extras.sql` | 数据层 | `room_hand_raises` + `room_focus` + 3 索引 | 实现页 §2 | landed（cp-4） |
+| `backend/app/services/{messages,hands,focus}.py`（新） | 后端 | 三组能力的服务函数 | 实现页 §4 | landed（cp-4） |
+| `backend/app/repositories/room_extras.py`（新） | 后端 | 三个能力的参数化 SQL + 行映射（**设计未点名，按既有分层补**） | 实现页 §1 | landed（cp-4） |
+| `backend/app/db/migrate.py` | 数据层 | 计数表加两张新表；`split_statements` 过滤 `BEGIN/COMMIT`（修 003 迁移中止的遗留问题） | 实现页 §6 | landed（cp-4） |
+| `backend/app/api/routers/room_extras.py`（新） | 后端 | 8 个路由 + `main.py` 注册 | 实现页 §3 | landed（cp-4） |
 | `backend/app/services/rooms.py` | 后端 | `end_room` 连带清举手 | 实现页 §3 | planned（cp-4） |
-| `backend/tests/test_room_extras_api.py` | 测试 | E1~E6 用例 | 实现页 §9 | planned（cp-4） |
+| `backend/tests/test_room_extras_api.py`（新）+ `test_schema.py`（同步迁移清单与计数表） | 测试 | E1~E6 共 10 个用例 | 实现页 §7 | landed（cp-4） |
 | `frontend/src/hooks/{useDataChannel,useChatMessages,useHandRaise,useRoomFocus,useScreenShare}.ts` | 前端 | 实时层 | 实现页 §5.5 | planned（cp-5） |
 | `frontend/src/api/roomExtras.ts` | 前端 | HTTP 封装 | 实现页 §4 | planned（cp-5） |
 | `frontend/src/components/live/{ChatPanel,MessageBubble,FocusBadge}.tsx` | 前端 | 新组件 | 功能页 F-18~F-21 | planned（cp-6） |
@@ -63,6 +65,28 @@ updated: 2026-09-19
 
 **未做到的（如实）**：竖屏/窄屏的数字量测缺 JS 求值通道（`playwright screenshot` 只能截图），因此那一档是**视觉证据**而非数值证据；且我手上没有你当时看到的那张截图，若你看到的现象与「折叠状态穿越断点」不同，请把竖屏截图发我，我再对齐。
 
+## 2.2 cp-4 证据（数据层与后端）
+
+**测试**：`conda run -n learningguide python -m pytest backend/tests -q` → **105 passed**（r003 基线 95 + 本轮新增 10；`test_room_extras_api.py` 覆盖 E1~E6）；`python backend/scripts/smoke.py --base-url http://127.0.0.1:8000` → **PASS 29/29**（无回归）。
+
+**迁移**：`python backend/scripts/db_init.py`（不加 `--reset`）→ `本次应用版本：003_r002_host_uniqueness, 004_r004_realtime_extras`；`counts` 中 `room_hand_raises 0 / room_focus 0`、`schema_migrations 4`。
+
+**活服务探针**（对正在跑的后端 `127.0.0.1:8000`，走真实 HTTP；脚本临时生成、跑完删除）：
+
+| 步骤 | 结果 |
+| --- | --- |
+| 注册房主 / 建房 | 201 / 201 |
+| 成员发消息（`"  cp4 真机探针消息  "`） | 201，落库正文被 trim 成 `cp4 真机探针消息` |
+| 房主拉消息 | 200，能取到该条 |
+| 成员举手（连发两次） | 200，快照 `len=1`（幂等） |
+| 房主放下他人的举手 | 200，快照变空 |
+| 房主设焦点 | 200，`subjectName=cp4成员`、`actorUserId` 留痕 |
+| 取消焦点 | `subjectUserId=null` |
+| 结束房间 | 200 |
+| 结束后再发消息 | 409 `ROOM_ENDED` |
+
+**未做到的（如实）**：数据库里的库级并发（两个连接同时举手）没有单独造（部分唯一索引已由 `test_schema`-style 约束用例与事务锁覆盖）；房内实时广播属于 cp-5/6。
+
 ## 3. 用户消息台账（首行回执的核对凭据）
 
 | 序号 | 日期 | 用户原话摘要 | 回执分类 | 单号 |
@@ -74,6 +98,7 @@ updated: 2026-09-19
 | 5 | 2026-09-19 | 「是用来分析这个问题的会话的…我会优化skill给出这部分的规范，你负责重新整理文档」 | 澄清（不改规约，只整理；另纳入其 ADR 文件） | 本轮 docs 提交、`global-adr-0002` |
 | 6 | 2026-09-19 | 「做吧」 | 批准（元数据修正 + 漂移核实 + 纳入 ADR + cp-2 收尾） | 本表 §1 |
 | 7 | 2026-09-19 | 「2」 | 批准（cp-3：先按代码分析改，事后复看） | 本表 §2.1 |
+| 8 | 2026-09-19 | 「继续」 | 批准（cp-4：按设计实现数据层与后端） | 本表 §2.2 + design §14 的 cp-4-1~4-5 |
 
 ## 4. 无文档变更的提交 / 文档整理记录
 

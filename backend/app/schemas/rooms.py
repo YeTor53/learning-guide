@@ -130,3 +130,33 @@ class TransferHostResult(CamelModel):
     room: RoomVO
     previous_host: MemberVO
     new_host: MemberVO
+
+# ---------------- r004（M3）房内扩展能力 ----------------
+# 设计事实源：docs/rounds/r004-room-extras/design.md §4
+
+class MessageIn(CamelModel):
+    """发消息：trim 后 1~500 字（空串与超长由 schema 拦成 400 VALIDATION）。"""
+
+    body: str = Field(min_length=1, max_length=500)
+
+
+class HandVO(CamelModel):
+    id: str
+    user_id: str
+    display_name: str
+    raised_at: datetime
+
+
+class FocusVO(CamelModel):
+    """当前焦点：`subjectUserId=None` 表示无焦点（或已被取消）。"""
+
+    subject_user_id: Optional[str] = None
+    subject_name: Optional[str] = None
+    actor_user_id: Optional[str] = None
+    set_at: Optional[datetime] = None
+
+
+class FocusIn(CamelModel):
+    """设/取消焦点：`userId=None` 表示取消。"""
+
+    user_id: Optional[str] = None

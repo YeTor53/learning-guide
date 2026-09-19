@@ -528,4 +528,9 @@ export function computeStageLayout(input: {
 
 | 日期 | CR | 级别 | 摘要 | 结论 |
 | --- | --- | --- | --- | --- |
+| 2026-09-19 | cp-4-1 | L1 | SQL 落点改到新文件 `repositories/room_extras.py`（设计只点名了 service/router，未提仓储层） | 采纳：与 `repositories/rooms.py` 同层，不把 400+ 行的既有文件再撑大 |
+| 2026-09-19 | cp-4-2 | L1 | 错误码 `INVALID_INPUT` → **`VALIDATION`**（空/超长/非法游标） | 采纳：不发明新码，复用 r001 错误码总表 |
+| 2026-09-19 | cp-4-3 | L2 | 读取接口对 `ended` 房间**也返回 409**（设计原话是「除 GET 外一律 409」） | 采纳（收窄）：M3 无归档面，读取只服务进行中的房间；M4 归档按 `r003-ahead-m4-ended-rooms-archive.md` §3.1 另开只读面 |
+| 2026-09-19 | cp-4-4 | L1 | `clear_hands_for_room_end` 折进 `rooms.end_room`（直接调仓储） | 采纳：避免 `rooms ↔ hands` service 层循环 import |
+| 2026-09-19 | cp-4-5 | L2 | 修 `migrate.split_statements`：过滤迁移文件内的事务控制语句 | 必须：`003_` 文件自带的 `BEGIN/COMMIT` 与外层 savepoint 冲突，导致迁移中止且不记版本（r002 遗留、本轮暴露） |
 | 2026-09-19 | — | **文档整理（本轮，L1，无行为变化）**：新增 §0 导航与单一事实源表；§7 由「焦点优先级」扩为「舞台结构与布局动力学」（7.1~7.8，原 §7.5 的下挂小节提升为同级）；§8 重排为 8.1~8.11 并**合并两张令牌表为 §8.9 唯一来源**；补齐 §8.6「举手与聊天的样式」（原标题名不副实）；§10 拆为 10.1 映射 + 10.2 断线；统一函数名为 `computeStageLayout`（删去 `pickFocusTile` 的另立说法）；修正 §6.1/§6.2 编号与全页引用 | 用户「你的文档写的开始混乱了，解决这个先」 |

@@ -33,9 +33,9 @@ def _normalize(statements: list[str]) -> list[str]:
 # ---------- 纯函数（不需要数据库） ----------
 
 def test_sql_files_are_ordered() -> None:
-    """迁移按序号执行；新增迁移必须追加在末尾（r002 起：003_ 为 R-6 活跃 Host 唯一索引）。"""
+    """迁移按序号执行；新增迁移必须追加在末尾（003_ = R-6 活跃 Host 唯一索引；004_ = r004 举手与焦点）。"""
     names = [p.stem for p in sql_files()]
-    assert names == ["001_schema", "002_seed", "003_r002_host_uniqueness"], names
+    assert names == ["001_schema", "002_seed", "003_r002_host_uniqueness", "004_r004_realtime_extras"], names
 
 
 def test_split_statements_handles_comments_and_literals() -> None:
@@ -71,6 +71,8 @@ def test_counted_tables_cover_business_tables() -> None:
         "join_requests",
         "invites",
         "chat_messages",
+        "room_hand_raises",
+        "room_focus",
     )
 
 
