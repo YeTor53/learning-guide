@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import NavBar from './components/NavBar'
 import SideBar from './components/SideBar'
+import useNarrowStrip from './hooks/useNarrowStrip'
 import LoginPage from './pages/LoginPage'
 import NewRoomPage from './pages/NewRoomPage'
 import RegisterPage from './pages/RegisterPage'
@@ -18,6 +19,8 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false)
   const location = useLocation()
   const toggle = () => setCollapsed((value) => !value)
+  // 窄屏（≤900px）侧边栏是顶部横向条：折叠既无意义又会被 React 去掉标签，故强制按展开渲染
+  const narrowStrip = useNarrowStrip()
 
   const isLive = /^\/rooms\/[^/]+\/live$/.test(location.pathname)
   const routes = (
@@ -56,7 +59,7 @@ export default function App() {
         </main>
       ) : (
         <div className="layout">
-          <SideBar collapsed={collapsed} onToggleCollapsed={toggle} />
+          <SideBar collapsed={collapsed && !narrowStrip} onToggleCollapsed={toggle} hideToggle={narrowStrip} />
           {/* key 变化触发路由级淡入（动效清单见 docs/04-style/global-style.md §6） */}
           <main className="content route-fade" key={`${location.pathname}${location.search}`}>
             <div className="container">{routes}</div>

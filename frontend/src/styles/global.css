@@ -378,7 +378,7 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .meter > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width var(--t-slow) var(--ease); }
 
 /* ---------- Hero ---------- */
-.hero { position: relative; margin-bottom: var(--s-6); padding: var(--s-6) 0 var(--s-5); }
+.hero { position: relative; margin-bottom: var(--s-6); padding: var(--s-4) 0 var(--s-5); }
 .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.85; }
 
 /* ===== 《思想者》图版：容器 + 图版在容器内滑动 =====
@@ -461,7 +461,8 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 }
 
 /* ---------- 列表与状态 ---------- */
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-bottom: var(--s-4); }
+/* r004 cp-3：筛选条已上移到 hero 之前（首屏可见）——事实源 docs/03-decisions/r004-adr-0015-home-first-screen.md */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-bottom: var(--s-5); }
 .chipset { display: flex; gap: 4px; padding: 3px; border-radius: 999px; border: 1px solid var(--line-soft); background: rgba(0, 0, 0, 0.3); }
 .chipset button {
   display: inline-flex;
@@ -560,13 +561,32 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
     padding: var(--s-3);
     gap: var(--s-3);
   }
+  /* r004 cp-3：窄屏横向条压成一行——导航在左、个人信息与折叠在右（更省首屏高度） */
+  .sidebar, .sidebar.collapsed {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
   .sidebar .side-nav { flex-direction: row; overflow-x: auto; }
   .sidebar .side-label { display: none; }
-  .sidebar .side-foot { flex-direction: row; margin-top: 0; }
-  .sidebar .side-block { padding-top: var(--s-3); }
+  .sidebar .side-spacer { display: none; }
+  .sidebar .side-foot { flex-direction: row; align-items: center; margin-top: 0; }
+  .sidebar .side-block { padding-top: 0; }
+  .sidebar .side-user { gap: var(--s-2); }
   .sidebar.collapsed .side-item .label { display: inline; }
   .container { padding: var(--s-5) var(--s-4) 72px; }
   .detail-head { position: static; }
+}
+
+
+/* ---------- 竖屏（宽 < 高）：首屏优先级与 hero 收敛 ---------- */
+/* r004 cp-3（ADR-0015）：竖屏下 hero 占比过高会把列表与筛选条挤出首屏，
+   这里把 hero 最小高收敛、插画退让；筛选条已上移到 hero 之前，任何高度都在首屏。 */
+@media (orientation: portrait) {
+  .hero { --hero-min-h: min(58vh, 460px); }
+  .thinker-img { opacity: 0.42; }
+  .stats { flex-wrap: wrap; row-gap: var(--s-2); }
 }
 
 /* ---------- 降级：减少动效 ---------- */
