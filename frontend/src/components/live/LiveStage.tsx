@@ -184,6 +184,7 @@ export default function LiveStage({
             className={`live-cell${leaving ? ' is-leaving' : ''}${isFocus ? ' is-focus' : ''}${tile?.kind === 'share' ? ' is-share' : ''}`}
             style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
           >
+            {isSelf && !leaving && <span className="live-cell-self">（你）</span>}
             {track && !leaving ? (
               <ParticipantTile
                 participant={track.participant}
