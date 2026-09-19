@@ -18,7 +18,7 @@ updated: 2026-09-19
 | cp-r004-2 | r003 收官回填 + 文档工程体检与三页导览 + 元数据修正 + `smoke.py` 补 r002 四步 | **完成 2026-09-19** | 见本轮 docs 提交 | 索引表 r003 转 closed；需求单 r003 转 closed；roadmap §7/§9 回填；`smoke.py` 实测 **PASS 29/29**（原 22/22，新增 7 项：成员取票 200 / 非成员 403 / 踢人 200+livekitApplied=True / 被移出后 403 / 被移出者 exit_reason=kicked / 结束后取票 409 / 已含结束 409） |
 | cp-r004-3 | 界面缺陷两项（侧边栏竖屏 + 筛选条上移）+ ADR-0015 | **完成 2026-09-19** | 见本轮 cp-3 提交 | 见下方「cp-3 证据」 |
 | cp-r004-4 | 迁移 004 + 消息/举手/焦点接口 + `end_room` 连带 + 单测 | **完成 2026-09-19** | 见本轮 cp-4 提交 | `pytest` **105 passed**（基线 95 + 新增 10）；`smoke` 29/29；`db_init` 应用 003+004；活服务探针 9 项全通过（见 §2.2） |
-| cp-r004-5 | 前端实时层（`useDataChannel` + 四 hooks + `roomExtras` API） | planned | — | `tsc` 全绿 |
+| cp-r004-5 | 前端实时层（`useDataChannel` + 四 hooks + `roomExtras` API + dev-only 调试句柄） | **完成 2026-09-19** | 见本轮 cp-5 提交 | `tsc`/`build` exit 0；双浏览器数据通道双向收发实测；`__lgRoom` 生产产物 0 命中（见 §2.3） |
 | cp-r004-6 | 前端界面（抽屉双 tab / 举手 / 焦点 / 共享 / 优先级 / 视觉） | planned | — | 双浏览器 E8~E14 |
 | cp-r004-7 | 取证 + 教学页 + 审查报告 + 收官 | planned | — | E16~E20 |
 
@@ -38,7 +38,9 @@ updated: 2026-09-19
 | `backend/app/api/routers/room_extras.py`（新） | 后端 | 8 个路由 + `main.py` 注册 | 实现页 §3 | landed（cp-4） |
 | `backend/app/services/rooms.py` | 后端 | `end_room` 连带清举手 | 实现页 §3 | planned（cp-4） |
 | `backend/tests/test_room_extras_api.py`（新）+ `test_schema.py`（同步迁移清单与计数表） | 测试 | E1~E6 共 10 个用例 | 实现页 §7 | landed（cp-4） |
-| `frontend/src/hooks/{useDataChannel,useChatMessages,useHandRaise,useRoomFocus,useScreenShare}.ts` | 前端 | 实时层 | 实现页 §5.5 | planned（cp-5） |
+| `frontend/src/hooks/{useDataChannel,useChatMessages,useHandRaise,useRoomFocus,useScreenShare}.ts`（新） | 前端 | 实时层：topic 订阅/发布 + 三个状态 hook + 共享派生 | 实现页 §9 | landed（cp-5） |
+| `frontend/src/api/roomExtras.ts`（新） | 前端 | 8 个 HTTP 封装 + Hand/Focus 类型 | 实现页 §9.1 | landed（cp-5） |
+| `frontend/src/hooks/useRoomConnection.ts`（改动） | 前端 | dev-only `window.__lgRoom`（U15） | 实现页 §9.1 | landed（cp-5） |
 | `frontend/src/api/roomExtras.ts` | 前端 | HTTP 封装 | 实现页 §4 | planned（cp-5） |
 | `frontend/src/components/live/{ChatPanel,MessageBubble,FocusBadge}.tsx` | 前端 | 新组件 | 功能页 F-18~F-21 | planned（cp-6） |
 | `frontend/src/components/live/{RoomSidePanel,DeviceBar,LiveStage}.tsx`、`pages/RoomLivePage.tsx` | 前端 | 抽屉双 tab / 新按钮 / 优先级 / 装配 | 功能页 §4.2 按钮矩阵 | planned（cp-6） |
@@ -87,6 +89,25 @@ updated: 2026-09-19
 
 **未做到的（如实）**：数据库里的库级并发（两个连接同时举手）没有单独造（部分唯一索引已由 `test_schema`-style 约束用例与事务锁覆盖）；房内实时广播属于 cp-5/6。
 
+## 2.3 cp-5 证据（前端实时层）
+
+**构建**：`npx tsc --noEmit` exit 0；`npm run build` exit 0（1978 模块，CSS 29.89 kB / JS 903.25 kB）。产物扫描：`dist/assets/index-*.js` 里 `__lgRoom` 出现 **0 次**（U15「只在 DEV 挂载」成立）。
+
+**双浏览器真机（本次新解锁的验证手段）**：用 base conda 的 Python + Playwright（`C:\ProgramData\miniconda3\python.exe`，`sync_playwright`）开**两个真实浏览器上下文**，通过 API 登录 `host@example.com` / `part@example.com` 后各自进入同一房间页 `room_6026ed81aee50a24`：
+
+| 检查 | 结果 |
+| --- | --- |
+| 两端 `window.__lgRoom.state` | `connected`（dev 句柄可用 ✓） |
+| A 看到的远程参与者 | `["usr_demo_part"]` |
+| A 在 `lg.chat` 发布 `{v:1,message:{id:"probe-1",body:"A→B 探针"}}` | **B 收到**：`topic=lg.chat`、`from=usr_demo_host`、正文逐字一致 |
+| B 反向发布 | **A 收到**（同款 payload，`from=usr_demo_part`） |
+| 同源 HTTP（Cookie 会话） | `POST /api/rooms/{id}/messages` → **201**；`GET …/messages` → **200**，能回读刚发的那条 |
+| 截图 | `C:\Users\Administrator\AppData\Local\Temp\lg_cp5\ctx-A-host.png`、`ctx-B-part.png` |
+
+**说明（如实）**：`lg.hands` / `lg.focus` / `lg.screen.stop` 三条 topic 的双端实测放在 cp-6（那时界面才有按钮）；本次只验证了通道本身与 `lg.chat` 的完整往返。上一轮那次 265 秒无输出是我探针脚本的 bug（用 `evaluate_handle` 等一个可能永不 resolve 的 Promise，没设超时），已改成「发布 + 轮询 `window.__log`」的有界写法。
+
+**顺带**：这次也验证了「HTTP 落库 + 广播加速」这条链路的两条腿都能在真实浏览器里跑通。
+
 ## 3. 用户消息台账（首行回执的核对凭据）
 
 | 序号 | 日期 | 用户原话摘要 | 回执分类 | 单号 |
@@ -99,6 +120,7 @@ updated: 2026-09-19
 | 6 | 2026-09-19 | 「做吧」 | 批准（元数据修正 + 漂移核实 + 纳入 ADR + cp-2 收尾） | 本表 §1 |
 | 7 | 2026-09-19 | 「2」 | 批准（cp-3：先按代码分析改，事后复看） | 本表 §2.1 |
 | 8 | 2026-09-19 | 「继续」 | 批准（cp-4：按设计实现数据层与后端） | 本表 §2.2 + design §14 的 cp-4-1~4-5 |
+| 9 | 2026-09-19 | 「继续」 | 批准（cp-5：前端实时层） | 本表 §2.3 |
 
 ## 4. 无文档变更的提交 / 文档整理记录
 

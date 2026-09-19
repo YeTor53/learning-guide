@@ -9,7 +9,7 @@ updated: 2026-09-19
 
 <!-- overview -->
 本页是 r004（M3）的**实现事实**：文件、签名、SQL、边界、验证证据。设计与口径见 `docs/rounds/r004-room-extras/design.md`；需求与验收见 `docs/00-requirements/r004-room-extras.md`。
-**当前进度**：cp-4（数据层 + 后端）已完成；cp-5（前端实时层）与 cp-6（前端界面）落地后在本页追加。
+**当前进度**：cp-4（数据层 + 后端）、cp-5（前端实时层）已完成；cp-6（前端界面）落地后在本页追加。
 
 ## 1. 文件与分层落点
 
@@ -107,8 +107,43 @@ room_focus(id PK, room_id FK→rooms, subject_user_id FK→users NULL, actor_use
 
 **回归**：`pytest backend/tests -q` → **105 passed**（r003 基线 95 + 新增 10）；`smoke.py` → **PASS 29/29**；`db_init.py` → `schema_migrations=4`、`room_hand_raises/room_focus` 建表成功。
 
+## 9. 前端实时层（cp-5）
+
+### 9.1 文件
+
+| 文件 | 导出 | 职责 |
+| --- | --- | --- |
+| `src/api/roomExtras.ts`（新） | `roomExtrasApi`（8 个方法）、`Hand` / `Focus` 类型、`MESSAGE_LIMIT` | HTTP 封装（唯一真相在库，ADR-0013） |
+| `src/hooks/useDataChannel.ts`（新） | `CHANNEL_TOPIC`、`publishSnapshot`、`useDataChannel<T>` | 统一订阅/发布：JSON 编码、`reliable: true`、按 topic 分发、卸载时 `off` |
+| `src/hooks/useChatMessages.ts`（新） | `useChatMessages(room, roomId, enabled)` | 进房/重连拉库 + 发送落库 + 广播去重合并 + 分页 `loadMore` + 失败可重发 |
+| `src/hooks/useHandRaise.ts`（新） | `useHandRaise(room, roomId, enabled, myUserId)` | 快照收敛（`at` 大者胜）+ raise/lower/lowerOther |
+| `src/hooks/useRoomFocus.ts`（新） | `useRoomFocus(room, roomId, enabled)` | 同上（焦点是服务端同步的唯一焦点） |
+| `src/hooks/useScreenShare.ts`（新） | `useScreenShare(room, status)` | 开/停共享、`ownerId` 派生、协作式停止请求 |
+| `src/hooks/useRoomConnection.ts`（改动） | —— | **dev-only** `window.__lgRoom`（U15）：事件注入与排障入口，生产构建不含（已实测） |
+
+### 9.2 协议与收敛（实现即契约）
+
+| topic | 载荷 | 收敛规则 |
+| --- | --- | --- |
+| `lg.chat` | `{v:1, message}` | 按服务端 `id` 去重、按 `createdAt` 升序 |
+| `lg.hands` | `{v:1, at, hands[]}` | 全量快照，`at` 大者覆盖 |
+| `lg.focus` | `{v:1, at, focus}` | 全量快照，`at` 大者覆盖 |
+| `lg.screen.stop` | `{v:1, targetUserId, requestedBy}` | 只有 `targetUserId === 自己` 时响应并停止共享 |
+
+- **`refresh()` 是"与库一致"的保证**：三个状态 hook 都在 `enabled`（连接成功）时拉一次库，再订阅通道；重连成功后同样会触发。
+- **发送路径**：HTTP 落库成功 → 用服务端返回的 VO 覆盖本地 → 广播同一份 VO（广播失败只 `console.warn`，不影响落库）。
+- **失败可重发**：发送失败的消息进入 `pending`（标 `failed`），`retry(pendingId)` 重发；不吞用户输入。
+
+### 9.3 证据
+
+- `npx tsc --noEmit` exit 0；`npm run build` exit 0（1978 模块；产物 CSS 29.89 kB / JS 903.25 kB）。
+- `dist/assets/*.js` 内 `__lgRoom` 出现次数 = **0**（U15「生产构建不含」实测通过）。
+- **双浏览器真机（两个真实浏览器上下文，同一个 LiveKit 房间 `room_6026ed81aee50a24`）**：两端 `__lgRoom.state === 'connected'`；A 在 `lg.chat` 发布 `{v:1,message:{id:'probe-1'}}` → **B 收到**（`topic=lg.chat`、`from=usr_demo_host`、正文逐字一致）；B 反向发布 → **A 收到**；同源 HTTP `POST /messages` → 201、`GET /messages` → 200 且能回读。
+- **限制（如实）**：`lg.hands` / `lg.focus` / `lg.screen.stop` 三条 topic 只做了载荷形状与代码路径检查，双端实测随 cp-6 的界面一起做（那时才有按钮可点）。
+
 ## 8. 变更记录
 
 | 日期 | 轮次 | 变更 | 依据 |
 | --- | --- | --- | --- |
+| 2026-09-19 | r004 `cp-5` | 追加 §9 前端实时层：5 个 hook + `roomExtras` API + dev-only 调试句柄；记录协议收敛规则与双浏览器真机证据 | design §5.5、§6；需求单 E7 |
 | 2026-09-19 | r004 `cp-4` | 建页：迁移 004 + 仓储 + 三条 service + 8 条路由 + 结束房间连带 + 10 个用例；记录 3 处实现差异与迁移工具修复 | design §3~§5、需求单 §5 E1~E6 |

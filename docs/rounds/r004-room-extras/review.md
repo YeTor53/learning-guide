@@ -15,7 +15,8 @@ updated: 2026-09-19
 | 条目 | 实现位置 | 证据 | 结论 |
 | --- | --- | --- | --- |
 | A 组 E1~E6（后端接口与连带） | `db/sql/004_*`、`repositories/room_extras.py`、`services/{messages,hands,focus}.py`、`api/routers/room_extras.py`、`services/rooms.py:end_room` 连带 | `pytest` **105 passed**（+10）；`smoke` **29/29**；`db_init` 应用 003+004（`schema_migrations=4`）；活服务探针 9/9（201/200/409 与 trim、幂等、快照、留痕齐）；实现页 §7 逐条对账 | **通过**（E1~E6 全绿） |
-| B 组 E7~E14（前端功能 / tsc+build / 双浏览器 / 优先级） | | | |
+| B 组 E7（tsc / build） | 前端实时层 cp-5 | `tsc` exit 0；`build` exit 0（1978 模块）；产物 `__lgRoom` 0 命中 | **通过** |
+| B 组 E8~E14（双浏览器功能与优先级） | 待 cp-6 | cp-5 已证数据通道双向可达（`lg.chat` 往返 + 同源 HTTP） | 待 cp-6 |
 | B 组 E18a~E18c（断线三段式：事件注入 / 本地服务器真停 / 真断网） | | | |
 | C 组 E15（两项界面缺陷） | `RoomsPage.tsx`（工具栏上移）、`App.tsx`+`SideBar.tsx`+`hooks/useNarrowStrip.ts`、`global.css`（竖屏块 + 窄屏一行） | `toolbar.top 639 → 101`（视口 1258×566，`bottom=146 ≤ 522` 口径）；竖屏/窄屏 700×1000、820×1180、1000×1200 三档实拍（改前/改后）；`scrollWidth 1243 ≤ 1258` 无横向溢出；tsc exit 0、build exit 0 | **通过**（竖屏为视觉证据，待你真机复看） |
 | C 组 E21~E23（布局动力学） | 待 cp-6 | | |
