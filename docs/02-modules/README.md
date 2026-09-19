@@ -25,6 +25,10 @@ updated: 2026-09-19
 | r002 | `r002-livekit.md` | `r002-livekit-features.md` | **当前真相页**（音视频、在场、设备、治理、结束房间） |
 | r003 | — | — | r003 只动缺陷与收官回填，未新模块页；入口行为记在 r002 功能页 F-16 |
 | r004 | `r004-room-extras.md` | `r004-room-extras-features.md` | **最新一轮的当前真相页**：M3 能力（群聊 / 举手 / 焦点发言 / 屏幕共享）；cp-2~cp-7 全部落地，验收见 `rounds/r004-room-extras/review.md` |
+| r005 | `r005-fix-capacity.md` | `r005-fix-capacity-features.md` | 容量口径（按本库在册成员）+ 房间事件系统消息 + 取票提速 |
+| r006 | `r006-ui-sync-polish.md` | `r006-ui-sync-polish-features.md` | 麦徽标真实状态 / 两端人数与待批同步 / 个人信息浮窗 + 名言 / 图版位置 |
+| r007 | `r007-topic-and-scrollhint.md` | `r007-topic-and-scrollhint-features.md` | 工具栏位置回退 / hero 下箭头 / 主题控件风格化与 14 项主题 / 侧边栏默认收起 |
+| r008 | `r008-assignment-gaps.md` | `r008-assignment-gaps-features.md` | **最新一轮的当前真相页**：讨论纪要（LLM）+ 限时邀请（最长 1 分钟）；作业必做 15/15 见 `docs/00-project/assignment-a-coverage.md` |
 
 ## 3. 阅读顺序建议
 
