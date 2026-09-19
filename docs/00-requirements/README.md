@@ -4,7 +4,7 @@ description: 项目各轮需求单的状态、里程碑归属与轮次档案入�
 type: reference
 status: approved
 owner: 陀梓皓
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 <!-- overview -->
@@ -14,3 +14,4 @@ updated: 2026-09-18
 | --- | --- | --- | --- | --- | --- |
 | r001 | M1 骨架 · 账户 · 房间 | `r001-skeleton-accounts-rooms.md` | closed（2026-09-18） | `docs/rounds/r001-skeleton/` | `round-r001-done`（2026-09-18 已打，`main` = `c189a87`） |
 | r002 | M2 实时房间 · 权限 · 等候室 | `r002-livekit-room.md` | draft（设计待批，2026-09-18） | `docs/rounds/r002-livekit/` | 待人合并后打 `round-r002-done` |
+| r003 | （补轮）交付前修补 | `r003-end-room-entry.md` | draft（阶段 1 设计待批，2026-09-19） | `docs/rounds/r003-end-room-entry/` | 待收官打 `round-r003-done` |
