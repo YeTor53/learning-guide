@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   id          TEXT PRIMARY KEY,
   host_id     TEXT NOT NULL REFERENCES users(id),
   topic       TEXT NOT NULL CHECK (topic IN ('epicureanism','math-biology','german-history','custom')),
+  -- 2026-09-19（r007）：主题白名单已由迁移 006_r007_topic_taxonomy.sql 扩到 14 项；本行保留为历史 DDL 记录，最新清单见 docs/02-modules/r007-topic-and-scrollhint.md §4
   topic_label TEXT NOT NULL CHECK (char_length(topic_label) BETWEEN 1 AND 32),
   title       TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 80),
   description TEXT NOT NULL DEFAULT '' CHECK (char_length(description) <= 500),
