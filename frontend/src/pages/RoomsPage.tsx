@@ -6,6 +6,7 @@ import { ApiError } from '../api/http'
 import { TOPIC_OPTIONS, type RoomStatus, type Topic } from '../api/rooms'
 import FlowField from '../components/FlowField'
 import QuoteLine from '../components/QuoteLine'
+import ScrollHint from '../components/ScrollHint'
 import ThinkerStatue from '../components/ThinkerStatue'
 import RoomCard from '../components/RoomCard'
 import { useSession } from '../hooks/useSession'
@@ -63,6 +64,43 @@ export default function RoomsPage() {
 
   return (
     <div>
+      <section className="hero">
+        <FlowField />
+        <ThinkerStatue />
+        <div className="hero-inner">
+          <span className="kicker">
+            <Hash {...ICON} />
+            实时多人学习讨论空间
+          </span>
+          <h1 className="display">
+            {title.map((char, index) => (
+              <span className="ch" key={char} style={{ ['--i' as string]: index }}>
+                {char}
+              </span>
+            ))}
+            <br />
+            <em>think together</em>
+          </h1>
+          {/* redirect-02（Q2=2）：这段解释性说明由名言替换 —— 功能引导交给 kicker、统计与下方按钮 */}
+          <QuoteLine scene="hero" />
+          <div className="stats">
+            <div>
+              <div className="stat-value">{total}</div>
+              <div className="stat-label">房间数</div>
+            </div>
+            <div>
+              <div className="stat-value">{statusLabel}</div>
+              <div className="stat-label">当前筛选</div>
+            </div>
+            <div>
+              <div className="stat-value">{mine ? '仅我的' : '全部'}</div>
+              <div className="stat-label">范围</div>
+            </div>
+          </div>
+        </div>
+        <ScrollHint />
+      </section>
+
       <div className="toolbar">
         <div className="chipset">
           {STATUS_TABS.map((tab) => (
@@ -114,42 +152,6 @@ export default function RoomsPage() {
           创建房间
         </button>
       </div>
-
-      <section className="hero">
-        <FlowField />
-        <ThinkerStatue />
-        <div className="hero-inner">
-          <span className="kicker">
-            <Hash {...ICON} />
-            实时多人学习讨论空间
-          </span>
-          <h1 className="display">
-            {title.map((char, index) => (
-              <span className="ch" key={char} style={{ ['--i' as string]: index }}>
-                {char}
-              </span>
-            ))}
-            <br />
-            <em>think together</em>
-          </h1>
-          {/* redirect-02（Q2=2）：这段解释性说明由名言替换 —— 功能引导交给 kicker、统计与下方按钮 */}
-          <QuoteLine scene="hero" />
-          <div className="stats">
-            <div>
-              <div className="stat-value">{total}</div>
-              <div className="stat-label">房间数</div>
-            </div>
-            <div>
-              <div className="stat-value">{statusLabel}</div>
-              <div className="stat-label">当前筛选</div>
-            </div>
-            <div>
-              <div className="stat-value">{mine ? '仅我的' : '全部'}</div>
-              <div className="stat-label">范围</div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {isLoading && (
         <div className="room-grid">

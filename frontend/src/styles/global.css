@@ -463,6 +463,27 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .meter > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width var(--t-slow) var(--ease); }
 
 /* ---------- Hero ---------- */
+/* r007（Q1=1/Q2=2）：hero 底缘居中的向下提示：纯装饰、不可点、轻浮动 */
+.scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--scroll-hint-bottom);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-mute);
+  opacity: 0.75;
+  pointer-events: none;      /* 不可点：不承载任何交互 */
+  user-select: none;
+  animation: scroll-hint-bob var(--scroll-hint-duration) var(--ease) infinite;
+}
+
+@keyframes scroll-hint-bob {
+  0%, 100% { transform: translate(-50%, 0); }
+  50%      { transform: translate(-50%, var(--scroll-hint-travel)); }
+}
+
 .hero { position: relative; margin-bottom: var(--s-6); padding: var(--s-4) 0 var(--s-5); }
 .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.85; }
 
@@ -481,6 +502,10 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   --thinker-ratio: 1.4;
   /* r006（ADR-0017 D4）：初始位置下移 ≈ 容器高的 10%（约 50px）；原值 -110px（容器顶略高于页面顶）。 */
   --thinker-top: -60px;
+  /* r007：hero 底缘的向下提示（单点可调） */
+  --scroll-hint-bottom: 10px;
+  --scroll-hint-travel: 6px;
+  --scroll-hint-duration: 1.9s;
   --thinker-gap: 20px;     /* 容器底停在「创建房间」那行上方 20px */
   --hero-min-h: min(88vh, 700px);
   min-height: var(--hero-min-h);
@@ -1497,6 +1522,7 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 
 /* ---------- 降级：减少动效（含 r004 新增）---------- */
 @media (prefers-reduced-motion: reduce) {
+  .scroll-hint { animation: none; }
   .side-pop { animation: none; }
   .live-focus-slot, .live-rail, .live-tile-focus { transition: none; }
   .live-tile-focus::before, .live-focus-badge, .chat-bubble, .live-ctrl-hand-on { animation: none; }
