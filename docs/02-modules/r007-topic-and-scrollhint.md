@@ -56,8 +56,15 @@ updated: 2026-09-19
 | 侧边栏 | 首次 78px 收起 → 展开 264px → 刷新保持 → 清存储回收起 |
 | 门禁 | `pytest` **112 passed** / `smoke` **PASS 40/40** / `tsc` + `build` exit 0 |
 
+## 6.1 追加（cp-6）
+
+- **箭头**：`ScrollHint` 两支 `ChevronDown`；尺寸由 CSS 令牌 `--scroll-hint-size`（30px）控制 `svg` 的宽高；第二支 `animation-delay` 延后半周期 + `opacity .55` 形成错峰。**坑**：flex `gap` 不接受负值（退回 `normal`）→ 叠压用 `margin-top: var(--scroll-hint-gap)`（−6px）。
+- **收起态用户按钮**：`SidebarUserCard.activate()` —— 收起时 `onExpand()`（`SideBar` → `onToggleCollapsed`）先展开侧边栏再 `setOpen(true)`；`onFocus` 只在展开态且 `:focus-visible` 时打开（Tab 经过不改布局）。
+- **满员加入体验**：`RoomCard` 满员 → 禁用按钮「已满」（`title` 写明在册/上限）；`WaitingPage` 待批且满员 → 「房间已满…房主现在无法批准…」提示（房间满员批准会被 r005 容量不变量挡回 409）。
+
 ## 7. 遗留
 
 1. 房间列表仍在首屏下方（你选了「不加」压 hero）—— 靠箭头与滚动引导；哪天真要进首屏，压 hero 与收间距是现成的手（令牌都在）。
+1b. 满员时「已在等待室」的申请不会被自动处理：房主批准会被容量挡回 409，现在等待室会说明原因并给出撤回入口；**是否自动拒绝**待你定（默认不做，属语义变更）。
 2. 主题没有二级分类/描述页；卡片上的「一句用途」写在 `TOPIC_OPTIONS.hint`（改文案只动一处）。
 3. 演示库里历史房间的 `topic_label` 仍是旧值（主题白名单扩容不影响存量数据）。

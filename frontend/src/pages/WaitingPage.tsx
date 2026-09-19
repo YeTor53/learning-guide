@@ -131,6 +131,14 @@ export default function WaitingPage() {
           </div>
         )}
 
+        {/* 满员且自己还在待批：说清「为什么等不到」——房主此刻批准会被容量挡回（r005 不变量：在册 ≤ 容量）
+            （2026-09-19 追加，用户报满员时「不能申请但会进入等待间」的困惑） */}
+        {pending && room && room.memberCount >= room.capacity && (
+          <p className="wait-note" style={{ color: 'var(--warn)' }}>
+            房间已满（在册 {room.memberCount}/{room.capacity}，等于上限），房主现在无法批准；你可以撤回申请，或先去看看别的房间。
+          </p>
+        )}
+
         {/* redirect-02（Q2=2）：这里的操作引导改为名言；「进度」由上方 WaitTimeline 视觉承担，
             「能做什么」由下方按钮承担 */}
         {approved ? (

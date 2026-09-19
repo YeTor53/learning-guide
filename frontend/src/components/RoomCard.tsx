@@ -86,6 +86,20 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
         </button>
       )
     }
+    // 满员：不给「点了才报错」的按钮 —— 直接禁用并把原因写在按钮上
+    // （2026-09-19 追加，用户报满员时「不能申请」的体验不对）
+    if (full) {
+      return (
+        <button
+          className="btn btn-sm"
+          disabled
+          title={`本场名额已满（在册成员 ${room.memberCount}/${room.capacity}，等于上限）`}
+        >
+          <Users {...ICON} />
+          已满
+        </button>
+      )
+    }
     return (
       <button
         className="btn btn-primary btn-sm"
