@@ -1,47 +1,75 @@
-/** 舞台：单焦点布局（焦点主格 + 缩格条），全部尺寸与顺序由 `computeStageLayout` 派生。
+/** 舞台：**均分铺满**（r009）。谁在哪、多大由 `computeStageGeometry` 纯函数决定；位置变化由 FLIP 播放。
  *
- * 设计事实源：docs/rounds/r004-room-extras/design.md §7（焦点优先级 / 尺寸阶梯 / 变换清单）、§8.2~§8.3（材质与徽标）。
- * 专注感的三条实现（r002 起）：① 一个人占主格、其余降权退到边上；② 空态给出「在等谁 + 今天聊什么 + 房间码」；
- * ③ 说话有可见反馈。**r004 起**：焦点可以来自共享或房主指定（ADR-0014），且「谁被放大」只在这里判一次。
+ * 设计事实源：docs/rounds/r009-focus-system/{design.md §1, motion-design.md}；焦点优先级沿用 ADR-0014
+ * （共享 > 手动焦点 > 说话者 > 自己），r009 只改「布局形态」与「动效表达」。
  */
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Track } from 'livekit-client'
-import type { Participant } from 'livekit-client'
+import type { Participant, TrackPublication } from 'livekit-client'
 import { useTracks } from '@livekit/components-react'
 
 import type { Member, Role, Room } from '../../api/rooms'
+import { useFlipTransition, useLeavingIds } from '../../hooks/useFlipTransition'
+import { useStableSpeaker } from '../../hooks/useStableSpeaker'
 import FocusBadge from './FocusBadge'
 import QuoteLine from '../QuoteLine'
 import ParticipantTile from './ParticipantTile'
-import { computeStageLayout } from './stageLayout'
+import { computeStageGeometry } from './stageGeometry'
 
 interface Props {
   room: Room
-  /** 是否已连上实时服务：未连接时不渲染任何格子（否则会渲染出无名占位格）。 */
   connected: boolean
   members: Member[]
   onlineIds: string[]
   speakerIdentity: string | null
   localIdentity: string
-  /** 服务端同步的手动焦点（ADR-0014）。 */
   focusUserId: string | null
-  /** 正在共享屏幕的人。 */
   screenOwnerId: string | null
-  /** r006（ADR-0017 D1）：`identity → isMicrophoneEnabled`（空表时按 participant 状态兜底）。 */
   micStates: Record<string, boolean>
   sharing: boolean
   onStopShare: () => void
 }
 
-/** 视口尺寸（布局阶梯的输入之一）；窗口变化时重算。 */
-function useViewport() {
-  const [size, setSize] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
+/** callback ref 包装：节点出现/替换都触发一次 state 更新（见 useStageArea 注释）。 */
+function useCallbackRef(setter: (node: HTMLDivElement | null) => void) {
+  return useCallback((node: HTMLDivElement | null) => setter(node), [setter])
+}
+
+interface TrackRef {
+  participant: Participant
+  publication: TrackPublication | undefined
+  isScreen: boolean
+}
+
+/**
+ * 区域尺寸：ResizeObserver + 150ms 去抖（motion-design C7，拖窗口时不逐帧重排）。
+ *
+ * 用 **callback ref + state** 而不是 `useRef`：舞台在「空态」与「网格」两个分支里是**不同节点**，
+ * `useRef` 对象的引用又永远稳定 → 从空态切到网格时 effect 不会重跑、observer 从未建立、尺寸恒为 0
+ * （cp-1b 实测踩到：格子全不渲染）。callback ref 在节点出现/替换时都会更新，effect 才能重建。
+ */
+function useStageArea(node: HTMLDivElement | null) {
+  const [area, setArea] = useState({ w: 0, h: 0 })
   useEffect(() => {
-    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight })
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-  return size
+    if (!node) return
+    let timer = 0
+    const measure = () => {
+      const rect = node.getBoundingClientRect()
+      const pad = 12 * 2 // --stage-pad 上下左右各一次（几何按内容区算）
+      setArea({ w: Math.max(0, rect.width - pad), h: Math.max(0, rect.height - pad) })
+    }
+    measure()
+    const observer = new ResizeObserver(() => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(measure, 150)
+    })
+    observer.observe(node)
+    return () => {
+      window.clearTimeout(timer)
+      observer.disconnect()
+    }
+  }, [node])
+  return area
 }
 
 export default function LiveStage({
@@ -53,32 +81,71 @@ export default function LiveStage({
   localIdentity,
   focusUserId,
   screenOwnerId,
+  micStates,
   sharing,
   onStopShare,
-  micStates,
 }: Props) {
   const tracks = useTracks(
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }, { source: Track.Source.Camera, withPlaceholder: true }],
     { onlySubscribed: false },
   )
-  const viewport = useViewport()
-  // 表里存的是 `isMicrophoneEnabled`（开麦=true），prop 要的是「是否静音」→ 这里取反
-  const micMutedOf = (participant: Participant): boolean =>
-    !(micStates[participant.identity] ?? participant.isMicrophoneEnabled)
-  const byIdentity = new Map(members.map((member) => [member.userId, member]))
+  const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null)
+  const stageRef = useCallbackRef(setStageEl)
+  const area = useStageArea(stageEl)
+
+  const byIdentity = useMemo(() => new Map(members.map((member) => [member.userId, member])), [members])
+  const micMutedOf = (participant: Participant) => !(micStates[participant.identity] ?? participant.isMicrophoneEnabled)
   const focusMemberActive = Boolean(
     focusUserId && members.some((member) => member.userId === focusUserId && member.status === 'active'),
   )
+  // C4：说话者自动焦点去抖 + 冷却 + 手动焦点保护（防抽播）
+  const stableSpeaker = useStableSpeaker(speakerIdentity, { manualFocusId: focusMemberActive ? focusUserId : null })
 
-  const layout = computeStageLayout({
-    online: onlineIds,
-    selfIdentity: localIdentity,
-    focusUserId,
-    focusActive: focusMemberActive,
-    shareIdentity: screenOwnerId,
-    speakerIdentity,
-    viewport,
-  })
+  /** identity → 首选轨道：共享中的那个人取屏幕共享轨，其余取摄像头/占位轨。 */
+  const trackOf = useMemo(() => {
+    const map = new Map<string, TrackRef>()
+    for (const item of tracks) {
+      const identity = item.participant.identity
+      const isScreen = item.source === Track.Source.ScreenShare && !item.publication?.isMuted
+      const existing = map.get(identity)
+      const next: TrackRef = { participant: item.participant, publication: item.publication, isScreen }
+      if (!existing) map.set(identity, next)
+      else if (isScreen && identity === screenOwnerId) map.set(identity, next)
+    }
+    return map
+  }, [tracks, screenOwnerId])
+
+  // 稳定排序（motion-design C8）：本地 → 焦点 → 其余按在线顺序；避免每次重排大洗牌
+  const ordered = useMemo(() => {
+    const ids = Array.from(trackOf.keys())
+    const focusId = screenOwnerId ?? (focusMemberActive ? focusUserId : stableSpeaker) ?? null
+    const rank = (identity: string) => {
+      if (identity === localIdentity) return 0
+      if (focusId && identity === focusId) return 1
+      return 2
+    }
+    return ids.slice().sort((a, b) => {
+      const diff = rank(a) - rank(b)
+      if (diff !== 0) return diff
+      return onlineIds.indexOf(a) - onlineIds.indexOf(b)
+    })
+  }, [trackOf, localIdentity, focusMemberActive, focusUserId, stableSpeaker, screenOwnerId, onlineIds])
+
+  const geometry = useMemo(() => {
+    const focusIdentity = screenOwnerId ?? (focusMemberActive ? focusUserId : stableSpeaker) ?? null
+    return computeStageGeometry({
+      areaW: area.w,
+      areaH: area.h,
+      identities: ordered,
+      focusIdentity: screenOwnerId ? null : focusIdentity,
+      shareIdentity: screenOwnerId,
+    })
+  }, [area.w, area.h, ordered, screenOwnerId, focusMemberActive, focusUserId, stableSpeaker])
+
+  const shownIds = useLeavingIds(geometry.tiles.map((tile) => tile.identity))
+  const placedIds = new Set(geometry.tiles.map((tile) => tile.identity))
+  const layoutKey = `${area.w}x${area.h}|${shownIds.join(',')}|${geometry.mode}|${geometry.focusIdentity ?? '-'}`
+  useFlipTransition(stageEl, { layoutKey })
 
   if (!connected || tracks.length === 0) {
     return (
@@ -93,85 +160,64 @@ export default function LiveStage({
 
   const roleOf = (identity: string): Role | null => byIdentity.get(identity)?.role ?? null
   const nameOf = (identity: string): string => byIdentity.get(identity)?.displayName ?? identity
-  const focusIdentity = layout.focus?.identity ?? null
-  const focusTrack = focusIdentity
-    ? (tracks.find(
-        (item) =>
-          item.participant.identity === focusIdentity &&
-          item.source === Track.Source.ScreenShare &&
-          !item.publication?.isMuted,
-      ) ??
-      tracks.find((item) => item.participant.identity === focusIdentity) ??
-      null)
-    : null
-  const railTracks = layout.rail
-    .map((item) => ({ ...item, track: tracks.find((candidate) => candidate.participant.identity === item.identity) }))
-    .filter((item): item is { identity: string; speaking: boolean; track: NonNullable<typeof item.track> } => Boolean(item.track))
-
-  const stageClass = `live-stage${layout.railMode === 'strip' ? ' live-stage-strip' : ''}`
-  const railClass = `live-rail live-rail-${layout.railMode}`
 
   return (
-    <div className={stageClass} style={{ ['--focus-max-w' as string]: `${Math.round(layout.metrics.focusMaxWidth)}px` }}>
-      {focusIdentity && (
-        <div className="live-focus-slot">
-          {focusTrack ? (
-            <ParticipantTile
-              participant={focusTrack.participant}
-              publication={focusTrack.publication}
-              role={roleOf(focusIdentity)}
-              isFocus
-              speaking={focusIdentity === speakerIdentity}
-
-              micMuted={micMutedOf(focusTrack.participant)}
-              badge={
-                layout.focus && layout.focus.kind !== 'speaker' && layout.focus.kind !== 'self' ? (
-                  <FocusBadge
-                    kind={layout.focus.kind === 'share' ? 'share' : 'focus'}
-                    name={nameOf(focusIdentity)}
-                    isSelf={focusIdentity === localIdentity}
-                  />
-                ) : null
-              }
-            />
-          ) : (
-            /* 焦点人在册但此刻离线：显示头像块占位（§8.7 边界态：保留焦点） */
-            <div className="live-tile live-tile-focus live-tile-placeholder">
-              <div className="live-avatar-wrap">
-                <span className="live-avatar" aria-hidden>
-                  {nameOf(focusIdentity).slice(0, 1)}
-                </span>
+    <div
+      className="live-stage live-stage-grid"
+      ref={stageRef}
+      data-stage-mode={geometry.mode}
+      data-stage-area={`${Math.round(area.w)}x${Math.round(area.h)}`}
+      data-stage-ids={ordered.join(' ')}
+    >
+      {shownIds.map((identity) => {
+        const tile = geometry.tiles.find((candidate) => candidate.identity === identity)
+        const leaving = !placedIds.has(identity)
+        const track = trackOf.get(identity)
+        const rect = tile ?? { x: 0, y: 0, w: 0, h: 0 }
+        const isFocus = Boolean(tile && tile.kind === 'focus')
+        const isSelf = identity === localIdentity
+        return (
+          <div
+            key={identity}
+            data-flip-id={identity}
+            data-kind={tile?.kind ?? 'leaving'}
+            className={`live-cell${leaving ? ' is-leaving' : ''}${isFocus ? ' is-focus' : ''}${tile?.kind === 'share' ? ' is-share' : ''}`}
+            style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
+          >
+            {track && !leaving ? (
+              <ParticipantTile
+                participant={track.participant}
+                publication={track.publication}
+                role={roleOf(identity)}
+                isFocus={isFocus}
+                speaking={identity === speakerIdentity}
+                micMuted={micMutedOf(track.participant)}
+                badge={
+                  isFocus && geometry.focusIdentity === identity && tile?.kind !== 'share' ? (
+                    <FocusBadge kind="focus" name={nameOf(identity)} isSelf={isSelf} />
+                  ) : null
+                }
+              />
+            ) : (
+              <div className={`live-tile${isFocus ? ' live-tile-focus' : ''} live-tile-placeholder`}>
+                <div className="live-avatar-wrap">
+                  <span className="live-avatar" aria-hidden>
+                    {nameOf(identity).slice(0, 1)}
+                  </span>
+                </div>
+                {isFocus && <FocusBadge kind="focus" name={nameOf(identity)} isSelf={isSelf} />}
+                <div className="live-tile-bar">
+                  <span className="live-tile-name">{nameOf(identity)}</span>
+                  {leaving && <span className="chip chip-quiet">已离开</span>}
+                </div>
               </div>
-              {layout.focus?.kind === 'focus' && (
-                <FocusBadge kind="focus" name={nameOf(focusIdentity)} isSelf={focusIdentity === localIdentity} />
-              )}
-              <div className="live-tile-bar">
-                <span className="live-tile-name">{nameOf(focusIdentity)}</span>
-                <span className="chip chip-quiet">离线</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {railTracks.length > 0 && (
-        <div className={railClass}>
-          {railTracks.map((item) => (
-            <ParticipantTile
-              key={item.identity}
-              participant={item.track.participant}
-              publication={item.track.publication}
-              role={roleOf(item.identity)}
-              speaking={item.speaking}
-
-              micMuted={micMutedOf(item.track.participant)}
-            />
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        )
+      })}
 
       {sharing && (
-        <button className="btn btn-sm live-share-self" onClick={onStopShare}>
+        <button className="btn btn-sm live-share-stop" onClick={onStopShare}>
           停止共享
         </button>
       )}

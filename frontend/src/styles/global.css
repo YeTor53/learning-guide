@@ -1735,3 +1735,91 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 
 .invite-join { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin: var(--s-4) 0 var(--s-2); }
 .invite-join .input { min-width: 200px; letter-spacing: 0.08em; }
+
+/* ==========================================================================
+   r009 · 焦点系统：均分铺满舞台 + 动效令牌
+   设计事实源：docs/rounds/r009-focus-system/{design,motion-design}.md
+   调参入口：全部令牌就在这一段，改一处即全局生效。
+   ========================================================================== */
+:root {
+  --stage-move-ms: 240;          /* 布局位置/缩放过渡时长（ms） */
+  --stage-enter-ms: 220;         /* 新格出现 */
+  --stage-exit-ms: 180;          /* 离场格淡出（之后才摘除 DOM） */
+  --stage-ease: cubic-bezier(.22, 1, .36, 1);
+  --stage-gap: 10px;
+  --focus-weight: 1.4;           /* 焦点格份量（面积 1.4 倍；几何层用） */
+  --stage-pad: 12px;
+  --hand-blink-ms: 1.2s;         /* 举手格呼吸边框周期 */
+  --hand-blink-width: 3px;
+  --mic-pulse-max: 0.35;         /* 麦克风声波最大外扩比例 */
+  --tile-fit: cover;             /* 格子内画面填充方式：cover=铺满（可能裁边）/ contain=完整画面（留黑边） */
+}
+
+.live-stage.live-stage-grid {
+  /* 注意：不要写 height:100% —— .live-stage 是 .live-main 的 flex 项（flex:1）拿高度，
+     父级高度是 auto 时 100% 会算成 0，格子全都不排（cp-1b 实测踩到）。 */
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: var(--stage-pad);
+  overflow: hidden;
+}
+
+.live-cell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  border-radius: var(--r-lg, 14px);
+  overflow: hidden;
+  /* 位置只由 transform 表达：几何变化时由 FLIP 播放，不做 width/height 动画 */
+  transform-origin: 0 0;
+  transition: box-shadow 200ms linear;
+}
+.live-cell.is-leaving { pointer-events: none; opacity: .35; }
+.live-cell.is-focus { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent); }
+
+/* 举手：纯视觉（不参与几何），呼吸边框；减少动效时改成静态描边 */
+.live-cell.is-hand, .live-tile.is-hand {
+  outline: var(--hand-blink-width) solid var(--warn, #d8a657);
+  outline-offset: -2px;
+  animation: hand-breathe var(--hand-blink-ms) ease-in-out infinite;
+}
+@keyframes hand-breathe {
+  0%, 100% { outline-color: color-mix(in srgb, var(--warn, #d8a657) 35%, transparent); }
+  50% { outline-color: color-mix(in srgb, var(--warn, #d8a657) 95%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --stage-move-ms: 0; --stage-enter-ms: 0; --stage-exit-ms: 0; --hand-blink-ms: 0.001s; }
+  .live-cell { transition: none; }
+  .live-cell.is-hand { animation: none; outline-color: var(--warn, #d8a657); }
+}
+
+
+/* —— r009 均分舞台：格子内画面必须撑满（旧 r004 缩格条的 168px 定宽/降权不适用）—— */
+.live-stage-grid .live-cell > .live-tile {
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  border-radius: inherit;
+}
+.live-stage-grid .live-tile:not(.live-tile-focus) {
+  /* 旧布局靠降权把非焦点格「退到边上」；均分布局里大家都是主视觉，不再压暗 */
+  flex: 1 1 auto;
+  filter: none;
+}
+.live-stage-grid .live-tile-focus {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+  margin: 0;
+}
+.live-stage-grid .live-tile > video,
+.live-stage-grid .live-tile-focus > video {
+  width: 100%;
+  height: 100%;
+  object-fit: var(--tile-fit, cover);
+}
