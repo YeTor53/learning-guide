@@ -1,7 +1,7 @@
-"""并发用例：两个线程同时批准**同一条**申请。
+"""并发用例：① 两个线程同时批准**同一条**申请 ② 只剩 1 个名额时并发批准**两条**申请。
 
-设计事实源：docs/03-decisions/r002-adr-0012-room-lifecycle.md（修订 D3：容量不再由批准把关）
-判据：恰好 1 个成功、另 1 个 `CONFLICT`（申请已被处理），且库里活跃成员数 = 成员数（房主 + 该申请人）。
+设计事实源：`docs/03-decisions/r005-adr-0016-room-capacity-membership.md`（容量 = 在册成员，库为权威）
+判据：① 恰好 1 个成功、另 1 个 `CONFLICT`；② 恰好 1 个成功、另 1 个 `ROOM_FULL`，且库里活跃成员数 ≤ capacity。
 说明：这条用例必须用**两条真实连接 + 已提交数据**才能验证行锁，所以不走"必定回滚"夹具，
       改为自建数据、跑完在 finally 里删除（删房间会级联清成员与申请）。
 """
@@ -101,6 +101,38 @@ def test_concurrent_approve_same_request_only_one_wins(committed_room) -> None:
     with get_conn() as conn:
         active = repo.count_active_members(conn, room_id)
     assert active == 3  # 房主 + 已有成员 + 被批准的那位
+
+
+def test_concurrent_approve_respects_capacity(committed_room) -> None:
+    """r005：只剩 1 个名额时并发批准两条不同申请 —— 只能过一个（不变量 在册 ≤ capacity）。"""
+    room_id = committed_room["room_id"]
+    host_id = committed_room["host"].id
+    outcomes: list[str] = []
+    lock = threading.Lock()
+    barrier = threading.Barrier(2)
+
+    def approve(request_id: str) -> None:
+        with get_conn() as conn:
+            barrier.wait(timeout=10)
+            try:
+                rooms_service.approve_join_request(conn, _host_vo(host_id), request_id)
+                result = "ok"
+            except AppError as exc:
+                result = exc.code
+            with lock:
+                outcomes.append(result)
+
+    threads = [threading.Thread(target=approve, args=(rid,)) for rid in ("req_cc_1", "req_cc_2")]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=20)
+
+    assert sorted(outcomes) == ["ROOM_FULL", "ok"], outcomes
+    with get_conn() as conn:
+        active = repo.count_active_members(conn, room_id)
+        capacity = conn.execute("SELECT capacity FROM rooms WHERE id = %s", (room_id,)).fetchone()[0]
+    assert active <= capacity, (active, capacity)
 
 
 def _host_vo(user_id: str):

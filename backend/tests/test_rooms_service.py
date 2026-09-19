@@ -78,16 +78,19 @@ def test_request_join_rejected_when_already_member(db) -> None:
     assert exc.value.code == "ALREADY_MEMBER"
 
 
-def test_request_join_allowed_when_full(db) -> None:
-    """ADR-0012 修订 D2：申请不校验容量——满员时也能进等待室（容量闸在取票）。"""
+def test_request_join_rejected_when_full(db) -> None:
+    """r005（ADR-0016，取代 D2）：人数按**在册成员**算，满员时申请直接拒。"""
     host = register_user(db, "房主甲")
     room = _make_room(db, host, capacity=2)
     first, second = register_user(db, "成员一"), register_user(db, "成员二")
     req = _join(db, first, room.id)
     rooms_service.approve_join_request(db, host, req.id)
 
-    request = _join(db, second, room.id)  # 不再抛 ROOM_FULL
-    assert request.status == "pending"
+    with pytest.raises(AppError) as exc:
+        _join(db, second, room.id)
+    assert (exc.value.code, exc.value.status) == ("ROOM_FULL", 409)
+    # 没有落下 pending（申请人不再进等待室）
+    assert repo.get_pending_request(db, room.id, second.id) is None
 
 
 # ---------- 批准 / 拒绝 ----------
@@ -119,8 +122,8 @@ def test_approve_requires_manager_role(db) -> None:
     assert (exc.value.code, exc.value.status) == ("FORBIDDEN", 403)
 
 
-def test_approve_allowed_when_full(db) -> None:
-    """ADR-0012 修订 D3：批准不校验容量——批准是发入场资格，满不满由取票时的在场数决定。"""
+def test_approve_rejected_when_full(db) -> None:
+    """r005（ADR-0016，取代 D3）：批准也要核在册数，保证不变量「在册 ≤ capacity」。"""
     host = register_user(db, "房主甲")
     room = _make_room(db, host, capacity=2)
     first, second = register_user(db, "成员一"), register_user(db, "成员二")
@@ -128,8 +131,13 @@ def test_approve_allowed_when_full(db) -> None:
     approved = _join(db, first, room.id)
     rooms_service.approve_join_request(db, host, approved.id)
 
-    result = rooms_service.approve_join_request(db, host, waiting.id)  # 不再抛 ROOM_FULL
-    assert result.request.status == "approved" and result.member.status == "active"
+    with pytest.raises(AppError) as exc:
+        rooms_service.approve_join_request(db, host, waiting.id)
+    assert (exc.value.code, exc.value.status) == ("ROOM_FULL", 409)
+    assert repo.count_active_members(db, room.id) == 2
+    # 被拒的申请保持 pending（房主可手动拒）
+    kept = repo.get_join_request(db, waiting.id)
+    assert kept is not None and kept.status == "pending"
 
 
 def test_approve_twice_returns_conflict(db) -> None:

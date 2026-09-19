@@ -217,38 +217,41 @@ def test_end_room_reports_livekit_applied(client, db, monkeypatch):
     assert resp.json()["data"]["livekitApplied"] is True
     assert calls == [room["id"]]
 
-# ---------------- 等候与入场（ADR-0012 修订口径，cp-r002-4 转正）----------------
+# ---------------- 等候与入场（r005 口径：人数按在册成员，ADR-0016）----------------
 #
-# 目标口径（用户 2026-09-18）：容量按**在场**算（不占座、无「未入场」概念）；
-#   申请不校验容量 → 申请人总能进等待室；批准不校验容量 → 获批后**自动进入**；
-#   真正的容量闸在**取票**（`POST /token`）：在场 >= capacity → 409 ROOM_FULL，「失败回主界面」。
-# 已按 ADR-0012 修订实现（cp-r002-4）：本用例为转正用例。
+# 口径变化（2026-09-19，用户批复 + ADR-0016）：
+#   人数上限 = 本库**在册成员数**（LiveKit 只是承载工具，不参与判定）；
+#   满员 → 申请直接拒 409 ROOM_FULL；批准也核在册数；
+#   取票不再查 LiveKit（在册即放行）。
+# 取代原 ADR-0012 修订 D1/D2/D3/D5（见 ADR-0016 与 ADR-0012 的 D9 指路行）。
 
 
-def test_capacity_is_enforced_at_token_time_with_presence(client, db, monkeypatch):
-    """满员＝在场满：申请可提交、批准不拦、取票时第 N+1 人被拒。"""
-    from app.services import rooms as rooms_service
-
-    monkeypatch.setattr(livekit_service, "list_participant_identities", lambda room, settings=None: ["usr_a", "usr_b"])
+def test_capacity_is_enforced_by_membership(client, db, monkeypatch):
+    """满员＝在册满：第 N+1 人申请即被拒；取票不再依赖 LiveKit 在场数。"""
     host = register_user(db, "房主")
     login(client, host)
     room = create_room(client)
     db.execute("UPDATE rooms SET capacity = 2 WHERE id = %s", (room["id"],))
+    room_id = room["id"]
 
-    waiter = register_user(db, "排队的")
-    login(client, waiter)
-    created = client.post(f"/api/rooms/{room['id']}/join-requests", json={"message": "排队中"})
-    assert created.status_code == 201, created.text  # 申请不校验容量
-    request_id = created.json()["data"]["id"]
+    first = register_user(db, "成员一")
+    join_as_member(client, host, room_id, first)          # 在册 = 2（房主 + 成员一）→ 满
 
-    login(client, host)
-    assert client.post(f"/api/join-requests/{request_id}/approve").status_code == 200  # 批准不校验容量
+    third = register_user(db, "第三人")
+    login(client, third)
+    denied = client.post(f"/api/rooms/{room_id}/join-requests", json={"message": "想加入"})
+    assert denied.status_code == 409, denied.text
+    assert denied.json()["error"]["code"] == "ROOM_FULL"
 
-    login(client, waiter)
-    token = client.post(f"/api/rooms/{room['id']}/token")  # 在场已满 → 取票被拒
-    assert token.status_code == 409 and token.json()["error"]["code"] == "ROOM_FULL"
+    # 在场查询即便被改坏，也不影响取票（证明取票已不看 LiveKit）
+    def _boom(*_args, **_kwargs):
+        raise AssertionError("取票不应再调用 LiveKit 在场查询")
 
-    # 有人离场（在场数降到 1）→ 取票通过
-    monkeypatch.setattr(livekit_service, "list_participant_identities", lambda room, settings=None: ["usr_a"])
-    assert client.post(f"/api/rooms/{room['id']}/token").status_code == 200
-    assert rooms_service is not None
+    monkeypatch.setattr(livekit_service, "list_participant_identities", _boom)
+    login(client, first)
+    assert client.post(f"/api/rooms/{room_id}/token").status_code == 200
+
+    # 有人离开 → 名额释放 → 第三人可以申请
+    assert client.post(f"/api/rooms/{room_id}/leave").status_code == 200
+    login(client, third)
+    assert client.post(f"/api/rooms/{room_id}/join-requests", json={"message": "再试"}).status_code == 201

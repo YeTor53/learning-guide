@@ -210,7 +210,7 @@ def list_rooms(conn: Connection, f: RoomFilter) -> tuple[list[RoomWithHost], int
     rows = conn.execute(
         f"""SELECT {ROOM_COLUMNS}, u.display_name FROM rooms r JOIN users u ON u.id = r.host_id
             {where}
-            ORDER BY (r.status = 'active') DESC, r.created_at DESC
+            ORDER BY (r.status = 'active') DESC, r.created_at DESC, r.id DESC
             LIMIT %s OFFSET %s""",
         [*params, f.limit, f.offset],
     ).fetchall()
@@ -299,7 +299,7 @@ def list_members(conn: Connection, room_id: str, include_inactive: bool = False)
     rows = conn.execute(
         f"""SELECT {MEMBER_COLUMNS}, u.display_name FROM room_members m JOIN users u ON u.id = m.user_id
             WHERE m.room_id = %s {condition}
-            ORDER BY (m.status = 'active') DESC, m.joined_at ASC""",
+            ORDER BY (m.status = 'active') DESC, m.joined_at ASC, m.id ASC""",
         (room_id,),
     ).fetchall()
     return [MemberRowWithName(_member(row[:8]), row[8]) for row in rows]
@@ -364,7 +364,7 @@ def list_join_requests(conn: Connection, room_id: str, status: Optional[str] = N
     rows = conn.execute(
         f"""SELECT {REQUEST_COLUMNS}, u.display_name FROM join_requests r JOIN users u ON u.id = r.user_id
             WHERE r.room_id = %s {condition}
-            ORDER BY (r.status = 'pending') DESC, r.created_at ASC""",
+            ORDER BY (r.status = 'pending') DESC, r.created_at ASC, r.id ASC""",
         params,
     ).fetchall()
     return [JoinRequestRowWithName(_request(row[:8]), row[8]) for row in rows]

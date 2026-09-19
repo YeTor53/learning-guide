@@ -286,20 +286,24 @@ def derive_room_phase(conn: Connection, room_id: str) -> str:
 # ---------------- 加入申请 ----------------
 
 def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) -> JoinRequestVO:
-    """提交申请：五种拦截（未登录在依赖层）→ 写申请；唯一冲突映射为 `ALREADY_PENDING`。"""
-    item = repo.get_room(conn, room_id)
-    room = assert_room_active(item.room if item else None)
-    if repo.get_active_member(conn, room_id, actor.id) is not None:
-        raise AppError(ERR_ALREADY_MEMBER, "你已在房间中", status=409)
-    if repo.get_pending_request(conn, room_id, actor.id) is not None:
-        raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409)
-    # 申请**不校验容量**（ADR-0012 修订 D2）：申请人总能进等待室；容量闸唯一在取票。
+    """提交申请：六种拦截（未登录在依赖层）→ 写申请；唯一冲突映射为 `ALREADY_PENDING`。
+
+    r005（ADR-0016）：人数上限按**在册成员**（本库）判定，满员直接拒 —— 不再让申请人进等待室。
+    判定与写申请在同一事务、先锁房间行，因此并发申请不会挤进第 N+1 个名额。
+    """
     request_id = new_id("req")
-    try:
-        with conn.transaction():
+    with conn.transaction():
+        room = assert_room_active(repo.lock_room(conn, room_id))
+        if repo.get_active_member(conn, room_id, actor.id) is not None:
+            raise AppError(ERR_ALREADY_MEMBER, "你已在房间中", status=409)
+        if repo.get_pending_request(conn, room_id, actor.id) is not None:
+            raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409)
+        if repo.count_active_members(conn, room_id) >= room.capacity:
+            raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.capacity} 人）", status=409)
+        try:
             repo.insert_join_request(conn, repo.NewJoinRequest(id=request_id, room_id=room_id, user_id=actor.id, message=message))
-    except UniqueViolation as exc:  # 并发双击
-        raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409) from exc
+        except UniqueViolation as exc:  # 并发双击
+            raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409) from exc
     created = repo.get_join_request(conn, request_id)
     if created is None:
         raise AppError(ERR_INTERNAL, "提交申请后无法读取", status=500)
@@ -346,9 +350,11 @@ def approve_join_request(conn: Connection, actor: UserVO, request_id: str) -> Ap
         current = repo.get_join_request(conn, request_id)
         if current is None or current.status != "pending":
             raise AppError(ERR_CONFLICT, "该申请已被处理", status=409)
-        # 批准**不校验容量**（ADR-0012 修订 D3）：批准 = 授予本场入场资格，满不满由取票时的在场数决定。
         if repo.get_active_member(conn, request.room_id, request.user_id) is not None:
             raise AppError(ERR_ALREADY_MEMBER, "该用户已在房间中", status=409)
+        # r005（ADR-0016）：批准前再按在册数核一次，保证不变量「在册 ≤ capacity」（并发时由房间行锁串行）。
+        if repo.count_active_members(conn, request.room_id) >= room.capacity:
+            raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.capacity} 人）", status=409)
         member_id = new_id("mem")
         repo.insert_member(
             conn, repo.NewMember(id=member_id, room_id=request.room_id, user_id=request.user_id, role="participant")
@@ -438,11 +444,9 @@ def issue_room_token(conn: Connection, actor: Optional[UserVO], room_id: str) ->
     if member is None:
         raise AppError(ERR_NOT_MEMBER, "你不在该房间中（或已被移出）", status=403)
     settings = load_settings()
-    # 容量闸（ADR-0012 修订 D5）：按**在场人数**算（不含自己，重连时自己已连着）；
-    # LiveKit 查询失败会降级为 []（不因监控失败拦人），由 Token 的 max_participants 兜底。
-    present = livekit_service.list_participant_identities(room_id, settings=settings)
-    if len([identity for identity in present if identity != actor.id]) >= room.room.capacity:
-        raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.room.capacity} 人）", status=409)
+    # r005（ADR-0016）：人数上限由**本库在册成员**决定，已在申请/批准两处封顶；取票不再查 LiveKit
+    # （省掉一次 0.8~1.8s 的外部调用，也消除「外部查询失败就放人」的洞）。
+    # LiveKit 的 `max_participants` 仍写进 Token，但只作音视频承载兜底，不再是人数权威。
     token = livekit_service.issue_token(
         room_id,
         actor.id,
