@@ -99,6 +99,17 @@ class MemberRowWithName:
 
 
 @dataclass(frozen=True)
+class NewMessage:
+    """写一条消息（r005 起用于房间事件：`kind='system'`）。"""
+
+    id: str
+    room_id: str
+    user_id: str
+    body: str
+    kind: str = "system"
+
+
+@dataclass(frozen=True)
 class NewJoinRequest:
     id: str
     room_id: str
@@ -285,6 +296,21 @@ def get_active_member(conn: Connection, room_id: str, user_id: str) -> Optional[
         (room_id, user_id),
     ).fetchone()
     return _member(row) if row else None
+
+
+def insert_message(conn: Connection, message: NewMessage) -> None:
+    """插入一条消息；`kind='system'` 用于房间事件留痕（与状态变更同事务调用）。"""
+    conn.execute(
+        """INSERT INTO chat_messages (id, room_id, user_id, body, kind)
+           VALUES (%s, %s, %s, %s, %s)""",
+        (message.id, message.room_id, message.user_id, message.body, message.kind),
+    )
+
+
+def get_display_name(conn: Connection, user_id: str) -> Optional[str]:
+    """取用户显示名（房间事件文案里要点名，而成员行不带名字）。"""
+    row = conn.execute("SELECT display_name FROM users WHERE id = %s", (user_id,)).fetchone()
+    return row[0] if row else None
 
 
 def count_active_members(conn: Connection, room_id: str) -> int:
