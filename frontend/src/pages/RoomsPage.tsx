@@ -30,6 +30,8 @@ export default function RoomsPage() {
   const [status, setStatus] = useState<RoomStatus | 'all'>('active')
   const [topic, setTopic] = useState<Topic | ''>('')
   const [page, setPage] = useState(0)
+  // 刷新反馈（r007 追加）：数据变没变都让列表重放一次入场动画，点「刷新」必有可见反应
+  const [refreshTick, setRefreshTick] = useState(0)
 
   const mine = params.get('mine') === '1'  // 与侧边栏「我的房间」同源，可直接分享 /?mine=1
   const { data, isLoading, isError, error, refetch, isFetching } = useRooms({
@@ -133,8 +135,15 @@ export default function RoomsPage() {
           只看我的
         </button>
 
-        <button className="btn btn-sm" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw {...ICON} />
+        <button
+          className="btn btn-sm"
+          onClick={async () => {
+            await refetch()
+            setRefreshTick((value) => value + 1)
+          }}
+          disabled={isFetching}
+        >
+          <RefreshCw {...ICON} className={isFetching ? 'spin' : undefined} />
           刷新
         </button>
 
@@ -147,7 +156,7 @@ export default function RoomsPage() {
       </div>
 
       {isLoading && (
-        <div className="room-grid">
+        <div className="room-grid" key={`loading-${refreshTick}`}>
           <div className="skeleton" />
           <div className="skeleton" />
           <div className="skeleton" />
@@ -222,7 +231,7 @@ export default function RoomsPage() {
       )}
 
       {rooms.length > 0 && (
-        <div className="room-grid">
+        <div className="room-grid" key={`rooms-${refreshTick}`}>
           {rooms.map((room, index) => (
             <RoomCard key={room.id} room={room} index={index} />
           ))}

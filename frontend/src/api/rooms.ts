@@ -36,6 +36,8 @@ export interface Room {
   pendingCount: number
   myRole: Role | null
   myRequestStatus: string | null
+  /** 我在这间房的待批申请 id（本人可见；撤回用——r007 修前走管理权限接口，申请人一律 403）。 */
+  myRequestId: string | null
   createdAt: string
   endedAt: string | null
 }

@@ -60,6 +60,8 @@ class RoomVO(CamelModel):
     pending_count: int
     my_role: Optional[str] = None
     my_request_status: Optional[str] = None
+    my_request_id: Optional[str] = None
+    """我在这间房的待批申请 id（本人可见；撤回用——r007 修：原来前端去调管理权限的申请列表接口，申请人一律 403）。"""
     created_at: datetime
     ended_at: Optional[datetime] = None
     livekit_applied: Optional[bool] = None

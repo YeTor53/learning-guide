@@ -46,10 +46,11 @@ export default function WaitingPage() {
     setBusy(true)
     setError(null)
     try {
-      const requests = await roomsApi.listRequests(id).catch(() => [])
-      const pending = requests.find((item) => item.status === 'pending')
-      if (!pending) throw new ApiError('NOT_FOUND', '找不到待批申请，请刷新后再试', 404)
-      await roomsApi.withdraw(pending.id)
+      // r007 修：原先用 listRequests（管理权限接口）找自己的申请 id → 申请人一律 403、列表为空 → 撤回永远失败。
+      // 现改用房间详情里本人可见的 myRequestId。
+      const requestId = room?.myRequestId ?? ''
+      if (!requestId) throw new ApiError('NOT_FOUND', '找不到待批申请，请刷新后再试', 404)
+      await roomsApi.withdraw(requestId)
       queryClient.invalidateQueries({ queryKey: ['waiting-room', id] })
       refetch()
     } catch (err) {

@@ -8,7 +8,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { MESSAGE_LIMIT } from '../../api/roomExtras'
 import type { Message } from '../../api/rooms'
 import type { ChatState } from '../../hooks/useChatMessages'
-import QuoteLine from '../QuoteLine'
 import MessageBubble from './MessageBubble'
 
 const MAX_LEN = 500
@@ -67,12 +66,7 @@ export default function ChatPanel({ chat, myUserId, onChanged }: Props) {
             加载更早的消息
           </button>
         )}
-        {rows.length === 0 && (
-          <>
-            <p className="chat-empty">还没有人发言</p>
-            <QuoteLine scene="meet" />
-          </>
-        )}
+        {rows.length === 0 && <p className="chat-empty">还没有人发言</p>}
         {rows.map((row) => (
           <MessageBubble
             key={row.message.id}

@@ -277,3 +277,37 @@ def test_new_topic_accepted_and_invalid_topic_rejected(client, db) -> None:
     # 未知主题筛选同 400（走 TOPICS 校验）
     filtered = client.get("/api/rooms", params={"topic": "quantum-cooking"})
     assert filtered.status_code == 400, filtered.text
+
+
+def test_detail_exposes_my_request_id_for_applicant(client, db) -> None:
+    """r007 修（撤回不了）：房间详情给**申请人本人**带上 `myRequestId`，撤回不再依赖管理权限的申请列表接口。
+
+    事实源：`docs/rounds/r007-topic-and-scrollhint/review.md` E15 追加、`docs/02-modules/r002-livekit.md` §5。
+    """
+    host = register_user(db, "撤回房主")
+    applicant = register_user(db, "撤回申请人")
+    _login_as(client, host)
+    room = client.post(
+        "/api/rooms",
+        json={"topic": "custom", "topicLabel": "撤回", "title": "撤回测试房", "description": ""},
+    ).json()["data"]
+
+    _login_as(client, applicant)
+    created = client.post(f"/api/rooms/{room['id']}/join-requests", json={"message": ""})
+    assert created.status_code == 201, created.text
+    request_id = created.json()["data"]["id"]
+
+    detail = client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]
+    assert detail["myRequestStatus"] == "pending"
+    assert detail["myRequestId"] == request_id, detail
+
+    withdrawn = client.post(f"/api/join-requests/{request_id}/withdraw")
+    assert withdrawn.status_code == 200, withdrawn.text
+
+    after = client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]
+    assert after["myRequestId"] is None, after
+
+    # 房主视角：没有自己的申请，故为空
+    _login_as(client, host)
+    host_detail = client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]
+    assert host_detail["myRequestId"] is None
