@@ -34,6 +34,7 @@ updated: 2026-09-19
 | `leave_room` / `kick_member` / `transfer_host` / `end_room` | 各自事务内追加系统消息（见 §4） |
 | `repositories/rooms.py:insert_message(conn, NewMessage)` / `get_display_name(conn, user_id)` | 系统消息写入与取名字（成员行不带名字） |
 | `repositories/rooms.py` 三处列表 | 排序补 `id` 兜底（决定性排序，L1） |
+| `db/sql/005_r005_statement_timestamps.sql` | 6 张表时间列默认改 `clock_timestamp()`（语句级）：`now()` 在事务内会打平时间戳 → 排序随机（实测症状：同事务写的消息顺序、当前焦点错乱） |
 
 ## 4. 系统消息（`chat_messages.kind='system'`，`user_id` = 触发者）
 
@@ -66,7 +67,8 @@ updated: 2026-09-19
 
 | 项 | 结果 |
 | --- | --- |
-| `pytest backend/tests -q` | **110 passed**（r004 基线 105 → 净 +5：容量两例翻转、接口一例重写、并发一例新增、系统消息四例） |
+| `pytest backend/tests -q` | **111 passed**（r004 基线 105；翻转 2、重写 1、新增 4 + 1 时间戳守卫；连跑两次稳定） |
+| `db_init.py` 迁移 | `005_r005_statement_timestamps` 应用成功，`schema_migrations=5` |
 | `smoke.py` | **PASS 40/40**（补 r005 四步：填满、满员 409、满员留痕、加入/离开/被移出留痕） |
 | 取票延迟（6 次采样） | 中位 **3.2ms**（min 2.9 / max 21.7）；改前 **1650ms** |
 | 满员实测（真实 HTTP） | 满员房第 N+1 人申请 → 409 `ROOM_FULL`，系统消息 7 → 8 条 |

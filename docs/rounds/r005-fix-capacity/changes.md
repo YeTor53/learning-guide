@@ -19,6 +19,7 @@ updated: 2026-09-19
 | cp-r005-2 | 系统消息：六类房间事件写 `kind='system'`（同事务）+ 用例 | **完成 2026-09-19** | 见本轮 cp-2 提交 | `pytest` **110 passed**（+4 系统消息用例） |
 | cp-r005-3 | 前端：状态条「在册 N / 容量」+ 列表卡满员态 + 真机截图（含满员拒绝留痕的最后一处修） | **完成 2026-09-19** | 见本轮 cp-3 提交 | E1/E4/E7 实测见 §4.4 |
 | cp-r005-4 | 收官：smoke 补 r005 四步、实现页/功能页/使用者教学页/开发者 §9、review 定稿、索引与 roadmap 回填 | **完成 2026-09-19** | 见本轮 cp-4 提交 | `smoke` **PASS 40/40**；review §1 全绿 |
+| cp-r005-4b | 收官后修：迁移 005（时间戳默认改语句级）+ 守卫用例 | **完成 2026-09-19** | 见本轮收尾提交 | `pytest` **111 passed**（连跑两次稳定）+ `smoke` 40/40 |
 
 ## 2. 文件 × 模块 × 文档锚点
 
@@ -34,7 +35,8 @@ updated: 2026-09-19
 | `backend/tests/test_room_events_messages.py`（新） | 测试 | 六类事件 + 满员拒留痕 + 列表可见 共 4 例 | design §8 E5 | landed（cp-2） |
 | `frontend/src/pages/RoomLivePage.tsx`、`components/RoomCard.tsx` | 前端 | 状态条「在册 N / 容量」、列表卡「已满」徽标 | design §5 | landed（cp-3） |
 | `backend/app/api/routers/rooms.py` + `services/rooms.py:RoomFullNotice` | 后端 | 满员 409 改由路由 `fail(...)` 正常返回（不再抛错，留痕才不被回滚） | design §4 事务细节 | landed（cp-3） |
-| `backend/tests/test_room_capacity.py`（新） | 测试 | E2/E3/E4/E5 用例 | design §8 | planned（cp-1/2） |
+| `backend/app/db/sql/005_r005_statement_timestamps.sql`（新） | 后端/迁移 | 6 张表时间列默认 `now()` → `clock_timestamp()`（语句级，修同事务排序随机） | design §10 | landed（cp-4b） |
+| `backend/tests/{test_rooms_service,test_rooms_members_api,test_rooms_concurrency}.py` | 测试 | 容量用例（未单独建 `test_room_capacity.py`：直接落在既有三个文件里，避免重复夹具） | design §8 E2/E3/E4 | landed（cp-1） |
 | `backend/scripts/smoke.py` | 工具 | r005 四步：填满 8 人 / 满员 409 / 满员留痕 / 加入·离开·被移出留痕 | design §8 | landed（cp-4） |
 | `docs/02-modules/r005-fix-capacity{,-features}.md`（新） | 文档 | 实现页 + 功能页 | 自身 | landed（cp-4） |
 | `docs/tutorials/r005-capacity-and-events.md`（新）、`tutorials/r002-livekit-dev-guide.md` §9 | 文档 | 使用者教学页 + 开发者事务陷阱 | 自身 | landed（cp-4） |
@@ -79,3 +81,9 @@ updated: 2026-09-19
 - `smoke.py` 补 r005 四步 → **PASS 40/40**（原 36/36）：「填满到 8 人（在册 = 容量）」→ memberCount=8；「满员时第 9 人申请 → 409 ROOM_FULL」；「满员拒绝留痕（系统消息）」→ 12 条系统消息且含满员拒绝；「加入/离开/被移出也留痕」。
 - 文档：实现页（判定点/函数级/事务陷阱/验证数字/遗留）、功能页（F-23~F-26）、使用者教学页（满员与房间事件）、开发者教学页补 §9（口径 + 「留痕 + 抛错」的事务陷阱）。
 - 索引表 r005 行、模块 README、`docs/README.md` 模块/教学清单、roadmap §9 与 §3 回填。
+
+### 4.6 cp-4b（收官后修：时间戳语义）
+- **实测抓到**：跑门禁时 r004 的两条用例失败 —— 普通消息与房间事件系统消息在同一事务里写，`created_at` 完全相同（Postgres `now()` = **事务开始时间**），于是「按时间排序」在这些行之间退化为随机（消息顺序、当前焦点都受影响）。
+- **修法**：新增迁移 `005_r005_statement_timestamps.sql`，把 `chat_messages.created_at` / `room_focus.created_at` / `room_hand_raises.raised_at` / `room_members.joined_at` / `join_requests.created_at` / `rooms.created_at` 的默认值由 `now()` 改为 `clock_timestamp()`（**语句级**，语义 = 「这一行什么时候写进去的」）。不改写既有数据。
+- 新增守卫用例 `test_same_transaction_writes_have_distinct_timestamps`（同事务两行时间必不同、先写的排在前），并同步 `test_schema.py` 迁移清单。
+- 门禁：`pytest` **111 passed**（连跑两次稳定）、`smoke` **PASS 40/40**、`tsc`/`build` exit 0。

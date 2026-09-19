@@ -107,3 +107,29 @@ def test_system_messages_visible_in_message_list(client, db) -> None:
     messages = listed.json()["data"]["messages"]
     system = [m for m in messages if m["kind"] == "system"]
     assert any(m["body"] == "申请人 加入了房间" for m in system), messages
+
+
+def test_same_transaction_writes_have_distinct_timestamps(db) -> None:
+    """r005：默认时间戳必须是**语句级**（`clock_timestamp()`）。
+
+    为什么：Postgres 的 `now()` = 事务开始时间，同一事务里写多行会拿到**相同**时间戳，
+    于是「按 created_at 排序」在这些行之间退化为随机 —— 实测让消息顺序与当前焦点用例偶发失败。
+    """
+    from app.repositories import rooms as repo
+    from app.services import rooms as rooms_service
+    from app.schemas.rooms import CreateRoomIn
+    from helpers import register_user
+
+    host = register_user(db, "时间房主")
+    room = rooms_service.create_room(
+        db, host, CreateRoomIn(topic="custom", topicLabel="时间", title="时间戳房间", description="")
+    )
+    repo.insert_message(db, repo.NewMessage(id="msg_ts_1", room_id=room.id, user_id=host.id, body="第一条"))
+    repo.insert_message(db, repo.NewMessage(id="msg_ts_2", room_id=room.id, user_id=host.id, body="第二条"))
+
+    rows = db.execute(
+        "SELECT id, created_at FROM chat_messages WHERE room_id = %s ORDER BY created_at, id", (room.id,)
+    ).fetchall()
+    stamps = [row[1] for row in rows]
+    assert len(stamps) == 2 and stamps[0] != stamps[1], stamps
+    assert rows[0][0] == "msg_ts_1" and rows[1][0] == "msg_ts_2"  # 先写的排在前
