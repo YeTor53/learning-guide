@@ -62,6 +62,7 @@ updated: 2026-09-19
 | `r001-ahead-m4-summaries.md` + `-features.md` | M4 LLM 纪要 | backlog |
 | `r002-ahead-invites.md` | 邀请能力（未定里程碑） | backlog |
 | `r003-ahead-m4-ended-rooms-archive.md` | M4 归档页（含 A1~A9 已拍板口径） | backlog |
+| `r005-ahead-test-process.md` | r005 测试流程（全覆盖）：七层模型 / 用例编号 / 证据等级 / `verify.bat` 管线 / 8 条待拍板 | backlog |
 
 ## 6. 实测清点（2026-09-19，61 个 .md）
 
