@@ -8,7 +8,7 @@ updated: 2026-09-19
 ---
 
 <!-- overview -->
-需求与验收见 `docs/00-requirements/r008-assignment-gaps.md`；设计见 `docs/rounds/r008-assignment-gaps/design.md`；决定见 ADR-0018（纪要）/ADR-0019（邀请）。语音转文字已移至 r009。
+需求与验收见 `docs/00-requirements/r008-assignment-gaps.md`；设计见 `docs/rounds/r008-assignment-gaps/design.md`；决定见 ADR-0018（纪要）/ADR-0019（邀请）。语音转文字已移至 r010。
 
 ## 1. 讨论纪要（`session_summaries`）
 
