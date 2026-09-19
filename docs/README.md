@@ -75,7 +75,7 @@ updated: 2026-09-19
 | 2 | `status` 字段被写成一整句话 | `rounds/r002-livekit/redirect-06.md`（`confirmed-delete（用户 2026-09-18：「删了吧」）`） | **待批**：同上 |
 | 3 | 页 `status` 仍是 `draft`，但所属轮次已收官 | `01-architecture/r002-realtime-architecture.md`、`02-modules/r002-livekit.md`、`-features.md`、`rounds/r002-livekit/changes.md` | **待批**：同上（r003/r004 的 `draft` 属正常在途） |
 | 4 | 模块事实源分散：同一模块跨多轮多页 | 房间/实时：`r001-rooms.md`、`r001-rooms-features.md`、`r002-livekit.md`、`r002-livekit-features.md`（r004 后将 +2 页） | 已用 `02-modules/README.md` 给「当前真相页」指路；**是否合并为单页属规约变更，等 owner 规范** |
-| 5 | 代码测试引用的 DDL 事实源页已停更 | `backend/tests/test_schema.py` 指向 `02-modules/r001-rooms.md`（`updated` 停在 2026-09-17） | 已登记 roadmap §9；修法涉及已收官页，需新轮次 |
+| 5 | 曾被怀疑「DDL 事实源页停更」——**实测为否**（2026-09-19） | `backend/tests/test_schema.py` 以 `02-modules/r001-rooms.md` §3 为 DDL 事实源 | 实测 `pytest backend/tests/test_schema.py -k "design_page or counted_tables or ordered"` → **3 passed**，即该页仍与 `001_schema.sql` 逐字一致；`003_r002_host_uniqueness.sql` 记在 r002 两页与 r002 架构增量页（各 6/6/3 次命中）。仅该页 `updated` 日期偏旧，**无内容漂移，不回改** |
 | 6 | 规划中的页尚未创建（计划内，非断链） | `03-decisions/r004-adr-0015-home-first-screen.md`、`02-modules/r004-room-extras{,-features}.md`、`tutorials/r004-room-extras.md` | r004 的 cp-3/cp-6/cp-7 落地 |
 | 7 | 页面里大量「`docs/xxx/yyy*.md`」通配/花括号简写（非点击链接） | 多页表格与正文 | 仅记录：不是断链，但不可点击；新页书写时按需写全路径 |
 

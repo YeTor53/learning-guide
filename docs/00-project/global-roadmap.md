@@ -203,7 +203,7 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | **r002 收官时 `review.md` 未定稿 / 需求单未转 `closed` / 索引表与 roadmap 未回填** | 文档欠账（铁律 6「每轮成档」未闭合） | **已偿还**：r003 `cp-r003-1` 一次性定稿与回填（含 §3/§7 三处矛盾修正） | `docs/rounds/r002-livekit/review.md`、`docs/00-requirements/README.md` |
 | **`cp-r002-1` / `cp-r002-5` 未打 tag** | 命名五处一致缺口（只有 `cp-r002-2/3/4`） | **登记待你一句话**：补打两个 tag（建议指向 `7b95a6b` / `cbd9caf`），或接受现状（审查报告 §6 已记） | 本行 |
 | **已收官页的元数据不一致 3 项**（`rounds/r002-livekit/design.md` 无 front matter；`redirect-06.md` 的 `status` 写成一整句话；`r002-realtime-architecture.md`、`02-modules/r002-livekit{,-features}.md`、`rounds/r002-livekit/changes.md` 仍为 `draft`） | 文档整洁问题（形式，不影响结论）：r002 已合并打 tag，按硬规矩 5 不得回改，故未擅动 | **待你一句话**：批准在本轮以「元数据修正」单独提交（不改正文），或留到后续轮次 | `docs/README.md` §6 第 1~3 行 |
-| **`backend/tests/test_schema.py` 的 DDL 事实源页停更**（指向 `docs/02-modules/r001-rooms.md`，其 `updated` 停在 2026-09-17） | 测试与文档漂移风险：该页被当作 schema 事实源，但 r002 加了 `003_r002_host_uniqueness.sql` 之后未回写 | **登记**：修法要么让测试指向更稳的事实源（迁移文件本身），要么更新该页——两者都涉已收官页/测试断言，需独立小轮或你批准 | `docs/README.md` §6 第 5 行 |
+| ~~`backend/tests/test_schema.py` 的 DDL 事实源页停更~~（**实测排除，2026-09-19 关闭**） | 曾疑「r002 加了 `003_` 迁移后未回写 → 文档与 schema 漂移」 | **已核实无漂移**：`pytest backend/tests/test_schema.py -k "design_page or counted_tables or ordered"` → 3 passed（该页 §3 与 `001_schema.sql` 仍逐字一致）；`003_` 迁移记在 r002 两页与 r002 架构增量页。仅 `updated` 日期偏旧，**不回改** | `docs/README.md` §6 第 5 行 |
 
 ### 9.1 暂留（2026-09-18 讨论，均未拍板、未排期）
 
