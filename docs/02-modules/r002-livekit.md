@@ -260,6 +260,7 @@ backend/app/
 
 ## 11. 变更记录
 
+- 2026-09-19（r003 `cp-r003-2`）：交流页控制坞离场组按角色分岔——`DeviceBar` 新增 `confirmingEnd` / `onRequestEnd` / `onConfirmEnd` / `onCancelEnd` 四个 props，房主位渲染危险色「结束房间」（Lucide `PhoneOff`）与坞内二次确认；`RoomLivePage` 新增 `confirmingEnd` 状态、`doEnd` 处理器（`roomsApi.end` → `connection.disconnect()` → 回列表；失败只提示、不断开）并把确认态接入 `Esc` 退路；`global.css` 新增 `--live-end-border` / `--live-end-hover` 与 `.live-ctrl-end`。**后端 0 改动**（复用 `POST /api/rooms/{id}/end`）。
 - 2026-09-18 建立（`status: draft`）：由 r001 的 M2 归档页移回并按 r002 重写；剥离邀请（→ `docs/99-archive/r002-ahead-invites.md`），新增进房 Token、在场口径、断开归因、前端房内页与「实时调用不回滚业务状态」等 r002 设计。
 - 2026-09-18 按 `redirect-04`（批复「这项加入 r002 任务中」）：页面职责三分落地——§1 范围表、§7 文件表（新增 `WaitingPage`/`WaitTimeline`/`useChromeIdle`，交流页与管理抽屉改专注布局，新增两页路由，管理页口径与「去等待页」入口）、关键取舍新增 5/6（零装饰、情绪令牌）、§8 重排并新增 8.11/8.12、§9 加三条人工验收。
 - 2026-09-18 按 `redirect-01`（批复「设计进行」）：§8.4 改为 **SDK `DisconnectReason` 优先**、取 Token 兜底；§8.7 同账号双开改为「后进踢掉先进 + 提示」；新增 §8.9 断线重连（连接层）与 §8.10 设备状态保持（设备层，含待实测项 C-3）；§7 增 `useLocalDeviceState` 与连接状态徽标；§9 加断网重连验收行。
