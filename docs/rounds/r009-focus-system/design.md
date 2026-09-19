@@ -12,7 +12,30 @@ updated: 2026-09-19
 
 ## 1. 布局算法（前端唯一事实源）
 
-### 1.1 `frontend/src/lib/stageLayout.ts`（重写）
+### 1.1 `frontend/src/components/live/stageGeometry.ts`（**新增**，cp-1a 已落地；旧 `stageLayout.ts` 在 cp-1b 下线）
+
+实现与本文最初草案的两处差异（**实测后改的**，见 `changes.md` §cp-1a）：
+
+1. **焦点份量用「加权行列」而不是「跨 2 格」**：跨 2 格会让格子变成 2:1 的横条（边长 2×、面积 2×），偏离你要的「1.4 倍」。改成焦点所在**行列各乘 `FOCUS_WEIGHT=1.4`**（`distributeWeighted`）→ 面积份量稳定 1.40×，且整块区域仍是连续切分、不留洞。
+2. **`bestGrid` 对空槽重罚（×2.0）**：轻罚时 3 人选 2×2（比例最正但空一格）→ 铺满率只剩 73%；重罚后 3 人 = 1×3、8 人 = 4×2，铺满率 97% / 94.6%。
+
+签名（实际落地）：
+
+```ts
+export function bestGrid(slots, areaW, areaH, aspect?): { cols, rows }
+export function distribute(areaW, areaH, cols, rows, gap): Rect[]
+export function distributeWeighted(areaW, areaH, cols, rows, gap, wx?: number[], wy?: number[]): Rect[]
+export function computeStageGeometry(input: StageGeometryInput): StageGeometry
+export function describeGeometry(geometry): string        // 测试与日志共用
+export const FOCUS_WEIGHT = 1.4
+export const DEFAULT_GAP = 10
+export const TARGET_ASPECT = 16 / 9
+export const SHARE_STRIP_RATIO = 0.22
+```
+
+校验脚本（无需测试框架）：`node frontend/scripts/verify-stage-geometry.mjs`（esbuild 转译 → 断言 + 打印铺满率/份量/溢出）。cp-1a 实测见 `changes.md`。
+
+### 1.1b 旧草案（保留备查）：`stageLayout.ts` 原计划
 
 ```ts
 export type StageMode = 'empty' | 'uniform' | 'focus' | 'share'
