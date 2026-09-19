@@ -22,6 +22,7 @@ updated: 2026-09-19
 | cp-r007-5 | 收官（真机取证 / 门禁 / 文档 / review） | **完成 2026-09-19** | 见 cp-5 提交 | E7 通过（§4） |
 | cp-r007-6 | 追加：箭头更大且两支 / 收起态用户按钮有反应 / 满员加入体验 | **完成 2026-09-19** | 见 cp-6 提交 | E13~E15（§3.5） |
 | cp-r007-7 | 修「什么申请都撤回不了」+ 抽屉名言移除 + 刷新反馈 | **完成 2026-09-19** | 见 cp-7 提交 | E16~E18（§3.6） |
+| cp-r007-8 | 追加需求：往下划隐藏顶栏 | **完成 2026-09-19** | 见 cp-8 提交 | E19（§3.7） |
 
 ## 2. 文件台账
 
@@ -105,3 +106,16 @@ updated: 2026-09-19
 | 撤回（修后） | 房间详情给本人带上 `myRequestId`（实测 `pending` 时 = `req_…`，撤回后为 `null`）；点「撤回申请」→ `POST /api/join-requests/req_…/withdraw` **200**，页面切到「这个房间还需要先申请」+「重新申请」；房主视角 `myRequestId` 为 `null`。用例 `test_detail_exposes_my_request_id_for_applicant`，`pytest` **113 passed**。 |
 | 抽屉名言移除 | 交流页：成员抽屉 `.quote-line` = **0**、讨论抽屉 = **0**（等待室/首页的名言保留）。 |
 | 刷新反馈 | 点「刷新」后列表 DOM **重新挂载**（`gridSame=false`、`cardSame=false`，20 张卡）→ 卡片内元素的 `rise` 入场动画按 `--i*40ms` 重放（`.stagger > *`）。**如实**：卡片元素本身没有动画，动的是它的子元素，所以量 `card.getAnimations()` 会是空数组 —— 观感上是整列表重新浮入一次。 |
+
+### 3.7 cp-8（E19，追加需求：往下划隐藏顶栏）
+
+| 步骤 | 实测（1440×900） |
+| --- | --- |
+| 页顶初始 | `.topbar` `top=0 / bottom=61`、无 `topbar-hidden`、`transform: none` |
+| 向下滚 300px | `topbar-hidden` 出现、`top=-61 / bottom=0`、`transform: translateY(-61px)`、品牌 `pointer-events: none` |
+| 再向下滚 300px | 仍隐藏 |
+| 向上滚 200px | 顶栏回来（`top=0`） |
+| 回到顶部 | 回来 |
+
+实现：`hooks/useHideOnScroll.ts`（阈值 4px、rAF 合并滚动事件、只读 `scrollY`）+ `.topbar` 加 `transition: transform var(--t-base) var(--ease)` + `.topbar-hidden { transform: translateY(-100%) }`。
+口径假设：**向下划隐藏 / 向上划或回顶部显示**（你只说了「往下划隐藏」这一半，回来这半按通用做法定；要改成别的说一声）。

@@ -129,6 +129,20 @@ a:hover { color: var(--accent); }
   background: rgba(8, 9, 12, 0.72);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line-soft);
+  /* r007 追加：往下划时顶栏向上滑走（向上划 / 回顶部回来） */
+  transition: transform var(--t-base) var(--ease);
+  will-change: transform;
+}
+
+.topbar-hidden {
+  transform: translateY(-100%);
+  box-shadow: none;
+}
+.topbar-hidden .top-actions,
+.topbar-hidden .brand,
+.topbar-hidden .crumb {
+  /* 滑走时不接受命中，避免"摸到看不见的按钮" */
+  pointer-events: none;
 }
 .topbar .brand {
   font-family: var(--font-display);

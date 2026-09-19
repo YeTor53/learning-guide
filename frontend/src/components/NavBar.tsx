@@ -1,6 +1,7 @@
 import { Menu } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+import useHideOnScroll from '../hooks/useHideOnScroll'
 import { useSession } from '../hooks/useSession'
 
 interface Props {
@@ -26,9 +27,11 @@ export default function NavBar({ onToggleCollapsed }: Props) {
   const navigate = useNavigate()
   const { user, isLoading } = useSession()
   const crumb = CRUMBS.find((item) => item.test(location.pathname))?.label ?? '页面'
+  // r007 追加：往下划就隐藏顶栏（向上划 / 回到顶部再回来）
+  const hidden = useHideOnScroll()
 
   return (
-    <header className="topbar">
+    <header className={`topbar${hidden ? ' topbar-hidden' : ''}`}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
         <button className="btn btn-ghost btn-icon" onClick={onToggleCollapsed} title="展开 / 收起侧边栏" aria-label="切换侧边栏">
           <Menu size={18} strokeWidth={1.75} />
