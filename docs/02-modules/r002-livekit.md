@@ -2,9 +2,9 @@
 title: r002 实时房间实现页（LiveKit 接入 · 进房 · 踢人 · 角色）
 description: r002（M2）的实时房间实现设计：LiveKit 接入模块签名、进房 Token 契约、在场口径、踢人/任命/移交/结束的实现路径、边界与验证矩阵。
 type: reference
-status: draft
+status: closed
 owner: 陀梓皓
-updated: 2026-09-18
+updated: 2026-09-18（2026-09-19 元数据修正）
 ---
 
 <!-- overview -->

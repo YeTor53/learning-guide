@@ -2,9 +2,9 @@
 title: r002 变更与进度记录
 description: r002 逐 cp 的文件清单、验证证据与文档落点（实现期逐条追加）。
 type: reference
-status: draft
+status: closed
 owner: 陀梓皓
-updated: 2026-09-18
+updated: 2026-09-18（2026-09-19 元数据修正）
 ---
 
 <!-- overview -->
