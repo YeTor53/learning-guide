@@ -2,9 +2,9 @@
 title: r003 需求单：房主结束房间入口（+ r002 收官回填）
 description: 把房主「结束房间」入口落回交流页（由 redirect-07 确认的 L3 变更），同轮先偿还 r002 收官文档欠账；含边界、验收、影响面、风险、覆盖矩阵与实施顺序（cp-r003-1..3）。
 type: requirement
-status: draft
+status: closed
 owner: 陀梓皓
-updated: 2026-09-19
+updated: 2026-09-19（收官回填）
 ---
 
 <!-- overview -->

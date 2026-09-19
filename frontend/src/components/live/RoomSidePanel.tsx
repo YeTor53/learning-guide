@@ -7,11 +7,16 @@
  * 注意与库里的 `room_members.status` 区分：那是"成员身份是否有效"，不是"此刻在不在"。
  */
 import { useState } from 'react'
-import { Check, Copy, MoreHorizontal, ShieldCheck, ShieldOff, UserMinus, X } from 'lucide-react'
+import { Check, Copy, Crosshair, Hand, MoreHorizontal, ShieldCheck, ShieldOff, UserMinus, X } from 'lucide-react'
 
 import JoinRequestList from '../JoinRequestList'
 import type { JoinRequest, Member, Room, Role } from '../../api/rooms'
 import { EXIT_REASON_LABEL, ROLE_LABEL } from '../../api/rooms'
+import type { ChatState } from '../../hooks/useChatMessages'
+import type { FocusState } from '../../hooks/useRoomFocus'
+import type { HandState } from '../../hooks/useHandRaise'
+import type { ScreenShareState } from '../../hooks/useScreenShare'
+import ChatPanel from './ChatPanel'
 
 const ICON = { size: 14, strokeWidth: 1.75 } as const
 
@@ -22,6 +27,15 @@ interface Props {
   onlineIds: string[]
   requests: JoinRequest[]
   busyId: string | null
+  /** r004：讨论（群聊）状态与我的 user id。 */
+  chat: ChatState
+  myUserId: string | null
+  /** r004：举手 / 焦点 / 共享。 */
+  hands: HandState
+  focus: FocusState
+  screen: ScreenShareState
+  /** 未读数清零（抽屉打开且消息变化时由页面调用）。 */
+  onChatChanged: () => void
   onClose: () => void
   onKick: (userId: string) => void
   onSetRole: (userId: string, role: Exclude<Role, 'host'>) => void
@@ -43,6 +57,12 @@ export default function RoomSidePanel({
   onlineIds,
   requests,
   busyId,
+  chat,
+  myUserId,
+  hands,
+  focus,
+  screen,
+  onChatChanged,
   onClose,
   onKick,
   onSetRole,
@@ -53,6 +73,9 @@ export default function RoomSidePanel({
   const isHost = myRole === 'host'
   const isManager = myRole === 'host' || myRole === 'moderator'
   const online = new Set(onlineIds)
+  /** r004：抽屉双 tab —— 「讨论」默认（U1），「成员」放原治理内容。 */
+  const [tab, setTab] = useState<'chat' | 'members'>('chat')
+  const myHands = hands.hands.filter((item) => item.userId !== myUserId)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -103,6 +126,31 @@ export default function RoomSidePanel({
               {member.role === 'moderator' ? '取消协管' : '设为协管'}
             </button>
           )}
+          {isManager && member.status === 'active' && (
+            <button
+              className={`btn btn-sm ${focus.focus.subjectUserId === member.userId ? 'btn-accent' : 'btn-ghost'}`}
+              disabled={busyId === member.userId}
+              onClick={() => void focus.setFocus(focus.focus.subjectUserId === member.userId ? null : member.userId)}
+              title={
+                focus.focus.subjectUserId === member.userId
+                  ? `取消 ${member.displayName} 的焦点`
+                  : `把发言焦点给 ${member.displayName}（两端的焦点格都会切到他）`
+              }
+            >
+              <Crosshair {...ICON} />
+              {focus.focus.subjectUserId === member.userId ? '取消焦点' : '给焦点'}
+            </button>
+          )}
+          {isManager && screen.ownerId === member.userId && (
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={busyId === member.userId}
+              onClick={() => void screen.requestStop(member.userId)}
+              title={`请求 ${member.displayName} 停止共享（协作式：对方客户端会自己停）`}
+            >
+              请求停止共享
+            </button>
+          )}
           {isHost && (
             <div className="more-menu">
               <button
@@ -137,11 +185,51 @@ export default function RoomSidePanel({
   return (
     <aside className="live-drawer">
       <div className="live-drawer-head">
-        <span className="panel-title" style={{ margin: 0 }}>成员与管理</span>
+        <div className="live-drawer-tabs" role="tablist" aria-label="抽屉分区">
+          <button
+            role="tab"
+            aria-selected={tab === 'chat'}
+            className={`live-drawer-tab${tab === 'chat' ? ' on' : ''}`}
+            onClick={() => setTab('chat')}
+          >
+            讨论
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === 'members'}
+            className={`live-drawer-tab${tab === 'members' ? ' on' : ''}`}
+            onClick={() => setTab('members')}
+          >
+            成员
+            {requests.filter((item) => item.status === 'pending').length > 0 && (
+              <span className="live-toggle-badge">{requests.filter((item) => item.status === 'pending').length}</span>
+            )}
+          </button>
+        </div>
         <button className="icon-btn" onClick={onClose} title="收起（Esc）" aria-label="收起成员与管理">
           <X {...ICON} />
         </button>
       </div>
+
+      {tab === 'chat' && (
+        <section className="panel">
+          {myHands.length > 0 && (
+            <div className="hand-strip" role="status">
+              <Hand size={14} strokeWidth={1.75} />
+              正在举手：{myHands.map((item) => item.displayName).join('、')}
+              {isManager && (
+                <button className="btn btn-ghost btn-sm" onClick={() => void hands.lowerOther(myHands[0].userId)}>
+                  放下 {myHands[0].displayName}
+                </button>
+              )}
+            </div>
+          )}
+          <ChatPanel chat={chat} myUserId={myUserId} onChanged={onChatChanged} />
+        </section>
+      )}
+
+      {tab === 'members' && (
+      <>
 
       <section className="panel">
         <h2 className="panel-title">
@@ -188,6 +276,8 @@ export default function RoomSidePanel({
           {copied ? '已复制' : '复制'}
         </button>
       </div>
+      </>
+      )}
     </aside>
   )
 }

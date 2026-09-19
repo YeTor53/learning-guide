@@ -2,9 +2,9 @@
 title: r002 实时房间功能页（进房 · 在场 · 踢人 · 角色）
 description: r002（M2）的功能点清单、房内页交互与按钮矩阵、提示文案、双浏览器演示脚本与功能层待确认项。
 type: reference
-status: draft
+status: closed
 owner: 陀梓皓
-updated: 2026-09-18
+updated: 2026-09-18（2026-09-19 元数据修正）
 ---
 
 <!-- overview -->

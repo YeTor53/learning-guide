@@ -6,6 +6,8 @@ import { useSession } from '../hooks/useSession'
 interface Props {
   collapsed: boolean
   onToggleCollapsed: () => void
+  /** 窄屏横向条形态下隐藏折叠按钮（见 hooks/useNarrowStrip.ts） */
+  hideToggle?: boolean
 }
 
 interface ItemProps {
@@ -38,7 +40,7 @@ const ICON = { size: 18, strokeWidth: 1.75 } as const
  * 左侧边栏：上半区是主导航，**左下角是个人信息**（登录 / 注册入口在顶栏右上角，见 ADR-0009）。
  * 个人信息复用 `GET /api/auth/me` 的 UserVO，不新增页面与接口。
  */
-export default function SideBar({ collapsed, onToggleCollapsed }: Props) {
+export default function SideBar({ collapsed, onToggleCollapsed, hideToggle = false }: Props) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, isLoading, logout } = useSession()
@@ -140,10 +142,12 @@ export default function SideBar({ collapsed, onToggleCollapsed }: Props) {
           </div>
         )}
 
-        <button className="side-item" onClick={onToggleCollapsed} title={collapsed ? '展开侧边栏' : '收起侧边栏'}>
-          {collapsed ? <PanelLeftOpen {...ICON} /> : <PanelLeftClose {...ICON} />}
-          {!collapsed && <span className="label">收起侧边栏</span>}
-        </button>
+        {!hideToggle && (
+          <button className="side-item" onClick={onToggleCollapsed} title={collapsed ? '展开侧边栏' : '收起侧边栏'}>
+            {collapsed ? <PanelLeftOpen {...ICON} /> : <PanelLeftClose {...ICON} />}
+            {!collapsed && <span className="label">收起侧边栏</span>}
+          </button>
+        )}
       </section>
     </aside>
   )

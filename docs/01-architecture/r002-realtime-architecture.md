@@ -2,9 +2,9 @@
 title: r002 总设计增量（实时链路 · LiveKit 接入）
 description: r002（M2）在 r001 总设计之上新增的运行时拓扑、实时链路时序、配置与错误码增量、验证矩阵增量与环境准备。
 type: reference
-status: draft
+status: closed
 owner: 陀梓皓
-updated: 2026-09-18
+updated: 2026-09-18（2026-09-19 元数据修正）
 ---
 
 <!-- overview -->

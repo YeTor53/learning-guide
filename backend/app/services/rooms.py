@@ -29,6 +29,7 @@ from app.api.errors import (
     AppError,
 )
 from app.config import load_settings
+from app.repositories import room_extras as extras_repo
 from app.repositories import rooms as repo
 from app.repositories.rooms import MemberRow, RoomRow, RoomWithHost
 from app.repositories.users import get_user_by_id
@@ -404,6 +405,8 @@ def end_room(conn: Connection, actor: UserVO, room_id: str) -> RoomVO:
         repo.update_room_ended(conn, room_id, ended_at)
         repo.deactivate_all_members(conn, room_id, ended_at)
         repo.cancel_pending_requests(conn, room_id, ended_at)
+        # r004（M3）：清空活跃举手（同一个事务，与上面三项并列的连带动作）
+        extras_repo.lower_all_hands(conn, room_id)
     # 外部调用一律在事务提交之后（ADR-0011 条 4）：失败不回滚库状态，用 livekit_applied 如实上报
     livekit_applied = _safe_livekit(lambda: livekit_service.delete_room(room_id))
     item = repo.get_room(conn, room_id)

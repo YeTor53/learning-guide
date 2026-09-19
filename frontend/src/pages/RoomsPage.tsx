@@ -62,44 +62,6 @@ export default function RoomsPage() {
 
   return (
     <div>
-      <section className="hero">
-        <FlowField />
-        <ThinkerStatue />
-        <div className="hero-inner">
-          <span className="kicker">
-            <Hash {...ICON} />
-            实时多人学习讨论空间
-          </span>
-          <h1 className="display">
-            {title.map((char, index) => (
-              <span className="ch" key={char} style={{ ['--i' as string]: index }}>
-                {char}
-              </span>
-            ))}
-            <br />
-            <em>think together</em>
-          </h1>
-          <p className="hero-sub">
-            面向一门学习主题的多人音视频讨论室：等候室审批、三种角色、举手与焦点发言、屏幕共享与课后纪要。
-            现在可以创建房间、申请加入，并在房间结束后回看整场讨论记录。
-          </p>
-          <div className="stats">
-            <div>
-              <div className="stat-value">{total}</div>
-              <div className="stat-label">房间数</div>
-            </div>
-            <div>
-              <div className="stat-value">{statusLabel}</div>
-              <div className="stat-label">当前筛选</div>
-            </div>
-            <div>
-              <div className="stat-value">{mine ? '仅我的' : '全部'}</div>
-              <div className="stat-label">范围</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <div className="toolbar">
         <div className="chipset">
           {STATUS_TABS.map((tab) => (
@@ -151,6 +113,44 @@ export default function RoomsPage() {
           创建房间
         </button>
       </div>
+
+      <section className="hero">
+        <FlowField />
+        <ThinkerStatue />
+        <div className="hero-inner">
+          <span className="kicker">
+            <Hash {...ICON} />
+            实时多人学习讨论空间
+          </span>
+          <h1 className="display">
+            {title.map((char, index) => (
+              <span className="ch" key={char} style={{ ['--i' as string]: index }}>
+                {char}
+              </span>
+            ))}
+            <br />
+            <em>think together</em>
+          </h1>
+          <p className="hero-sub">
+            面向一门学习主题的多人音视频讨论室：等候室审批、三种角色、举手与焦点发言、屏幕共享与课后纪要。
+            现在可以创建房间、申请加入，并在房间结束后回看整场讨论记录。
+          </p>
+          <div className="stats">
+            <div>
+              <div className="stat-value">{total}</div>
+              <div className="stat-label">房间数</div>
+            </div>
+            <div>
+              <div className="stat-value">{statusLabel}</div>
+              <div className="stat-label">当前筛选</div>
+            </div>
+            <div>
+              <div className="stat-value">{mine ? '仅我的' : '全部'}</div>
+              <div className="stat-label">范围</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {isLoading && (
         <div className="room-grid">

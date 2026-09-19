@@ -102,3 +102,42 @@ git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src       # 除 config
 4. `self` 模式下绕开页面直连会出现「幽灵房」（平台里有房、库里没有），不影响库与演示；cloud 模式因撤销而拒绝（实现页 §8.13）。
 5. 外部调用失败**不回滚业务状态**是刻意的（ADR-0011 条 4）：库侧动作已完成、响应里用 `livekitApplied=false` 如实告知，前端文案要区分这两态。
 6. `pytest` 依赖真实 PostgreSQL；PG 没起或 `.env` 缺 `DATABASE_URL` 时相关用例会 **skip**（不是失败）——看到 skip 先查环境，别当成绿。
+
+## 7. 加一个「房内能力」（r004 之后的最短路径）
+
+r004 的四个能力（群聊 / 举手 / 焦点 / 共享）走的是同一条流水线，照抄即可：
+
+1. **库**：写迁移 `backend/app/db/sql/00N_*.sql`（幂等、可重跑；**不要在文件里写 `BEGIN/COMMIT`**——事务由 `migrate.run_migrations` 统一负责，写了会让迁移悄悄中止且不记版本）；
+2. **仓储**：SQL 放 `backend/app/repositories/`（参数化、只做 SQL、不开事务）；
+3. **服务**：`backend/app/services/` 里写「校验 → 事务（`lock_room`）→ 返回快照」；
+4. **路由**：`backend/app/api/routers/` 挂薄壳，返回统一信封（`ok(...)`）；在 `main.py` 注册；
+5. **前端实时层**：`frontend/src/hooks/useDataChannel.ts` 里加一个 topic，写一个状态 hook（**HTTP 落库是唯一真相，通道只做加速**，见 ADR-0013）；进房与重连都 `refresh()` 一次；
+6. **前端界面**：涉及「谁被放大」的改动只改 `components/live/stageLayout.ts`（纯函数），组件只渲染它的结果；
+7. **验收**：后端补 pytest 用例 + `backend/scripts/smoke.py` 加两步；前端用 Playwright 双上下文跑一遍（见下）。
+
+## 8. 双浏览器验收（本机自动跑，不需要两个人）
+
+本机 base conda 的 Python 带 Playwright（`C:\ProgramData\miniconda3\python.exe`），可以直接开多个浏览器上下文：
+
+```python
+from playwright.sync_api import sync_playwright
+with sync_playwright() as pw:
+    br = pw.chromium.launch(headless=True, args=["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream",
+                                                 "--auto-select-desktop-capture-source=Entire screen"])
+    ctx = br.new_context(viewport={"width": 1440, "height": 900}, permissions=["microphone", "camera"])
+    ctx.request.post("http://localhost:5173/api/auth/login", data=json.dumps({"email": "...", "password": "..."}),
+                     headers={"Content-Type": "application/json"})   # 会话 Cookie 直接进 context
+    page = ctx.new_page(); page.goto("http://localhost:5173/rooms/<id>/live")
+    page.wait_for_function("() => window.__lgRoom && window.__lgRoom.state === 'connected'")
+```
+
+要点与坑（都踩过）：
+
+- **登录用 API**（`ctx.request.post`）比填表单稳，且 Cookie 与浏览器上下文共享；
+- **等异步结果别用 Promise**：`evaluate_handle` 等一个可能永不 resolve 的 Promise 会无超时卡死；改成「发布 + 轮询 window 上的变量」；
+- **屏幕共享在无头下也能测**：加 `--auto-select-desktop-capture-source=Entire screen`；
+- **竖屏/窄屏量测**：`page.set_viewport_size({...})`；但**量测前先关抽屉**，否则抽屉占走 360px，缩格会挤成一列，看起来像布局 bug；
+- **`window.__lgRoom`** 只在 `import.meta.env.DEV` 挂载，可用于：注入 `activeSpeakersChanged`（验优先级）、`disconnected` 加数值枚举（验归因文案）、以及观察 `state`；
+- **归因枚举是数字**：`PARTICIPANT_REMOVED=4`、`ROOM_DELETED=5`、`DUPLICATE_IDENTITY=2`、`CLIENT_INITIATED=1`（传字符串名字不会命中映射）；
+- **Playwright 的网络离线模拟不能替代真断网**：`ctx.set_offline(True)` 不会在 8 秒窗口内让 SDK 进入重连态（实测恢复后才判定），要验真实断网得用 `reconnect-drill.bat` 手动断 Wi-Fi。
+

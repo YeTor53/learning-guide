@@ -1,6 +1,7 @@
 ---
 redirect: r002-06
-status: confirmed-delete（用户 2026-09-18：「删了吧」）
+status: confirmed-delete  # 原值写成了整句话，2026-09-19 规范化；原话见下方 decision_note
+decision_note: 用户 2026-09-18：「删了吧」
 raised_at: ae959bd（2026-09-18，实现期）
 decided_by: 用户 2026-09-18「删了吧」——直接删除 `/rooms/:id` 路由与页面（此前建议的「降级保留」被否）
 ---

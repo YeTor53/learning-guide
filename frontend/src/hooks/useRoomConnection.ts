@@ -36,6 +36,9 @@ export function useRoomConnection(): RoomConnection {
 
   useEffect(() => {
     const onReconnecting = () => setStatus('reconnecting')
+    // 信号级中断（WS 掉线）也要进 reconnecting：SDK 认为「用户多半察觉不到」，
+    // 但 r002 §8.9 的契约是「断网 1~3 秒内状态条可见 + 控制坞禁用」，所以这里必须接。
+    const onSignalReconnecting = () => setStatus('reconnecting')
     const onReconnected = () => {
       setStatus('connected')
       setReason(null)
@@ -50,13 +53,26 @@ export function useRoomConnection(): RoomConnection {
     }
     room
       .on(RoomEvent.Reconnecting, onReconnecting)
+      .on(RoomEvent.SignalReconnecting, onSignalReconnecting)
       .on(RoomEvent.Reconnected, onReconnected)
       .on(RoomEvent.Disconnected, onDisconnected)
     return () => {
       room
         .off(RoomEvent.Reconnecting, onReconnecting)
+        .off(RoomEvent.SignalReconnecting, onSignalReconnecting)
         .off(RoomEvent.Reconnected, onReconnected)
         .off(RoomEvent.Disconnected, onDisconnected)
+    }
+  }, [room])
+
+  // U15（r004）：dev-only 调试句柄 —— 断线/归因的**事件注入**测试与排障入口。
+  // 只在开发构建挂载；生产构建里 `import.meta.env.DEV` 为 false，不会出现在产物中。
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const holder = window as unknown as { __lgRoom?: Room | null }
+    holder.__lgRoom = room
+    return () => {
+      holder.__lgRoom = null
     }
   }, [room])
 

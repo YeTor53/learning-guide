@@ -15,7 +15,16 @@ SQL_DIR = Path(__file__).resolve().parent / "sql"
 
 VERSION_TABLE = "schema_migrations"
 # 建表顺序无关（reset 用 CASCADE），清单与 001_schema.sql 一致，供 table_counts/reset_schema 使用。
-BUSINESS_TABLES = ("users", "rooms", "room_members", "join_requests", "invites", "chat_messages")
+BUSINESS_TABLES = (
+    "users",
+    "rooms",
+    "room_members",
+    "join_requests",
+    "invites",
+    "chat_messages",
+    "room_hand_raises",
+    "room_focus",
+)
 COUNTED_TABLES = (VERSION_TABLE,) + BUSINESS_TABLES
 
 
@@ -80,7 +89,27 @@ def split_statements(sql: str) -> list[str]:
     tail = "".join(buf).strip()
     if tail:
         statements.append(tail)
-    return statements
+    return _without_transaction_control(statements)
+
+
+TRANSACTION_CONTROL = ("begin", "commit", "rollback", "start transaction", "end")
+
+
+def _without_transaction_control(statements: list[str]) -> list[str]:
+    """丢掉迁移文件里的事务控制语句（`BEGIN` / `COMMIT` / …）。
+
+    事务边界由 `run_migrations` 的 `with conn.transaction()` 统一负责：文件里再写一次
+    `COMMIT` 会把外层事务连同 psycopg 的 savepoint 一起提交掉，随后释放 savepoint 报
+    `InvalidSavepointSpecification`，迁移会**在没记版本的情况下中止**（r002 的 `003_` 就踩了这个坑：
+    索引建好了、版本行没写，此后每次迁移都在同一处失败）。保留对旧文件的兼容，故在这里过滤而不是改历史文件。
+    """
+    cleaned: list[str] = []
+    for statement in statements:
+        head = " ".join(statement.lower().split()).rstrip(";").strip()
+        if head in TRANSACTION_CONTROL:
+            continue
+        cleaned.append(statement)
+    return cleaned
 
 
 def _applied_versions(conn: Connection) -> set[str]:

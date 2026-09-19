@@ -8,7 +8,7 @@
  * 其他人是「离开」。房主没有「离开」——他必须先结束或先移交（r001 FQ-2 / ADR-0012 条 8）。
  */
 import { useEffect } from 'react'
-import { DoorOpen, Mic, MicOff, PhoneOff, Settings2, Video, VideoOff } from 'lucide-react'
+import { DoorOpen, Hand, Mic, MicOff, MonitorUp, PhoneOff, Settings2, Video, VideoOff } from 'lucide-react'
 
 const ICON = { size: 18, strokeWidth: 1.75 } as const
 
@@ -34,6 +34,11 @@ interface Props {
   onRequestEnd: () => void
   onConfirmEnd: () => void
   onCancelEnd: () => void
+  /** r004：是否正在举手 / 是否正在共享屏幕。 */
+  handRaised: boolean
+  sharing: boolean
+  onToggleHand: () => void
+  onToggleShare: () => void
 }
 
 const LEVEL_BARS = 3
@@ -55,6 +60,10 @@ export default function DeviceBar({
   onRequestEnd,
   onConfirmEnd,
   onCancelEnd,
+  handRaised,
+  sharing,
+  onToggleHand,
+  onToggleShare,
 }: Props) {
   // 快捷键：M 切麦、V 切摄像头（离开不绑定快捷键——离场必须是有意的）
   useEffect(() => {
@@ -95,6 +104,30 @@ export default function DeviceBar({
               <span className="live-ctrl-muted">已静音</span>
             )}
           </span>
+        </button>
+
+        <button
+          className={`live-ctrl live-ctrl-hand${handRaised ? ' live-ctrl-hand-on' : ''}`}
+          onClick={onToggleHand}
+          disabled={disabled}
+          aria-pressed={handRaised}
+          title={handRaised ? '放下手' : '举手（示意要发言）'}
+        >
+          <Hand {...ICON} />
+          <span className="live-ctrl-text">{handRaised ? '放下手' : '举手'}</span>
+          <span className="live-ctrl-state">{handRaised ? '已举手' : ''}</span>
+        </button>
+
+        <button
+          className={`live-ctrl live-ctrl-share${sharing ? ' live-ctrl-share-on' : ''}`}
+          onClick={onToggleShare}
+          disabled={disabled}
+          aria-pressed={sharing}
+          title={sharing ? '停止共享屏幕' : '共享屏幕（画面会占用焦点格）'}
+        >
+          <MonitorUp {...ICON} />
+          <span className="live-ctrl-text">{sharing ? '停止共享' : '共享屏幕'}</span>
+          <span className="live-ctrl-state">{sharing ? '共享中' : ''}</span>
         </button>
 
         <button
