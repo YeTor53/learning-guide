@@ -53,6 +53,7 @@ updated: 2026-09-19
 | r001-skeleton | `r001-skeleton-accounts-rooms.md`（closed） | ✅ | ✅ | ✅ | — | 已合并 `round-r001-done` |
 | r002-livekit | `r002-livekit-room.md`（closed） | ✅（**该页无 front matter**，见 §6） | ✅ | ✅（2026-09-19 定稿） | redirect-01~07 | 已合并 `round-r002-done` |
 | r003-end-room-entry | `r003-end-room-entry.md`（closed，2026-09-19 回填） | ✅ | ✅ | ✅ | redirect-01~02 | 已合并 `round-r003-done`（`694caeb`） |
+| r008-assignment-gaps | `r008-assignment-gaps.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r008-assignment-gaps`，cp tag `cp-r008-0..4` |
 | r007-topic-and-scrollhint | `r007-topic-and-scrollhint.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r007-topic-and-scrollhint`，cp tag `cp-r007-0..3` |
 | r006-ui-sync-polish | `r006-ui-sync-polish.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r006-ui-sync-polish`，cp tag `cp-r006-0..4` |
 | r005-fix-capacity | `r005-fix-capacity.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r005-fix-capacity`，cp tag `cp-r005-0..4` |

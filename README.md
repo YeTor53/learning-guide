@@ -44,7 +44,7 @@ conda 环境 `learningguide` 已就绪、仓库根 `.env` 已填（`DATABASE_URL
 # ① 初始化数据库（可重复执行；--reset 会清空重建）
 conda activate learningguide
 python backend/scripts/db_init.py --reset --seed
-# 期望输出：schema_migrations 2 / users 3 / rooms 3 / room_members 6 / join_requests 3 / invites 0 / chat_messages 12
+# 期望输出：schema_migrations 7 / 若干演示账号与房间 / invites 0 / chat_messages 若干
 # 演示账号（口令均为 demo1234）：host@example.com、mod@example.com、part@example.com
 
 # ② 后端（开发）
@@ -63,7 +63,7 @@ cd backend && python -m uvicorn app.main:app --port 8000
 
 # ⑤ 验证
 python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # 真实 HTTP 全链路，末尾打印 PASS n/n
-pytest backend/tests -q                                            # 95 项（含 r002 的 Token/成员治理/容量口径）
+pytest backend/tests -q                                            # 124 项（含 r002 治理/容量、r008 纪要与邀请）
 ```
 
 - 冒烟脚本会写入两个随机邮箱账号与一个房间；跑完可再执行一次 `db_init --reset --seed` 恢复演示数据。
@@ -71,3 +71,16 @@ pytest backend/tests -q                                            # 95 项（�
 - 依赖版本：后端见 `backend/requirements*.txt`（conda `learningguide` 的 pip freeze）；前端见 `frontend/package.json`（npm 走 npmmirror）。
 - 密钥与连接串只放本机 `.env`（不入库）；示例见 `.env.example`，键表见架构页 §5。
 
+## 两个浏览器演示完整路径（约 5 分钟）
+
+> 两个窗口都用**不同账号**（一个房主、一个参与者），窗口并排；建议用无痕窗口避免共用 Cookie。
+
+1. **房主**：浏览器 A 打开 http://localhost:5173 → 右上「创建房间」→ 选主题（14 个预设中的任意，如「西方哲学史」）+ 标题 + 简介 → 创建。
+2. **参与者**：浏览器 B 打开首页 → 找到刚才那间房 → 「申请加入」（提交后落到**等候室**，显示「已提交 · 等待房主批准 · 进入房间」三步时间线）。
+3. **房主**：在房间交流页打开右侧抽屉 → 「成员」tab → 待批申请处点**批准** → B 端**自动进入**交流页（不需要手动点）。
+4. **看两端同步**：A 界面状态条与 B 端的「N / 容量 成员」**秒级一致**（实测 0.23~0.46 秒）；A 静音后 B 端该成员格上出现「已静音」小图标。
+5. **能力演示**：B 举手（A 端成员列表可见「✋」）→ A 指定**焦点**（该成员画面放大，底部出现「某某正在发言」）→ B 开**屏幕共享**（共享画面顶掉焦点格，停止后恢复）→ 在「讨论」tab 发两条消息（两端实时 + 落库）。
+6. **限时邀请**：A 端抽屉「邀请」tab → 选 30 秒 + 1 次 → 生成 → 复制链接 → 浏览器 C（无痕）打开该链接 → **直接进房**（跳过等候室），A 端消息列表出现「XX 通过邀请链接加入」。
+7. **接管与结束**：A 端「踢人」可把某人移出（服务端 LiveKit 真断开，非前端假踢）；点**结束房间** → 房间转只读，成员全部退出。
+8. **讨论纪要**：回到房间列表 → 切到「已结束」→ 卡片上点「**讨论纪要**」→「生成讨论纪要」→ 几秒后出现 Markdown 正文（主题与背景 / 讨论要点 / 分歧与未决 / 待办 / 一句话总结）→ 再点「重新生成」覆盖同一份。
+9. **验证命令**（可选）：`python backend/scripts/smoke.py --base-url http://127.0.0.1:8000`（含「生成限时邀请码 / 凭码加入 / 生成纪要」三步）。

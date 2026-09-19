@@ -245,6 +245,59 @@ def main(argv: list[str] | None = None) -> int:
         readonly = body(guest.get(f"/api/rooms/{room_id}")).get("data", {})
         check("结束后仍可只读查看", readonly.get("room", {}).get("status") == "ended" and len(readonly.get("messages", [])) >= 0, f"status={readonly.get('room', {}).get('status')}")
 
+
+        # 10) r008：限时邀请（作业必做「可生成限时邀请链接或房间码（需设置过期时间）」）
+        inv_created = host.post(
+            "/api/rooms",
+            json={"topic": "custom", "topicLabel": "冒烟邀请", "title": f"冒烟邀请房 {suffix}", "description": ""},
+        )
+        inv_room_id = body(inv_created).get("data", {}).get("id")
+        check("建房（邀请房）", inv_created.status_code == 201 and bool(inv_room_id), f"→ {inv_created.status_code}")
+
+        invite = host.post(f"/api/rooms/{inv_room_id}/invites", json={"ttlSeconds": 30, "maxUses": 1})
+        invite_code = body(invite).get("data", {}).get("code", "")
+        check(
+            "生成限时邀请码 → 6 位",
+            invite.status_code == 201 and len(invite_code) == 6,
+            f"→ {invite.status_code} code={invite_code} ttl={body(invite).get('data', {}).get('expiresAt')}",
+        )
+
+        outsider_join = outsider.post(f"/api/offline" if False else f"/api/invites/{invite_code}/accept")
+        check(
+            "凭码直接加入 → 201",
+            outsider_join.status_code == 201 and body(outsider_join).get("data", {}).get("created") is True,
+            f"→ {outsider_join.status_code} created={body(outsider_join).get('data', {}).get('created')}",
+        )
+        idempotent = outsider.post(f"/api/invites/{invite_code}/accept")
+        check(
+            "已在册再点 → 200 幂等",
+            idempotent.status_code == 200 and body(idempotent).get("data", {}).get("created") is False,
+            f"→ {idempotent.status_code} created={body(idempotent).get('data', {}).get('created')}",
+        )
+
+        # 11) r008：讨论纪要（作业必做「会后产出」）——两分支如实断言
+        host.post(f"/api/rooms/{inv_room_id}/end")
+        summary = host.post(f"/api/rooms/{inv_room_id}/summary")
+        if summary.status_code == 201:
+            summary_status = body(summary).get("data", {}).get("status")
+            check(
+                "生成讨论纪要 → ready（LLM 已配置）",
+                summary_status == "ready" and len(body(summary).get("data", {}).get("content", "")) > 50,
+                f"→ {summary.status_code} status={summary_status} 字数={len(body(summary).get('data', {}).get('content', ''))}",
+            )
+        else:
+            check(
+                "生成讨论纪要 → 503 LLM_NOT_CONFIGURED（未配密钥时的如实分支）",
+                summary.status_code == 503 and body(summary).get("error", {}).get("code") == "LLM_NOT_CONFIGURED",
+                f"→ {summary.status_code} {body(summary).get('error', {}).get('code')}",
+            )
+        summary_view = host.get(f"/api/rooms/{inv_room_id}/summary")
+        check(
+            "查看讨论纪要 → 200",
+            summary_view.status_code == 200 and "summary" in body(summary_view).get("data", {}),
+            f"→ {summary_view.status_code} 有纪要={body(summary_view).get('data', {}).get('summary') is not None}",
+        )
+
     except httpx.HTTPError as exc:
         print(f"[FAIL] 网络错误：{type(exc).__name__}: {exc}")
         return 1
