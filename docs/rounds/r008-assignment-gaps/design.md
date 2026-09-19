@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS session_summaries (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_session_summaries_room ON session_summaries (room_id);
 ```
 
-### 1.2 迁移 `008_r008_transcripts.sql`
+### 1.2 迁移 `008_*_transcripts.sql`（**移至 r009**）
 
 ```sql
 CREATE TABLE IF NOT EXISTS transcripts (
@@ -116,7 +116,7 @@ def call_llm(messages, settings) -> str
        非 200 或空内容 → LlmError；不 import repositories、不做权限判断（同 livekit.py 纪律）。"""
 ```
 
-### 2.6 `app/services/transcripts.py`
+### 2.6 `app/services/transcripts.py`（**移至 r009**）
 
 ```python
 def transcribe_chunk(conn, actor, room_id, audio: bytes, filename: str,
@@ -132,8 +132,8 @@ def call_stt(audio, filename, settings) -> str
 ### 2.7 `app/services/invites.py`
 
 ```python
-def create_invite(conn, actor, room_id, *, ttl_minutes=1440, max_uses=1) -> InviteVO
-    """权限 Host/Moderator；房间必须 active（ended → 409）；ttl 1~10080 分钟、max_uses 1~50（越界 400）；
+def create_invite(conn, actor, room_id, *, ttl_seconds=60, max_uses=1) -> InviteVO
+    """权限 Host/Moderator；房间必须 active（ended → 409）；**ttl 10~60 秒（默认 60，上限 `settings.invite_ttl_max_seconds`）**、max_uses 1~50（越界 400）；
        code 8 位小写、唯一索引冲突重试 3 次。"""
 def accept_invite(conn, actor, code) -> InviteAcceptResult
     """校验 存在/未过期/未用尽/房间 active（否则 400 INVITE_INVALID）；已在册 → 幂等 200（不 +1）；
@@ -194,10 +194,17 @@ POST /api/invites/{code}/accept             → 凭码加入 201（幂等时 200
 | --- | --- |
 | ADR-0018 | 纪要落 `session_summaries`（一间房一份、覆盖式重生、失败留痕、外部失败不改业务事实） |
 | ADR-0019 | 邀请直接成为在册成员（跳过等候室、仍受容量上限） |
-| ADR-0020 | 转写按本端麦克风分段（非服务端混音录制）；可见性 = 本人 + 管理身份 |
+| ADR-0020（**r009 重写**） | 你的新口径：转写默认开启 + 并入文字对话 + 含管理信息；ADR 需在 r009 重写 |
 
 ## 6. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-19 | cp-0 | 建页：三件需求的函数级设计、失败边界、ADR 分配 | 你 `Q1=1` + 「再加一个语言转文字需求」 |
+
+## 7. 2026-09-19 口径变更（你）
+
+| 项 | 新口径 | 影响 |
+| --- | --- | --- |
+| 邀请有效期 | **最长 1 分钟**（默认 60 秒、可选 30/60；上限单点可调 `INVITE_TTL_MAX_SECONDS`） | `create_invite` 参数改 `ttl_seconds`；前端给 30/60 秒选项 |
+| 语音转文字 | **整体移至 r009**：默认开启 + 说的话并入文字对话 + 连成员进出等管理信息一起构成讨论记录；并先出「STT 获取方案」设计 | r008 不含转写代码；`transcripts` 迁移编号留给 r009；ADR-0020 在 r009 重写 |
