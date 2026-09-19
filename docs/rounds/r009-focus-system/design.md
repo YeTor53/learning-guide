@@ -105,6 +105,8 @@ def grant_focus_from_hand(conn, actor: UserVO, room_id: str, user_id: str) -> Fo
   - `POST /api/focus-requests/{id}/approve` / `/reject` → 200
 - 错误码新增：`SELF_APPROVAL`(403)、`FOCUS_REQUEST_EXISTS`(409 可选，默认幂等)。
 
+## 2.9 动效（见 `motion-design.md`）：`useFlipTransition(containerRef, layoutKey)` 是唯一动画实现；几何纯函数只算位置，动画只做 transform；离场格延迟摘除；说话者焦点去抖 800ms + 冷却 3s + 手动焦点保护 10s。
+
 ## 3. 前端组件与钩子
 
 | 文件 | 职责 / 签名 |
