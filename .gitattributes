@@ -2,3 +2,5 @@
 *.png binary
 *.jpg binary
 *.db binary
+# Windows 批处理必须保持 CRLF（LF 会让 goto/label 解析出问题）
+*.bat text eol=crlf
