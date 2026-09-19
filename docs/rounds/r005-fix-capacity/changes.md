@@ -17,7 +17,7 @@ updated: 2026-09-19
 | cp-r005-0 | 阶段 1 文档先行（需求单 + design + ADR-0016 + ADR-0012 指路 + 档案骨架 + 索引行） | 完成 2026-09-19 | 见本提交 | 你批「开始」（Q1~Q5 = 2 / 2 1 / 1 1） |
 | cp-r005-1 | 后端口径：申请/批准按在册封顶（原子）+ 取票去掉 LiveKit 查询 + 并发不变量用例 | **完成 2026-09-19** | 见本轮 cp-1 提交 | `pytest` **106 passed**（含新并发用例；旧两条「不校验容量」用例已按 ADR-0016 翻转） |
 | cp-r005-2 | 系统消息：六类房间事件写 `kind='system'`（同事务）+ 用例 | **完成 2026-09-19** | 见本轮 cp-2 提交 | `pytest` **110 passed**（+4 系统消息用例） |
-| cp-r005-3 | 前端：状态条「在册 N / 容量」+ 列表卡满员态 + 真机截图 | planned | — | E1/E7 |
+| cp-r005-3 | 前端：状态条「在册 N / 容量」+ 列表卡满员态 + 真机截图（含满员拒绝留痕的最后一处修） | **完成 2026-09-19** | 见本轮 cp-3 提交 | E1/E4/E7 实测见 §4.4 |
 | cp-r005-4 | 收官：smoke 补步骤、教学页/功能页/实现页、review 定稿 | planned | — | E6/E8 |
 
 ## 2. 文件 × 模块 × 文档锚点
@@ -32,7 +32,8 @@ updated: 2026-09-19
 | `backend/tests/test_rooms_service.py`、`test_rooms_members_api.py`、`test_rooms_concurrency.py` | 测试 | 两条旧口径用例按 ADR-0016 翻转 + 新增「一个名额并发批准」用例 | design §8 E2/E3 | landed（cp-1） |
 | `backend/app/repositories/rooms.py` | 后端 | `NewMessage`/`insert_message`/`get_display_name` + 三处排序兜底（cp-1） | design §3/§10 | landed（cp-2） |
 | `backend/tests/test_room_events_messages.py`（新） | 测试 | 六类事件 + 满员拒留痕 + 列表可见 共 4 例 | design §8 E5 | landed（cp-2） |
-| `frontend/src/pages/RoomLivePage.tsx`、`components/RoomCard.tsx` | 前端 | 状态条文案、满员态 | design §5 | planned（cp-3） |
+| `frontend/src/pages/RoomLivePage.tsx`、`components/RoomCard.tsx` | 前端 | 状态条「在册 N / 容量」、列表卡「已满」徽标 | design §5 | landed（cp-3） |
+| `backend/app/api/routers/rooms.py` + `services/rooms.py:RoomFullNotice` | 后端 | 满员 409 改由路由 `fail(...)` 正常返回（不再抛错，留痕才不被回滚） | design §4 事务细节 | landed（cp-3） |
 | `backend/tests/test_room_capacity.py`（新） | 测试 | E2/E3/E4/E5 用例 | design §8 | planned（cp-1/2） |
 | `backend/scripts/smoke.py` | 工具 | 容量与系统消息步骤 | design §8 | planned（cp-4） |
 
@@ -58,3 +59,16 @@ updated: 2026-09-19
 - `pytest backend/tests -q` → **110 passed**（+4：加入/离开、移交/被移出/结束、满员拒绝留痕、消息列表可见且 `kind='system'`）。
 - 实现要点（design §4 的实现细节）：六类事件都在**状态变更的同一事务**内写消息；**唯一例外是「满员拒绝」** —— 该分支要先提交消息再抛 409（先退出事务 → 单独事务写消息 → `raise`），否则消息会被 409 带回滚。用例 `test_full_room_rejection_leaves_system_message` 专门锁这条。
 - 文案（唯一来源，与 design §4 表一致）：`{name} 加入了房间` / `{name} 离开了房间` / `{name} 被移出房间` / `{name} 成为房主` / `房间已结束` / `房间已满（上限 N 人），本次申请未通过`。
+
+### 4.4 cp-3（前端文案 + 满员拒绝留痕的最后一处修）
+
+- **实测抓到并修掉一个真缺陷**：先说清现象 —— 用真实 HTTP 跑「满员 → 第 N+1 人申请」时，409 有了、**留痕没有**（库里查不到那条消息）。根因：`db_conn` 是 psycopg_pool 的 `with connection()`（**异常即回滚**），服务里 `raise AppError(ROOM_FULL)` 把同一请求里刚写的消息一起回滚了（pytest 因为外层事务 + savepoint 语义不同，没暴露）。
+  **修法**：`request_join` 满员时**不抛错**，改为在同事务里写留痕并返回 `RoomFullNotice(capacity)`；路由层用 `fail(ERR_ROOM_FULL, …, status=409)` 正常返回 —— 请求事务正常提交，留痕保住。
+- **改后实测（真实 HTTP，满员房 `room_e38c3b40b108df71`）**：第 N+1 人申请 → 409 `ROOM_FULL`，系统消息数 **7 → 8**，新增那条 = `房间已满（上限 8 人），本次申请未通过`；房内在册成员取票 → **200**。
+- **E4 取票延迟（同一房主、6 次采样）**：中位 **3.2ms**（最小 2.9 / 最大 21.7）—— 改前实测 **1650ms**（这就是「连上服务慢」的主因）。
+- **前端真机（Playwright，`--mute-audio`，1440×900）**：
+  - 列表卡：`r005 满员取证 c600f` → 文案含「**已满**」与「**8/8 已满**」（截图 `list-card-full.png`）
+  - 交流页状态条：`8 / 8 成员`（在册口径，截图 `live-statusbar.png`）
+  - 抽屉「讨论」：8 条系统消息（7 条加入 + 1 条满员拒绝，截图 `chat-system-messages.png`）
+  - 抽屉「成员」：仍分「在房间里 / 不在房间」（在场标记未受影响，E6；截图 `members-presence.png`）
+  - 截图目录：`C:\Users\Administrator\AppData\Local\Temp\lg_r005\`

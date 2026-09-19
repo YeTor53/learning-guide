@@ -86,11 +86,17 @@ def test_request_join_rejected_when_full(db) -> None:
     req = _join(db, first, room.id)
     rooms_service.approve_join_request(db, host, req.id)
 
-    with pytest.raises(AppError) as exc:
-        _join(db, second, room.id)
-    assert (exc.value.code, exc.value.status) == ("ROOM_FULL", 409)
-    # 没有落下 pending（申请人不再进等待室）
-    assert repo.get_pending_request(db, room.id, second.id) is None
+    result = _join(db, second, room.id)
+    # 满员不再抛错，而是返回拒绝标记（路由层据此返回 409；留痕已同事务写入）
+    assert isinstance(result, rooms_service.RoomFullNotice) and result.capacity == 2
+    assert repo.get_pending_request(db, room.id, second.id) is None  # 申请人不再进等待室
+    bodies = [
+        row[0]
+        for row in db.execute(
+            "SELECT body FROM chat_messages WHERE room_id = %s AND kind = 'system'", (room.id,)
+        ).fetchall()
+    ]
+    assert "房间已满（上限 2 人），本次申请未通过" in bodies
 
 
 # ---------- 批准 / 拒绝 ----------

@@ -7,8 +7,9 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from psycopg import Connection
 from psycopg.errors import UniqueViolation
@@ -139,6 +140,18 @@ def _request_vo(item: repo.JoinRequestRowWithName) -> JoinRequestVO:
         decided_at=request.decided_at,
         decided_by=request.decided_by,
     )
+
+
+@dataclass(frozen=True)
+class RoomFullNotice:
+    """满员拒绝的返回标记（r005）。
+
+    为什么不直接抛 `AppError`：`db_conn` 用 psycopg_pool 的 `with connection()`（**异常即回滚**），
+    抛错会把同一请求里刚写的「满员拒绝」留痕一起回滚掉（cp-2 实测踩过：库里查不到那条消息）。
+    这里改成把 409 交给路由层用 `fail(...)` 正常返回 —— 请求事务正常提交，留痕保住。
+    """
+
+    capacity: int
 
 
 def _system_message(conn: Connection, room_id: str, actor_id: str, body: str) -> None:
@@ -296,14 +309,14 @@ def derive_room_phase(conn: Connection, room_id: str) -> str:
 
 # ---------------- 加入申请 ----------------
 
-def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) -> JoinRequestVO:
+def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) -> Union[JoinRequestVO, RoomFullNotice]:
     """提交申请：六种拦截（未登录在依赖层）→ 写申请；唯一冲突映射为 `ALREADY_PENDING`。
 
     r005（ADR-0016）：人数上限按**在册成员**（本库）判定，满员直接拒 —— 不再让申请人进等待室。
     判定与写申请在同一事务、先锁房间行，因此并发申请不会挤进第 N+1 个名额。
+    **满员时返回 `RoomFullNotice`（不抛错）**：同一事务里写一条留痕，再由路由层返回 409。
     """
     request_id = new_id("req")
-    full_capacity: Optional[int] = None
     with conn.transaction():
         room = assert_room_active(repo.lock_room(conn, room_id))
         if repo.get_active_member(conn, room_id, actor.id) is not None:
@@ -311,17 +324,13 @@ def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) ->
         if repo.get_pending_request(conn, room_id, actor.id) is not None:
             raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409)
         if repo.count_active_members(conn, room_id) >= room.capacity:
-            full_capacity = room.capacity  # 先记下来，退出事务后再落「拒绝」消息（否则被 409 带回滚）
-        else:
-            try:
-                repo.insert_join_request(conn, repo.NewJoinRequest(id=request_id, room_id=room_id, user_id=actor.id, message=message))
-            except UniqueViolation as exc:  # 并发双击
-                raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409) from exc
-    if full_capacity is not None:
-        # 满员也要留痕（Q3「留一个消息」）：单独提交，再抛 409 —— 顺序不能反
-        with conn.transaction():
-            _system_message(conn, room_id, actor.id, f"房间已满（上限 {full_capacity} 人），本次申请未通过")
-        raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {full_capacity} 人）", status=409)
+            # 满员：留痕（Q3「留一个消息」）+ 返回拒绝标记；事务正常提交，留痕不会被回滚
+            _system_message(conn, room_id, actor.id, f"房间已满（上限 {room.capacity} 人），本次申请未通过")
+            return RoomFullNotice(capacity=room.capacity)
+        try:
+            repo.insert_join_request(conn, repo.NewJoinRequest(id=request_id, room_id=room_id, user_id=actor.id, message=message))
+        except UniqueViolation as exc:  # 并发双击
+            raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409) from exc
     created = repo.get_join_request(conn, request_id)
     if created is None:
         raise AppError(ERR_INTERNAL, "提交申请后无法读取", status=500)

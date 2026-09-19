@@ -10,8 +10,8 @@ from fastapi import APIRouter, Depends, Query
 from psycopg import Connection
 
 from app.api.deps import current_user, current_user_optional, db_conn
-from app.api.envelope import ok
-from app.api.errors import ERR_UNAUTHORIZED, AppError
+from app.api.envelope import fail, ok
+from app.api.errors import ERR_ROOM_FULL, ERR_UNAUTHORIZED, AppError
 from app.repositories.rooms import RoomFilter
 from app.schemas.auth import UserVO
 from app.schemas.rooms import CreateRoomIn, JoinRequestIn, RoleIn, TOPICS, TransferHostIn
@@ -72,8 +72,15 @@ def create_join_request(
     actor: UserVO = Depends(current_user),
     conn: Connection = Depends(db_conn),
 ):
-    """提交加入申请（等候室入口）。"""
-    return ok(_dump(rooms_service.request_join(conn, actor, room_id, payload.message)), status=201)
+    """提交加入申请（等候室入口）。
+
+    r005：满员时 `request_join` 返回 `RoomFullNotice`（已在同事务里落一条留痕），
+    这里用 `fail(...)` 正常返回 409 —— 不抛异常，留痕才不会被请求连接的回滚带走。
+    """
+    result = rooms_service.request_join(conn, actor, room_id, payload.message)
+    if isinstance(result, rooms_service.RoomFullNotice):
+        return fail(ERR_ROOM_FULL, f"房间已满（上限 {result.capacity} 人）", status=409)
+    return ok(_dump(result), status=201)
 
 
 @router.get("/rooms/{room_id}/join-requests", status_code=200)
