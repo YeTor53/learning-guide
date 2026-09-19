@@ -18,5 +18,6 @@ updated: 2026-09-19
 | r004 | M3 自定义能力 · 群聊（+ 举手 / 焦点发言 / 屏幕共享 / 优先级 / 界面缺陷 / 还债） | `r004-room-extras.md` | **实现完成（cp-2~cp-7 全绿，2026-09-19）；待合并** | `docs/rounds/r004-room-extras/`（review.md 已定稿） | 合并后由人打 `round-r004-done`（cp tag `cp-r004-1..7` 已齐） |
 | r007 | （补轮）首屏向下引导 + 主题控件风格化 + 主题扩容（14 项）+ 侧边栏默认收起 | `r007-topic-and-scrollhint.md` | **实现完成（cp-0~cp-5 全绿，2026-09-19）；待合并** | `docs/rounds/r007-topic-and-scrollhint/`（review 已定稿） | 合并后由人打 `round-r007-done` |
 | r008 | （补轮·作业必做补全）讨论纪要（LLM）+ 限时邀请（最长 1 分钟） | `r008-assignment-gaps.md` | **实现完成（cp-0~cp-5 全绿，2026-09-19）；待合并** | `docs/rounds/r008-assignment-gaps/`（review 已定稿） | 合并后由人打 `round-r008-done` |
+| r009 | （补轮）焦点系统重做：均分铺满 + 举手经管理确认得焦点 + 协管需他人批准 + 退出焦点 + 声波 | `r009-focus-system.md` | **实现完成（cp-0~cp-5，2026-09-19）；待合并** | `docs/rounds/r009-focus-system/`（review 已定稿） | 合并后由人打 `round-r009-done` |
 | r006 | （补轮）界面同步与优化：麦克风徽标 / 两端人数与待批同步 / 个人信息浮窗 + 哲学语句 / 图版初始位置 | `r006-ui-sync-polish.md` | **实现完成（cp-0~cp-6 全绿，2026-09-19）；待合并** | `docs/rounds/r006-ui-sync-polish/`（review 已定稿） | 合并后由人打 `round-r006-done`（cp tag `cp-r006-0..5`） |
 | r005 | （补轮）容量口径修正：人数上限按本库在册成员（不再以 LiveKit 为准）+ 房间事件进消息列表 + 取票提速 | `r005-fix-capacity.md` | **实现完成（cp-0~cp-5 全绿，2026-09-19）；待合并** | `docs/rounds/r005-fix-capacity/`（review 已定稿） | 合并后由人打 `round-r005-done` ||
