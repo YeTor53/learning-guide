@@ -15,8 +15,9 @@ updated: 2026-09-19
 | cp | 内容 | 状态 | 提交 SHA | 证据 |
 | --- | --- | --- | --- | --- |
 | cp-r003-1 | r002 收官回填（纯 docs） | **完成 2026-09-19** | `9f37557` | review.md 定稿（133 行）、需求单转 `closed`、矩阵 A~F′ 全 `landed`、索引表 + roadmap 三处矛盾修正、开发者教学页补交（104 行）、删除 0 字节 `end_room`；`git status` 干净 |
-| cp-r003-2 | 房主结束房间入口（DeviceBar + RoomLivePage + css + 文档） | **完成 2026-09-19** | 见 cp-r003-3 台账（提交 SHA 由下一增量回填） | `npx tsc --noEmit` 全绿、`npm run build` 成功（dist 含 `结束房间` 与 `.live-ctrl-end`，无 Secret）、`pytest backend/tests -q` → **95 passed**（后端零改动） |
-| cp-r003-3 | 真机取证 + 教学页实跑 + 审查报告 | planned | — | — |
+| cp-r003-2 | 房主结束房间入口（DeviceBar + RoomLivePage + css + 文档） | **完成 2026-09-19** | `ed9abd2`（tag `cp-r003-2`） | `tsc --noEmit` 全绿、`npm run build` 成功（dist 含 `结束房间` 与 `.live-ctrl-end`，无 Secret）、`pytest backend/tests -q` → **95 passed**（后端零改动） |
+| cp-r003-3 | 真机取证 + 教学页实跑 + 审查报告 | **完成 2026-09-19** | 见提交（tag `cp-r003-3`） | 真机：房主控制坞/确认框/Esc/结束→回列表/卡片无动作、非房主「离开」、取票 409、越权 403、LiveKit 房间已删、SQL 三件事；`tsc`+`build` 绿、`pytest` 95 passed；教学两页按实测改写 |
+| （附加，L1） | 确认行按钮不折行（`global.css` `.live-dock-confirm .btn`） | **完成 2026-09-19** | 本提交 | 改前截图 2 可见按钮被折成两行；改后 `white-space: nowrap` 生效、单行 34px、`scrollWidth == clientWidth`；构建产物含该规则 |
 
 ## 2. 文件 × 模块 × 文档锚点
 
@@ -32,9 +33,9 @@ updated: 2026-09-19
 | `docs/02-modules/r002-livekit-features.md` | 模块（功能） | §3 F-16 离场组 / §4.2 矩阵 / §4.5 条④ / §4.9 动作列 / §6 第 10 步 / §8 变更记录 | 自身 | **landed** |
 | `docs/02-modules/r002-livekit.md` | 模块（实现） | §11 变更记录一行（props / doEnd / 令牌逐项） | 自身 | **landed** |
 | `docs/04-style/global-style.md` | 风格 | §12.1 新增「离场组的角色分岔」段（含两个令牌名） | 自身 | **landed** |
-| `docs/tutorials/r002-livekit-demo.md` | 教学（使用者） | 第 9 步改走控制坞 + 实跑留痕 | 自身 | planned（cp-r003-3） |
-| `docs/tutorials/r002-livekit-setup.md` | 教学（使用者） | 第 11 行入口描述同步 | 自身 | planned（cp-r003-3） |
-| `dev.bat`（仓库根，新增） | 开发工具 | 一键启动/自检/停止开发环境（后端 8000 + 前端 5173） | `README.md`「怎么跑」+ `redirect-01.md` 落地口径 | **landed**（GBK/CRLF；check/start/stop 实测） |
+| `docs/tutorials/r002-livekit-demo.md` | 教学（使用者） | 第 9 步改走控制坞 + §4 实测记录（九行证据） | 自身 | **landed**（cp-r003-3） |
+| `docs/tutorials/r002-livekit-setup.md` | 教学（使用者） | 第 11 行入口描述同步 + `dev.bat` 一行 | 自身 | **landed**（cp-r003-3） |
+| `dev.bat`（仓库根，新增） | 开发工具 | 一键启动/自检/停止开发环境（后端 8000 + 前端 5173） | `README.md`「怎么跑」+ `redirect-01.md` 落地口径 | **landed**（GBK/CRLF；`dev.bat check` 实测六项全绿、start 起两服务实测、stop 按端口可停） |
 
 ## 3. 用户消息台账（首行回执的核对凭据）
 
@@ -45,7 +46,14 @@ updated: 2026-09-19
 | 3 | 2026-09-19 | 「具体就是这个项目现在没有结束房间的按钮了，让房主的退出按钮变成结束房间按钮」 | 重定向 | r002-07（confirmed-A） |
 | 4 | 2026-09-19 | 「这个加入003，开始003」 | 批准（W1：含「开始」口令 + 一轮范围决定） | r002-07 §8 |
 | 5 | 2026-09-19 | 「写个一键启动环境的脚本」 | 授权并登记（C 追加） | r003-01 |
+| 6 | 2026-09-19 | 「？」「？？」（对等待中的疑问，无新要求） | 无新要求（免单，已回说明并继续取证） | — |
 
 ## 4. 无文档变更的提交（若有）
 
-（实现期若某步确实无对外行为变化，在此登记一行并说明原因。）
+- 无。本轮每个提交都带对应文档改动（阶段 1 文档 / cp-1 回填 / cp-2 代码 + 文档同提交 / dev.bat + README 与单证 / 最终 L1 折行修正含 `changes.md` 本行）。
+
+## 5. 本轮设计变更记录（L1）
+
+| 日期 | 位置 | 现象 | 处置 | 级别依据 |
+| --- | --- | --- | --- | --- |
+| 2026-09-19 | `global.css` `.live-dock-confirm` | 窄视口（1265×566）下确认行按钮文案被折成两行（截图 2「结束房 间」） | 加 `.live-dock-confirm .btn { white-space: nowrap; }` | L1：仅同模块内样式手段，接口/行为/测试预期/文档结论均不变 |

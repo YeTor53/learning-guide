@@ -966,6 +966,8 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .live-ctrl-end:hover:not(:disabled) { background: var(--live-end-hover); color: #fff; }
 
 .live-dock-confirm { display: flex; align-items: center; gap: 8px; padding: 2px 4px; }
+/* 确认行的按钮文案不许折行：控制坞是 flex 换行的，窄屏下「结束房间」「确认离开」会被拆成两行（2026-09-19 实测 1265px 视口复现） */
+.live-dock-confirm .btn { white-space: nowrap; }
 
 .live-dock-hint {
   position: absolute;
