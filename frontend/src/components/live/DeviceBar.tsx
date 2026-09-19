@@ -4,9 +4,11 @@
  *             docs/04-style/global-style.md §12.1（专注感令牌）。
  * 为什么不是三个圆按钮：等形状等尺寸会让「离开」与「静音」一样容易误触，且不体现任何状态；
  * 控制坞把「设备」与「离场」分组隔开、给状态文字与电平、给确认与快捷键。
+ * 离场组按角色分岔（r003）：**房主的离场按钮就是「结束房间」**（危险色 + 二次确认）；
+ * 其他人是「离开」。房主没有「离开」——他必须先结束或先移交（r001 FQ-2 / ADR-0012 条 8）。
  */
 import { useEffect } from 'react'
-import { DoorOpen, Mic, MicOff, Settings2, Video, VideoOff } from 'lucide-react'
+import { DoorOpen, Mic, MicOff, PhoneOff, Settings2, Video, VideoOff } from 'lucide-react'
 
 const ICON = { size: 18, strokeWidth: 1.75 } as const
 
@@ -15,7 +17,7 @@ interface Props {
   camEnabled: boolean
   /** 麦克风电平 0~1（关麦时为 0）。 */
   micLevel: number
-  /** 是否房主：房主不能直接离开（防呆：按钮禁用并在提示里说明）。 */
+  /** 是否房主：房主的离场组渲染为「结束房间」（危险色 + 二次确认），而不是禁用的「离开」。 */
   isHost: boolean
   /** 重连中禁用所有按钮，避免「点了没反应」。 */
   disabled: boolean
@@ -27,6 +29,11 @@ interface Props {
   onRequestLeave: () => void
   onConfirmLeave: () => void
   onCancelLeave: () => void
+  /** 房主「结束房间」的确认态（由父组件持有，便于 Esc 取消）。 */
+  confirmingEnd: boolean
+  onRequestEnd: () => void
+  onConfirmEnd: () => void
+  onCancelEnd: () => void
 }
 
 const LEVEL_BARS = 3
@@ -44,6 +51,10 @@ export default function DeviceBar({
   onRequestLeave,
   onConfirmLeave,
   onCancelLeave,
+  confirmingEnd,
+  onRequestEnd,
+  onConfirmEnd,
+  onCancelEnd,
 }: Props) {
   // 快捷键：M 切麦、V 切摄像头（离开不绑定快捷键——离场必须是有意的）
   useEffect(() => {
@@ -102,7 +113,31 @@ export default function DeviceBar({
       <span className="live-dock-sep" aria-hidden />
 
       <div className="live-dock-group">
-        {confirmingLeave ? (
+        {isHost ? (
+          confirmingEnd ? (
+            <div className="live-dock-confirm" role="dialog" aria-modal="false" aria-label="确认结束房间">
+              <span className="live-ctrl-text">
+                结束这个房间？所有人将被移出、需重新申请才能进；房间转为只读，历史仍可查。
+              </span>
+              <button className="btn btn-danger btn-sm" onClick={onConfirmEnd}>
+                结束房间
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={onCancelEnd}>
+                取消（Esc）
+              </button>
+            </div>
+          ) : (
+            <button
+              className="live-ctrl live-ctrl-end"
+              onClick={onRequestEnd}
+              disabled={disabled}
+              title="结束房间：所有人被移出、房间转为只读（不绑定快捷键）"
+            >
+              <PhoneOff {...ICON} />
+              <span className="live-ctrl-text">结束房间</span>
+            </button>
+          )
+        ) : confirmingLeave ? (
           <div className="live-dock-confirm" role="dialog" aria-modal="false" aria-label="确认离开">
             <span className="live-ctrl-text">离开后要重新申请才能进来，确定吗？</span>
             <button className="btn btn-danger btn-sm" onClick={onConfirmLeave}>
@@ -116,8 +151,8 @@ export default function DeviceBar({
           <button
             className="live-ctrl live-ctrl-leave"
             onClick={onRequestLeave}
-            disabled={disabled || isHost}
-            title={isHost ? '房主不能直接离开：请先移交房主或结束房间' : '离开房间（不绑定快捷键）'}
+            disabled={disabled}
+            title="离开房间（不绑定快捷键）"
           >
             <DoorOpen {...ICON} />
             <span className="live-ctrl-text">离开</span>

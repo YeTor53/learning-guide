@@ -2,9 +2,9 @@
 title: r002 需求单：实时房间 · 权限 · 等候室（里程碑 M2）
 description: r002 的目的、边界、本轮已定口径、验收清单、影响面、风险、文档产出（覆盖矩阵）与实施顺序（cp-r002-1..4）。
 type: requirement
-status: draft
+status: closed
 owner: 陀梓皓
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 <!-- overview -->
@@ -198,14 +198,15 @@ updated: 2026-09-18
 | --- | --- | --- | --- | --- |
 | A | 设计页（本轮总设计） | `docs/01-architecture/r002-realtime-architecture.md` | **landed（本批）** | cp-r002-1 |
 | A′ | 模块设计（功能页 / 实现页） | `docs/02-modules/r002-livekit-features.md`、`r002-livekit.md` | **landed（本批，设计态）** | cp-r002-1；实现回填随 cp-2/3 |
-| B | 实现同步页 | 上述两页的「变更记录」+ 实现回填；`docs/rounds/r002-livekit/changes.md` 逐 cp 追加 | planned | cp-r002-2/3/4 |
-| C | 使用者教学页 | `docs/tutorials/r002-livekit-demo.md`（三页各自干什么、怎么进房、怎么演示演示脚本 12 步、常见现象与排障） | planned | cp-r002-5（跑通后写） |
-| D | 开发者教学页 | `docs/tutorials/r002-livekit-dev-guide.md`（Token 策略怎么换、自助加一个自定义能力、调试实时链路与打桩方式、两页的情绪令牌改哪里） | planned | cp-r002-5（跑通后写） |
-| E | 项目级文档 | `README.md`（当前状态 + 怎么跑补实时段）、`AGENTS.md`（`<check>` 增补）、`global-roadmap.md`（§3 M2 台账、§9 遗留）、`docs/00-requirements/README.md`（索引加 r002 行） | 索引行本批；其余随 cp/收官 | cp-r002-1 / 收官 |
+| B | 实现同步页 | 上述两页的「变更记录」+ 实现回填；`docs/rounds/r002-livekit/changes.md` 逐 cp 追加 | **landed** | cp-r002-2/3/4 |
+| C | 使用者教学页 | `docs/tutorials/r002-livekit-setup.md`（从零跑起来）+ `docs/tutorials/r002-livekit-demo.md`（九步演示 + 排障） | **landed** | cp-r002-5 |
+| D | 开发者教学页 | `docs/tutorials/r002-livekit-dev-guide.md`（Token 策略怎么换、自助加一个自定义能力、调试实时链路与打桩方式、两页的情绪令牌改哪里） | **landed（补交，r003 cp-r003-1）** | r003 cp-r003-1 |
+| E | 项目级文档 | `README.md`（当前状态 + 怎么跑补实时段）、`AGENTS.md`（`<check>` 增补）、`global-roadmap.md`（§3 M2 台账、§9 遗留）、`docs/00-requirements/README.md`（索引加 r002 行） | **landed**（README/AGENTS 随 cp-r002-5；roadmap 与索引由 r003 `cp-r003-1` 回填定稿） | cp-r002-5 / r003 cp-r003-1 |
 | F | 决策记录 | `docs/03-decisions/r002-adr-0011-realtime-presence-model.md`（双事实源 / identity 唯一 / Token 无状态 / 外部调用在提交后 / 断线归因与重连 / 上限口径，共 9 条） | **landed（本批，`status: proposed`，随本设计一起批）** | cp-r002-1 |
-| F′ | 决策记录（实现期） | 实现中若出现需要定级的取舍，按 CR 流程补 ADR + 模块页变更记录 | planned | 按 CR 流程 |
+| F′ | 决策记录（实现期） | 实现中若出现需要定级的取舍，按 CR 流程补 ADR + 模块页变更记录 | **landed**：`redirect-05` 引出 `r002-adr-0012-room-lifecycle.md`；`redirect-01..06` 六单全部有结论落档 | 实现期 |
 
 - 覆盖矩阵判据：收官时 A~F 无 `planned` 残留；教学页示例实跑并附输出（铁律 2 与阶段 3 文档对账）。
+- **2026-09-19 回填（r003 `cp-r003-1`）**：矩阵 A~F′ 已无 `planned` 残留；D 行（开发者教学页）为事后补交，已按代码写入并落地。
 
 ## 9. 人工步骤与凭证约定
 
@@ -235,6 +236,8 @@ updated: 2026-09-18
 
 | 日期 | 轮次 | 变更 | 依据 |
 | --- | --- | --- | --- |
+| 2026-09-18 | r002 | **收官**：合入 `main`（`7f2e994`）并打 `round-r002-done`；§4.1 填实测证据表与未做清单 | 用户「做，尽快做完」 |
+| 2026-09-19 | r003 | **收官回填（cp-r003-1）**：frontmatter 转 `closed`；覆盖矩阵 B/C/D/F′ 转 `landed`（D 行补交开发者教学页）；§8 加回填注记 | redirect-07 结论（用户「这个加入003，开始003」） |
 | 2026-09-18 | r002 | **收官：cp-r002-5 完成**（两篇教学页 + README/AGENTS/roadmap 回填 + 证据表 + 合入 `main` 打 `round-r002-done`） | 用户「做，尽快做完」 |
 
 | 日期 | 轮次 | 变更 | 依据 |

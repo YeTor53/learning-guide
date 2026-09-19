@@ -54,6 +54,7 @@ cd backend && python -m uvicorn app.main:app --reload --port 8000
 # ③ 前端（开发，Vite 代理 /api → 8000，浏览器只看到 localhost:5173 一个源）
 cd frontend && npm install && npm run dev
 # 打开 http://localhost:5173
+# 或一键启动（Windows，起后端 8000 + 前端 5173）：dev.bat        # 自检：dev.bat check   停止：dev.bat stop
 
 # ④ 演示形态（单进程同源）：先把 .env 的 APP_ENV 改成 demo，再构建并只起后端
 cd frontend && npm run build

@@ -598,6 +598,8 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   --live-vignette: rgba(0, 0, 0, 0.45);     /* 舞台四角暗角：把注意力收到中间 */
   --live-tint: rgba(124, 240, 196, 0.05);   /* 顶部主题色光带：给房间一点「这里」 */
   --live-focus-glow: rgba(124, 240, 196, 0.16);
+  --live-end-border: rgba(255, 107, 107, 0.55); /* 房主「结束房间」按钮描边（单点可调） */
+  --live-end-hover: rgba(255, 107, 107, 0.18); /* 房主「结束房间」按钮 hover 底色 */
   --live-rail-width: 176px;
   /* 等待室 · 温暖感（docs/04-style/global-style.md §12.2） */
   --wait-warm: #f0b27a;
@@ -958,7 +960,14 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .live-ctrl-leave { color: #ffc9c9; border-color: rgba(255, 107, 107, 0.35); }
 .live-ctrl-leave:hover:not(:disabled) { background: rgba(255, 107, 107, 0.16); color: #fff; }
 
+/* 房主唯一的破坏性动作「结束房间」：比「离开」更强的描边与对比，仍不做填充（避免引诱误点）
+   颜色只走 --live-end-border / --live-end-hover 两个令牌（单点可调） */
+.live-ctrl-end { color: #ffd0d0; border-color: var(--live-end-border); }
+.live-ctrl-end:hover:not(:disabled) { background: var(--live-end-hover); color: #fff; }
+
 .live-dock-confirm { display: flex; align-items: center; gap: 8px; padding: 2px 4px; }
+/* 确认行的按钮文案不许折行：控制坞是 flex 换行的，窄屏下「结束房间」「确认离开」会被拆成两行（2026-09-19 实测 1265px 视口复现） */
+.live-dock-confirm .btn { white-space: nowrap; }
 
 .live-dock-hint {
   position: absolute;

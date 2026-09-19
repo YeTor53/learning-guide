@@ -45,6 +45,7 @@ export default function RoomLivePage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<{ userId: string; action: 'kick' | 'transfer' } | null>(null)
   const [confirmingLeave, setConfirmingLeave] = useState(false)
+  const [confirmingEnd, setConfirmingEnd] = useState(false)
   const [welcome, setWelcome] = useState(true)
   const [confirmingBack, setConfirmingBack] = useState(false)
   const [focusedSeconds, setFocusedSeconds] = useState(0)
@@ -128,17 +129,18 @@ export default function RoomLivePage() {
 
   const focusedLabel = `${String(Math.floor(focusedSeconds / 60)).padStart(2, '0')}:${String(focusedSeconds % 60).padStart(2, '0')}`
 
-  // Esc：先取消「确认离开」，再收起抽屉（防呆：离场永远有退路）
+  // Esc：先取消「确认离开 / 确认结束房间」，再收起抽屉（防呆：离场永远有退路）
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (confirmingLeave) setConfirmingLeave(false)
+      else if (confirmingEnd) setConfirmingEnd(false)
       else if (confirmingBack) setConfirmingBack(false)
       else if (drawerOpen) setDrawerOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [confirmingLeave, confirmingBack, drawerOpen])
+  }, [confirmingLeave, confirmingEnd, confirmingBack, drawerOpen])
 
   const goBackToRooms = async () => {
     setConfirmingBack(false)
@@ -207,6 +209,18 @@ export default function RoomLivePage() {
       /* 已被移出等情形忽略：离开是幂等的用户体验动作 */
     }
     navigate(`/rooms/${id}`)
+  }
+
+  /** 房主结束房间（r003）：成功后断开并回列表；失败保留连接与房间，只给提示。 */
+  const doEnd = async () => {
+    setConfirmingEnd(false)
+    try {
+      await roomsApi.end(id) // POST /api/rooms/{id}/end（r001 起存在；服务端含 delete_room 强制断开）
+      await connection.disconnect()
+      navigate('/')
+    } catch (error) {
+      setNotice(error instanceof ApiError ? error.message : '操作失败，请重试')
+    }
   }
 
   const endedRoom = room?.status === 'ended'
@@ -434,6 +448,10 @@ export default function RoomLivePage() {
           onRequestLeave={() => setConfirmingLeave(true)}
           onConfirmLeave={() => void doLeave()}
           onCancelLeave={() => setConfirmingLeave(false)}
+          confirmingEnd={confirmingEnd}
+          onRequestEnd={() => setConfirmingEnd(true)}
+          onConfirmEnd={() => void doEnd()}
+          onCancelEnd={() => setConfirmingEnd(false)}
         />
       </div>
     </LiveKitRoom>

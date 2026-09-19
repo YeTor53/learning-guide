@@ -55,9 +55,10 @@ updated: 2026-09-18
 > 实测：`db_init --reset --seed` 打印 7 表行数；`pytest backend/tests -q` 72 passed；`smoke.py` PASS 22/22；前端 `tsc --noEmit` + `npm run build` 全绿；9 步浏览器实操与未登录引导均已跑通（E9/E10）。需求单 §3 的 20 项验收**全部闭合**。
 > 剩余：已由人 `merge --no-ff` 合入 `main` 并打 `round-r001-done`（`main` = `c189a87`，2026-09-18 实测）。轮次档案见 `docs/rounds/r001-skeleton/`。
 >
-> **M2（r002）状态回填（2026-09-18）**：**文档阶段**（设计待你批准）。轮次号 `r002`、分支 `req/r002-livekit`、需求单 `docs/00-requirements/r002-livekit-room.md`（draft）、轮次档案 `docs/rounds/r002-livekit/`。
-> 设计入口：轮次设计 `docs/rounds/r002-livekit/design.md`；总设计增量 `docs/01-architecture/r002-realtime-architecture.md`；模块页 `docs/02-modules/r002-livekit.md` 与 `r002-livekit-features.md`（归档设计已按 §7 第 3 条归位）。
-> 本轮范围外的邀请已拆出为 `docs/99-archive/r002-ahead-invites.md`（`status: backlog`）。硬前置：`livekit-api` / `livekit-client` / `@livekit/components-react` 三项依赖需你批准、LiveKit Cloud 项目与 `.env` 三项需你填写。
+> **M2（r002）状态回填（2026-09-18 收官，2026-09-19 定稿）**：**已完成**。轮次号 `r002`、分支 `req/r002-livekit`、需求单 `docs/00-requirements/r002-livekit-room.md`（`status: closed`）、轮次档案 `docs/rounds/r002-livekit/`（含 `redirect-01..07`）。
+> 合并与 tag：由人 `merge --no-ff` 合入 `main`（提交 `7f2e994`）并打 `round-r002-done`；收官后 `main` = `b8783d2`。cp tag 只有 `cp-r002-2/3/4`（缺 1 / 5，见审查报告 §6）。
+> 实测：`pytest backend/tests -q` → 95 passed；`smoke.py` → PASS 22/22（r001 项，r002 四步未加）；前端 `tsc --noEmit` + `npm run build` 全绿；四项浏览器实测（连接状态、申请徽标、等待室、旧链接重定向）。
+> 文档：设计页 `docs/01-architecture/r002-realtime-architecture.md`、模块两页、教学三页（使用者两页 + 开发者一页，后者由 r003 补交）、审查报告 `docs/rounds/r002-livekit/review.md`（2026-09-19 定稿）。范围外的邀请已归档为 `docs/99-archive/r002-ahead-invites.md`（`status: backlog`）。
 
 ## 4. 已决事项
 
@@ -99,8 +100,8 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 > r002 收官（2026-09-18）：M2 完成并合入 `main`。**下一轮 = M3**（群聊实时收发落库、举手、焦点发言、屏幕共享与「焦点 × 共享」优先级、Toast/ConfirmDialog 替换 r001 遗留的 8 处原生弹窗）。
 
 1. ~~人工复核 r001~~ 已完成：r001 已合入 `main` 并打 `round-r001-done`（2026-09-18）。
-2. **r002（M2）当前：设计已出，待你复核与批准**。复核入口 `docs/00-requirements/r002-livekit-room.md`（§2 边界、§3 口径表、§4 验收、§10 cp 表）+ `docs/01-architecture/r002-realtime-architecture.md` + `docs/02-modules/r002-livekit-features.md` §6 演示脚本。
-3. 批准后：① 批准三项依赖安装（需求单 §9）；② 你注册 LiveKit Cloud 并把 `LIVEKIT_URL/API_KEY/API_SECRET` 填进 `.env`；③ 回「按设计做」→ 建分支 `req/r002-livekit`，按 cp-r002-2（后端）→ cp-r002-3（前端）→ cp-r002-4（冒烟+教学页+收官）推进。
+2. ~~r002（M2）~~ **已完成（2026-09-18）**：设计已批并实现，合入 `main`（`7f2e994`）并打 `round-r002-done`；审查报告与覆盖矩阵已于 2026-09-19 定稿（r003 `cp-r003-1`）。
+3. **r003（补轮）当前：进行中（设计已批，2026-09-19）**。范围 = ① r002 收官回填（先还债）② 房主「结束房间」入口落回交流页控制坞（`redirect-07`）。入口：`docs/00-requirements/r003-end-room-entry.md` + `docs/rounds/r003-end-room-entry/design.md`。收官后下一轮 = **M3**（群聊落库 / 举手 / 焦点发言 / 屏幕共享与优先级）。
 4. P11（npm 发布对象 / 仓库公开性 / zip 主次）仍**暂缓**：达到提交阶段再拍，届时补 README 交付章节与可能的包目录。
 
 ## 8. 文档产出顺序与现状盘点（2026-09-17）
@@ -178,7 +179,7 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 群聊实时收发落库、举手、焦点发言、屏幕共享与「焦点 × 共享」优先级规则 | M3 范围 | 按 §3 里程碑表推进 |
 | LLM 纪要（触发链路、Prompt 契约、落库与重试） | M4 范围 | 设计与实现方案已在 `docs/99-archive/r001-ahead-m4-summaries*.md` |
 | 加分项：断线重连恢复、录制转写、Compose、管理后台、录屏 | M5 增量 | 按剩余时间取舍 |
-| **`ended` 房间的回看载体（历史 + 纪要）** | 能力缺口（由 `redirect-06` 删除管理页引出） | **登记为代办**。现状：列表页对 `ended` 房间只显示「已结束」徽标、**无任何入口**（原来的回访能力随管理页一起删掉了）；正文已记：回访与纪要天然属于 **M4 纪要**这条路，届时新开 `/rooms/:id/summary`（或列表页卡片开只读面板）承接「房间信息 + 申请记录 + 成员快照 + LLM 纪要」。**M4 之前不做**，但不得遗忘（r002 验收不含回看） |
+| **`ended` 房间的回看载体（历史 + 纪要）** | 能力缺口（由 `redirect-06` 删除管理页引出） | **登记为代办**。现状：列表页对 `ended` 房间只显示「已结束」徽标、**无任何入口**（原来的回访能力随管理页一起删掉了）；正文已记：回访与纪要天然属于 **M4 纪要**这条路，届时新开 `/rooms/:id/summary`（或列表页卡片开只读面板）承接「房间信息 + 申请记录 + 成员快照 + LLM 纪要」。**M4 之前不做**，但不得遗忘（r002 验收不含回看）。**2026-09-19 已出构思页**：`docs/99-archive/r003-ahead-m4-ended-rooms-archive.md`（归档语义 / 权限矩阵 / B+A 形态 / 函数级草案 / 零迁移结论 / FQ-A1~A6），开 M4 轮时移回 `docs/02-modules/` 并改前缀 |
 | **侧边栏在「宽小于长」时样式出错**（你 2026-09-18 提「侧边栏在宽小于长时样式出错」） | 界面缺陷（**未复现、未归因**） | **登记为代办**。触发条件：视口**宽 < 高**（竖屏 / 窄窗）。尚未实测复现——抓取浏览器无法改视口尺寸，因此**不写猜测原因**（避免拿猜测当结论）。复现与验收方式：把窗口拉成竖屏（例如 720×1024）逐页看外壳 `frontend/src/App.tsx` + `--layout-*` / `.sidebar` 样式，截图对比；确认后按「样式缺陷」单独修（r002 内修则落在 `frontend/src/styles/global.css`；跨轮次则排到 cp-r002-5 或交付前一轮） |
 | 交付物（zip + GitHub + npm）细则 | P11 暂缓 | 提交阶段拍板后另开一轮 |
 | **操作反馈用浏览器原生弹窗（观感掉价）**（你 2026-09-18 提「已批准的控制台消息太掉价了吧」） | 界面形态问题（功能正确） | **现有 8 处不改，登记待你定时机**。实测全在同一文件 `frontend/src/pages/RoomDetailPage.tsx`：`:108` 「已批准 X 加入」、`:114` 「已拒绝该申请」、`:118` 离开确认、`:119` 「已离开房间」、`:124` 结束房间确认、`:129` 「房间已结束」、`:221` 「已撤回申请」、`:222` 撤回失败提示（其余前端文件零命中，均为 `window.alert/confirm`）。替换时机二选一：M3（届时本就要动房内交互）或交付前单独一轮（属已合并代码修补 → 新开 fix 轮次或 revert，AGENTS 硬规矩 5）。与 r002 的关系：r002 内的新交互已按 `redirect-03` 定死为站内 toast + 自绘 modal（禁原生弹窗），不会再新增同类问题 |
@@ -195,6 +196,11 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 · **C** A + B 都做（A 保可见、B 保大屏留白）。
 · **D** 继续只记账，交付前再说。
 我的建议：**A**（若你要保 hero 的大留白观感就 C）。说「A / B / C / D」即可，本轮默认 **D**（不动代码）。 |
+
+| **房主在交流页缺「结束房间」入口**（你 2026-09-19 报：「现在没有结束房间的按钮了，让房主的退出按钮变成结束房间按钮」） | 功能缺口（A 实现偏差）：`redirect-06` 删除房间管理页时把当时唯一的结束入口一并删掉，未在交流页补回；已批准文档（功能页 `:20`/`:104`/演示脚本、demo 教程第 9 步）都写了该入口存在 | **已闭合，转 r003 实施**：定性 A + L3（界面元素与示范动作变）；入口只落交流页控制坞（抽屉不加第二入口），二次确认复用站内自绘确认框 | `docs/rounds/r002-livekit/redirect-07.md`、`docs/00-requirements/r003-end-room-entry.md` |
+| **r002 开发者教学页曾缺交付**（`docs/tutorials/r002-livekit-dev-guide.md`，覆盖矩阵 D 行） | 文档欠账（收官回填漏项，四件套缺一） | **已偿还**：r003 `cp-r003-1` 按代码补齐（模块地图 / Token 策略换法 / 自助加能力 / 打桩与排障 / 情绪令牌 / 实测 6 个坑） | `docs/tutorials/r002-livekit-dev-guide.md` |
+| **r002 收官时 `review.md` 未定稿 / 需求单未转 `closed` / 索引表与 roadmap 未回填** | 文档欠账（铁律 6「每轮成档」未闭合） | **已偿还**：r003 `cp-r003-1` 一次性定稿与回填（含 §3/§7 三处矛盾修正） | `docs/rounds/r002-livekit/review.md`、`docs/00-requirements/README.md` |
+| **`cp-r002-1` / `cp-r002-5` 未打 tag** | 命名五处一致缺口（只有 `cp-r002-2/3/4`） | **登记待你一句话**：补打两个 tag（建议指向 `7b95a6b` / `cbd9caf`），或接受现状（审查报告 §6 已记） | 本行 |
 
 ### 9.1 暂留（2026-09-18 讨论，均未拍板、未排期）
 
