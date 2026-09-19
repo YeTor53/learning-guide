@@ -21,6 +21,7 @@ import { useChatMessages } from '../hooks/useChatMessages'
 import { useChromeIdle } from '../hooks/useChromeIdle'
 import { useLocalDeviceState } from '../hooks/useLocalDeviceState'
 import { useHandRaise } from '../hooks/useHandRaise'
+import { useFocusRequests } from '../hooks/useFocusRequests'
 import { useMicLevel } from '../hooks/useMicLevel'
 import { useMicStates } from '../hooks/useMicStates'
 import { useRosterSync } from '../hooks/useRosterSync'
@@ -82,6 +83,39 @@ export default function RoomLivePage() {
   const chat = useChatMessages(connection.room, id, liveReady)
   const hands = useHandRaise(connection.room, id, liveReady, localIdentity || null)
   const focus = useRoomFocus(connection.room, id, liveReady)
+  // r009：焦点申请（协管 → 另一个非本人批准）与举手键的角色分流
+  const canManage = myRole === 'host' || myRole === 'moderator'
+  const focusRequests = useFocusRequests(id, liveReady, localIdentity || null, canManage)
+  const iAmFocused = Boolean(focus.focus.subjectUserId && focus.focus.subjectUserId === localIdentity)
+  const handLabel = iAmFocused
+    ? '退出焦点'
+    : myRole === 'host'
+      ? '取得焦点'
+      : myRole === 'moderator'
+        ? (focusRequests.mine ? '已申请焦点' : '申请焦点')
+        : undefined
+  const handTitle = iAmFocused
+    ? '退出焦点（把焦点让出来）'
+    : myRole === 'host'
+      ? '取得焦点（房主可直接取得）'
+      : myRole === 'moderator'
+        ? '申请焦点（需另一位管理身份批准）'
+        : undefined
+  const onHandControl = () => {
+    if (iAmFocused) {
+      void focus.setFocus(null)
+      return
+    }
+    if (myRole === 'host') {
+      void focus.setFocus(localIdentity || null)
+      return
+    }
+    if (myRole === 'moderator') {
+      void focusRequests.request_()
+      return
+    }
+    void (hands.mine ? hands.lower() : hands.raise())
+  }
   const screen = useScreenShare(connection.room, connection.status)
 
   // 未读：抽屉收起时累积，打开即清零（徽标只在状态条上，不弹 toast）
@@ -440,6 +474,7 @@ export default function RoomLivePage() {
               screenOwnerId={screen.ownerId}
               sharing={screen.sharing}
               onStopShare={() => void screen.stop()}
+              handIds={hands.hands.map((item) => item.userId)}
             />
           )}
           {drawerOpen && room && (
@@ -454,6 +489,7 @@ export default function RoomLivePage() {
               myUserId={localIdentity || null}
               hands={hands}
               focus={focus}
+              focusRequests={focusRequests}
               screen={screen}
               onChatChanged={() => {
                 lastSeenRef.current = chat.messages.length
@@ -540,8 +576,11 @@ export default function RoomLivePage() {
           onConfirmEnd={() => void doEnd()}
           onCancelEnd={() => setConfirmingEnd(false)}
           handRaised={hands.mine}
+          handActive={iAmFocused || hands.mine}
+          handLabel={handLabel}
+          handTitle={handTitle}
           sharing={screen.sharing}
-          onToggleHand={() => void (hands.mine ? hands.lower() : hands.raise())}
+          onToggleHand={onHandControl}
           onToggleShare={() => void (screen.sharing ? screen.stop() : screen.start())}
         />
       </div>

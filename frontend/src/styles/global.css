@@ -1839,3 +1839,46 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   height: 100%;
   object-fit: var(--tile-fit, cover);
 }
+
+/* r009 · 麦克风悬浮键（声波由 --mic-pulse-max 调，静音时无声波） */
+:root { --mic-pulse-ms: 320ms; }
+
+.mic-orb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+.mic-orb.is-muted { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.mic-orb-wave {
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent), transparent 70%);
+  transition: transform var(--mic-pulse-ms) ease-out, opacity var(--mic-pulse-ms) linear;
+  pointer-events: none;
+}
+.mic-orb > svg { position: relative; z-index: 1; }
+
+/* r009 · 待批焦点申请 */
+.focus-requests .panel-title { margin-bottom: 6px; }
+.focus-request-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel);
+}
+.focus-request-name { font-weight: 500; }
+.focus-request-actions { margin-left: auto; display: inline-flex; gap: 6px; }

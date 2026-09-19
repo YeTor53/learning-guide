@@ -28,6 +28,8 @@ interface Props {
   micStates: Record<string, boolean>
   sharing: boolean
   onStopShare: () => void
+  /** r009：正在举手的人（举手格持续闪烁，纯视觉、不参与几何）。 */
+  handIds?: string[]
 }
 
 /** callback ref 包装：节点出现/替换都触发一次 state 更新（见 useStageArea 注释）。 */
@@ -84,6 +86,7 @@ export default function LiveStage({
   micStates,
   sharing,
   onStopShare,
+  handIds = [],
 }: Props) {
   const tracks = useTracks(
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }, { source: Track.Source.Camera, withPlaceholder: true }],
@@ -181,7 +184,7 @@ export default function LiveStage({
             key={identity}
             data-flip-id={identity}
             data-kind={tile?.kind ?? 'leaving'}
-            className={`live-cell${leaving ? ' is-leaving' : ''}${isFocus ? ' is-focus' : ''}${tile?.kind === 'share' ? ' is-share' : ''}`}
+            className={`live-cell${leaving ? ' is-leaving' : ''}${isFocus ? ' is-focus' : ''}${tile?.kind === 'share' ? ' is-share' : ''}${handIds.includes(identity) ? ' is-hand' : ''}`}
             style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
           >
             {isSelf && !leaving && <span className="live-cell-self">（你）</span>}
