@@ -166,3 +166,15 @@ def reject_focus_request(
     """拒绝焦点申请（同样不能由本人操作）。"""
     item = focus_requests_service.decide_focus_request(conn, actor, request_id, approve=False)
     return ok(_dump(item), status=200)
+
+
+@router.post("/rooms/{room_id}/focus/from-hand", status_code=200)
+def grant_focus_from_hand(
+    room_id: str,
+    payload: FocusIn,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """管理在举手者格上点「给焦点」：设焦点 + 清该人举手（r009）。"""
+    item = focus_service.grant_focus_from_hand(conn, actor, room_id, payload.user_id)
+    return ok(_dump(item), status=200)

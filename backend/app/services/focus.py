@@ -48,3 +48,23 @@ def set_focus(conn: Connection, actor: Optional[UserVO], room_id: str, subject_u
         repo.insert_focus(conn, new_id("focus"), room_id, subject_user_id, actor.id)
         item = repo.latest_focus(conn, room_id)
     return _focus_vo(item)
+
+
+def grant_focus_from_hand(conn: Connection, actor: Optional[UserVO], room_id: str, subject_user_id: str) -> FocusVO:
+    """管理在**举手者**格上点「给焦点」：设焦点 + 清掉他的举手（一条事务，r009 / ADR-0021 D2）。
+
+    与 `set_focus` 的区别：这里语义是「回应举手」，所以必须真的把举手放下（否则格子会一直闪）。
+    """
+    if actor is None:
+        raise AppError(ERR_UNAUTHORIZED, "请先登录", status=401)
+    with conn.transaction():
+        rooms_repo.lock_room(conn, room_id)
+        _guard_active_member(conn, actor, room_id)
+        assert_room_role(conn, actor, room_id, MANAGER_ROLES)
+        if rooms_repo.get_active_member(conn, room_id, subject_user_id) is None:
+            raise AppError(ERR_VALIDATION, "对方不在房间中", status=400)
+        repo.insert_focus(conn, new_id("focus"), room_id, subject_user_id, actor.id)
+        # 004 的 lowered_reason CHECK 只允许 self/other/room_ended
+        repo.lower_hand(conn, room_id, subject_user_id, actor.id, "other")
+        item = repo.latest_focus(conn, room_id)
+    return _focus_vo(item)

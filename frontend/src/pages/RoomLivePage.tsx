@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, ArrowLeft, BellRing, Crosshair, Loader2, MonitorUp, PanelRightOpen, RotateCw } from 'lucide-react'
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react'
 
+import { request } from '../api/http'
 import { ApiError } from '../api/http'
 import { livekitApi } from '../api/livekit'
 import { roomsApi, type Member, type Role } from '../api/rooms'
@@ -101,6 +102,19 @@ export default function RoomLivePage() {
       : myRole === 'moderator'
         ? '申请焦点（需另一位管理身份批准）'
         : undefined
+  // r009：管理在举手者格上「给焦点」= 设焦点 + 放下手（后端一条事务完成，前端只需刷新）
+  const grantFocusFromHand = async (identity: string) => {
+    try {
+      await request(`/api/rooms/${id}/focus/from-hand`, {
+        method: 'POST',
+        body: JSON.stringify({ userId: identity }),
+      })
+      await Promise.all([focus.refresh(), hands.refresh()])
+    } catch {
+      /* 失败时保持原状：下一次状态刷新会纠正显示 */
+    }
+  }
+
   const onHandControl = () => {
     if (iAmFocused) {
       void focus.setFocus(null)
@@ -475,6 +489,9 @@ export default function RoomLivePage() {
               sharing={screen.sharing}
               onStopShare={() => void screen.stop()}
               handIds={hands.hands.map((item) => item.userId)}
+              canGrant={canManage}
+              onGrantFocus={(identity) => void grantFocusFromHand(identity)}
+              onLowerHand={(identity) => void hands.lowerOther(identity)}
             />
           )}
           {drawerOpen && room && (

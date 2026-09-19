@@ -1882,3 +1882,17 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 }
 .focus-request-name { font-weight: 500; }
 .focus-request-actions { margin-left: auto; display: inline-flex; gap: 6px; }
+
+/* r009 · 举手格上的管理动作（给焦点 / 放下手） */
+.live-cell-hand-actions {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 4;
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .55);
+  backdrop-filter: blur(8px);
+}

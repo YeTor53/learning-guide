@@ -30,6 +30,10 @@ interface Props {
   onStopShare: () => void
   /** r009：正在举手的人（举手格持续闪烁，纯视觉、不参与几何）。 */
   handIds?: string[]
+  /** r009：我是否有管理权限（举手格上显示「给焦点 / 放下手」角标）。 */
+  canGrant?: boolean
+  onGrantFocus?: (identity: string) => void
+  onLowerHand?: (identity: string) => void
 }
 
 /** callback ref 包装：节点出现/替换都触发一次 state 更新（见 useStageArea 注释）。 */
@@ -87,6 +91,9 @@ export default function LiveStage({
   sharing,
   onStopShare,
   handIds = [],
+  canGrant = false,
+  onGrantFocus,
+  onLowerHand,
 }: Props) {
   const tracks = useTracks(
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }, { source: Track.Source.Camera, withPlaceholder: true }],
@@ -188,6 +195,21 @@ export default function LiveStage({
             style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }}
           >
             {isSelf && !leaving && <span className="live-cell-self">（你）</span>}
+            {/* r009：举手者格上的管理动作（给焦点 / 放下手）——只在管理身份且对方未处于焦点时出现 */}
+            {canGrant && !leaving && track && handIds.includes(identity) && !isFocus && (
+              <span className="live-cell-hand-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => onGrantFocus?.(identity)}
+                >
+                  给焦点
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onLowerHand?.(identity)}>
+                  放下手
+                </button>
+              </span>
+            )}
             {track && !leaving ? (
               <ParticipantTile
                 participant={track.participant}
