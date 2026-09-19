@@ -104,15 +104,16 @@ export default function RoomLivePage() {
         : undefined
   // r009：管理在举手者格上「给焦点」= 设焦点 + 放下手（后端一条事务完成，前端只需刷新）
   const grantFocusFromHand = async (identity: string) => {
-    try {
-      await request(`/api/rooms/${id}/focus/from-hand`, {
-        method: 'POST',
-        body: JSON.stringify({ userId: identity }),
-      })
-      await Promise.all([focus.refresh(), hands.refresh()])
-    } catch {
-      /* 失败时保持原状：下一次状态刷新会纠正显示 */
-    }
+    // 走既有两条带广播的路径（focus.setFocus 会通过 DataChannel 通知全场；hands.lowerOther 同理），
+    // 后端另有原子版 `POST /rooms/{id}/focus/from-hand`（同事务设焦点+放下手），此处不用它是为了复用广播。
+    await focus.setFocus(identity)
+    await hands.lowerOther(identity)
+    void request(`/api/rooms/${id}/focus/from-hand`, {
+      method: 'POST',
+      body: JSON.stringify({ userId: identity }),
+    }).catch(() => {
+      /* 原子版失败不影响已完成的设焦点与放下手 */
+    })
   }
 
   const onHandControl = () => {

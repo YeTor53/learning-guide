@@ -64,11 +64,13 @@ export function useFocusRequests(roomId: string | null, enabled: boolean, myUser
     if (!roomId) return
     try {
       await request(`/api/rooms/${roomId}/focus-requests`, { method: 'POST' })
+      // 立即刷新：让按钮文案马上变「已申请焦点」，不必等下一轮轮询
+      await refresh()
       setError(null)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '申请焦点失败')
     }
-  }, [roomId])
+  }, [roomId, refresh])
 
   const decide = useCallback(
     async (id: string, action: 'approve' | 'reject') => {

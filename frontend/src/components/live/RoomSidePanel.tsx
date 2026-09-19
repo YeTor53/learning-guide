@@ -244,7 +244,14 @@ export default function RoomSidePanel({
                   <span className="dim" style={{ fontSize: 12 }}>需另一位管理身份批准</span>
                 ) : (
                   <span className="focus-request-actions">
-                    <button className="btn btn-primary btn-sm" onClick={() => void focusRequests.approve(item.id)}>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => {
+                        void focusRequests.approve(item.id)
+                        // 批准后由**批准人**的客户端补一次焦点广播，保证全场（尤其申请人）立刻看到焦点变化
+                        void focus.setFocus(item.requesterId)
+                      }}
+                    >
                       批准
                     </button>
                     <button className="btn btn-ghost btn-sm" onClick={() => void focusRequests.reject(item.id)}>
