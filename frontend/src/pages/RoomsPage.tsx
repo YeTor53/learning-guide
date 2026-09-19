@@ -7,6 +7,7 @@ import { TOPIC_OPTIONS, type RoomStatus, type Topic } from '../api/rooms'
 import FlowField from '../components/FlowField'
 import QuoteLine from '../components/QuoteLine'
 import ScrollHint from '../components/ScrollHint'
+import TopicSelect from '../components/TopicSelect'
 import ThinkerStatue from '../components/ThinkerStatue'
 import RoomCard from '../components/RoomCard'
 import { useSession } from '../hooks/useSession'
@@ -118,22 +119,14 @@ export default function RoomsPage() {
           ))}
         </div>
 
-        <select
-          className="select"
-          style={{ width: 180 }}
+        <TopicSelect
           value={topic}
-          onChange={(e) => {
-            setTopic(e.target.value as Topic | '')
+          options={[{ value: '', label: '全部主题' }, ...TOPIC_OPTIONS.map((item) => ({ value: item.value, label: item.label }))]}
+          onChange={(next) => {
+            setTopic(next)
             setPage(0)
           }}
-        >
-          <option value="">全部主题</option>
-          {TOPIC_OPTIONS.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+        />
 
         <button className={`btn btn-sm${mine ? ' btn-primary' : ''}`} onClick={toggleMine} aria-pressed={mine}>
           <Users {...ICON} />

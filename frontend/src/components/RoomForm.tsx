@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { ApiError } from '../api/http'
 import { TOPIC_OPTIONS, type CreateRoomBody, type Topic } from '../api/rooms'
+import TopicPicker from './TopicPicker'
 
 interface Props {
   submitting: boolean
@@ -52,19 +53,7 @@ export default function RoomForm({ submitting, error, onSubmit }: Props) {
           <Tag {...ICON} style={{ verticalAlign: -2, marginRight: 6 }} />
           学习主题
         </label>
-        <div className="chipset" style={{ padding: 4 }}>
-          {TOPIC_OPTIONS.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              className={topic === item.value ? 'on' : ''}
-              aria-pressed={topic === item.value}
-              onClick={() => pickTopic(item.value)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <TopicPicker value={topic} onChange={pickTopic} />
         <span className="hint">主题决定房间的分类与展示标签</span>
       </div>
 

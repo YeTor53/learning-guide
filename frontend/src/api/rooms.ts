@@ -116,11 +116,6 @@ export const TOPIC_OPTIONS: { value: Topic; label: string; hint: string }[] = [
   { value: 'number-theory', label: '数论', hint: '整数与素数的秩序' },
   { value: 'machine-learning', label: '机器学习基础', hint: '模型、损失与泛化' },
   { value: 'custom', label: '自定义', hint: '自己写一个主题名' },
-] = [
-  { value: 'epicureanism', label: '伊壁鸠鲁主义' },
-  { value: 'math-biology', label: '数理生物学' },
-  { value: 'german-history', label: '德国史模拟' },
-  { value: 'custom', label: '自定义' },
 ]
 
 export const ROLE_LABEL: Record<Role, string> = {
