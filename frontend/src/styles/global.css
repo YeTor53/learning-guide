@@ -1695,3 +1695,43 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   font-size: 15px;
   color: var(--text-dim);
 }
+
+/* ==========================================================================
+   r008 · 邀请面板与凭码加入页
+   设计事实源：docs/rounds/r008-assignment-gaps/design.md §3（ADR-0019：码最长 1 分钟）
+   ========================================================================== */
+.invite-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s-3);
+}
+.invite-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-mute); }
+.invite-field select {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.invite-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin-top: var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel);
+}
+.invite-row.dead { opacity: 0.55; }
+.invite-code { font-size: 15px; letter-spacing: 0.08em; }
+.invite-meta { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-mute); }
+
+.invite-join { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin: var(--s-4) 0 var(--s-2); }
+.invite-join .input { min-width: 200px; letter-spacing: 0.08em; }

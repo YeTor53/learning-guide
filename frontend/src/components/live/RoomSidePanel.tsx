@@ -17,6 +17,7 @@ import type { FocusState } from '../../hooks/useRoomFocus'
 import type { HandState } from '../../hooks/useHandRaise'
 import type { ScreenShareState } from '../../hooks/useScreenShare'
 import ChatPanel from './ChatPanel'
+import InvitePanel from './InvitePanel'
 
 const ICON = { size: 14, strokeWidth: 1.75 } as const
 
@@ -74,7 +75,7 @@ export default function RoomSidePanel({
   const isManager = myRole === 'host' || myRole === 'moderator'
   const online = new Set(onlineIds)
   /** r004：抽屉双 tab —— 「讨论」默认（U1），「成员」放原治理内容。 */
-  const [tab, setTab] = useState<'chat' | 'members'>('chat')
+  const [tab, setTab] = useState<'chat' | 'members' | 'invite'>('chat')
   const myHands = hands.hands.filter((item) => item.userId !== myUserId)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -205,6 +206,16 @@ export default function RoomSidePanel({
               <span className="live-toggle-badge">{requests.filter((item) => item.status === 'pending').length}</span>
             )}
           </button>
+          {(room.myRole === 'host' || room.myRole === 'moderator') && (
+            <button
+              role="tab"
+              aria-selected={tab === 'invite'}
+              className={`live-drawer-tab${tab === 'invite' ? ' on' : ''}`}
+              onClick={() => setTab('invite')}
+            >
+              邀请
+            </button>
+          )}
         </div>
         <button className="icon-btn" onClick={onClose} title="收起（Esc）" aria-label="收起成员与管理">
           <X {...ICON} />
@@ -278,6 +289,8 @@ export default function RoomSidePanel({
       </div>
       </>
       )}
-    </aside>
+          {tab === 'invite' && <InvitePanel roomId={room.id} />}
+
+</aside>
   )
 }
