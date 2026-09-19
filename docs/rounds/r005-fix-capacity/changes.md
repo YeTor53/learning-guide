@@ -18,7 +18,7 @@ updated: 2026-09-19
 | cp-r005-1 | 后端口径：申请/批准按在册封顶（原子）+ 取票去掉 LiveKit 查询 + 并发不变量用例 | **完成 2026-09-19** | 见本轮 cp-1 提交 | `pytest` **106 passed**（含新并发用例；旧两条「不校验容量」用例已按 ADR-0016 翻转） |
 | cp-r005-2 | 系统消息：六类房间事件写 `kind='system'`（同事务）+ 用例 | **完成 2026-09-19** | 见本轮 cp-2 提交 | `pytest` **110 passed**（+4 系统消息用例） |
 | cp-r005-3 | 前端：状态条「在册 N / 容量」+ 列表卡满员态 + 真机截图（含满员拒绝留痕的最后一处修） | **完成 2026-09-19** | 见本轮 cp-3 提交 | E1/E4/E7 实测见 §4.4 |
-| cp-r005-4 | 收官：smoke 补步骤、教学页/功能页/实现页、review 定稿 | planned | — | E6/E8 |
+| cp-r005-4 | 收官：smoke 补 r005 四步、实现页/功能页/使用者教学页/开发者 §9、review 定稿、索引与 roadmap 回填 | **完成 2026-09-19** | 见本轮 cp-4 提交 | `smoke` **PASS 40/40**；review §1 全绿 |
 
 ## 2. 文件 × 模块 × 文档锚点
 
@@ -35,7 +35,9 @@ updated: 2026-09-19
 | `frontend/src/pages/RoomLivePage.tsx`、`components/RoomCard.tsx` | 前端 | 状态条「在册 N / 容量」、列表卡「已满」徽标 | design §5 | landed（cp-3） |
 | `backend/app/api/routers/rooms.py` + `services/rooms.py:RoomFullNotice` | 后端 | 满员 409 改由路由 `fail(...)` 正常返回（不再抛错，留痕才不被回滚） | design §4 事务细节 | landed（cp-3） |
 | `backend/tests/test_room_capacity.py`（新） | 测试 | E2/E3/E4/E5 用例 | design §8 | planned（cp-1/2） |
-| `backend/scripts/smoke.py` | 工具 | 容量与系统消息步骤 | design §8 | planned（cp-4） |
+| `backend/scripts/smoke.py` | 工具 | r005 四步：填满 8 人 / 满员 409 / 满员留痕 / 加入·离开·被移出留痕 | design §8 | landed（cp-4） |
+| `docs/02-modules/r005-fix-capacity{,-features}.md`（新） | 文档 | 实现页 + 功能页 | 自身 | landed（cp-4） |
+| `docs/tutorials/r005-capacity-and-events.md`（新）、`tutorials/r002-livekit-dev-guide.md` §9 | 文档 | 使用者教学页 + 开发者事务陷阱 | 自身 | landed（cp-4） |
 
 ## 3. 用户消息台账（首行回执的核对凭据）
 
@@ -72,3 +74,8 @@ updated: 2026-09-19
   - 抽屉「讨论」：8 条系统消息（7 条加入 + 1 条满员拒绝，截图 `chat-system-messages.png`）
   - 抽屉「成员」：仍分「在房间里 / 不在房间」（在场标记未受影响，E6；截图 `members-presence.png`）
   - 截图目录：`C:\Users\Administrator\AppData\Local\Temp\lg_r005\`
+
+### 4.5 cp-4（收官）
+- `smoke.py` 补 r005 四步 → **PASS 40/40**（原 36/36）：「填满到 8 人（在册 = 容量）」→ memberCount=8；「满员时第 9 人申请 → 409 ROOM_FULL」；「满员拒绝留痕（系统消息）」→ 12 条系统消息且含满员拒绝；「加入/离开/被移出也留痕」。
+- 文档：实现页（判定点/函数级/事务陷阱/验证数字/遗留）、功能页（F-23~F-26）、使用者教学页（满员与房间事件）、开发者教学页补 §9（口径 + 「留痕 + 抛错」的事务陷阱）。
+- 索引表 r005 行、模块 README、`docs/README.md` 模块/教学清单、roadmap §9 与 §3 回填。

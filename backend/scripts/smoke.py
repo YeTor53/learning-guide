@@ -183,6 +183,43 @@ def main(argv: list[str] | None = None) -> int:
             f"→ {clear_focus.status_code}",
         )
 
+        # 8e) r005：容量按**在册成员**（满员 → 第 9 人申请 409 + 系统消息留痕）
+        fillers = []
+        for i in range(7):  # 房主在册 1 → 填 7 个到满员（此前申请人已离开）
+            filler = httpx.Client(base_url=base, timeout=15.0)
+            email = f"smoke-fill{i}-{suffix}@example.com"
+            reg = filler.post("/api/auth/register", json={"email": email, "displayName": f"冒烟填位{i+1}", "password": PASSWORD})
+            assert reg.status_code == 201, reg.text
+            req = filler.post(f"/api/rooms/{room_id}/join-requests", json={"message": "填位"})
+            assert req.status_code == 201, req.text
+            host.post(f"/api/join-requests/{req.json()['data']['id']}/approve")
+            fillers.append(filler)
+        filled = body(host.get(f"/api/rooms/{room_id}")).get("data", {})
+        check(
+            "填满到 8 人（在册 = 容量）",
+            filled.get("room", {}).get("memberCount") == 8,
+            f"→ memberCount={filled.get('room', {}).get('memberCount')} capacity={filled.get('room', {}).get('capacity')}",
+        )
+        ninth = httpx.Client(base_url=base, timeout=15.0)
+        ninth.post("/api/auth/register", json={"email": f"smoke-9th-{suffix}@example.com", "displayName": "冒烟第九人", "password": PASSWORD})
+        denied = ninth.post(f"/api/rooms/{room_id}/join-requests", json={"message": "还有位吗"})
+        check(
+            "满员时第 9 人申请 → 409 ROOM_FULL",
+            denied.status_code == 409 and body(denied).get("error", {}).get("code") == "ROOM_FULL",
+            f"→ {denied.status_code} {body(denied).get('error', {}).get('code')}",
+        )
+        events = [m["body"] for m in body(host.get(f"/api/rooms/{room_id}/messages?limit=80")).get("data", {}).get("messages", []) if m.get("kind") == "system"]
+        check(
+            "满员拒绝留痕（系统消息）",
+            any("房间已满" in e for e in events),
+            f"→ 系统消息 {len(events)} 条，含满员拒绝={'房间已满' in '|'.join(events)}",
+        )
+        check(
+            "加入/离开/被移出也留痕",
+            any("加入了房间" in e for e in events) and any("离开了房间" in e for e in events) and any("被移出房间" in e for e in events),
+            f"→ 样例 {events[:3]}",
+        )
+
         # 9) 结束房间
         ended = host.post(f"/api/rooms/{room_id}/end")
         check("结束房间", ended.status_code == 200 and body(ended).get("data", {}).get("status") == "ended", f"→ {ended.status_code} status={body(ended).get('data', {}).get('status')}")

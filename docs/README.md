@@ -22,7 +22,7 @@ updated: 2026-09-19
 | `03-decisions/` | ADR：`global-` 跨轮 / `rNNN-` 轮内 | 15 | 无独立索引，见本文 §3 |
 | `04-style/` | 视觉与文案风格 | 1 | `global-style.md` |
 | `rounds/` | 每轮档案：`design.md`（设计）/`changes.md`（变更台账）/`review.md`（审查报告）+ `redirect-NN.md`（过程中的重定向单） | 21（4 轮） | 见本文 §4 |
-| `tutorials/` | 教学页（使用者与开发者） | 5 | **`tutorials/README.md`**（受众索引） |
+| `tutorials/` | 教学页（使用者与开发者） | 6 | **`tutorials/README.md`**（受众索引） |
 | `99-archive/` | backlog 构思页（提前产出、目标里程碑未到） | 4 | 见本文 §5 |
 | 根 | `glossary.md`（术语表） | 1 | — |
 
@@ -33,7 +33,7 @@ updated: 2026-09-19
 | 现在做到哪、下一步是什么 | `00-project/global-roadmap.md` §3、§7；`00-requirements/README.md` |
 | 本轮（r004）要做什么、怎么算做完 | `00-requirements/r004-room-extras.md` |
 | 本轮怎么实现（函数级） | `rounds/r004-room-extras/design.md`（§0 有导航） |
-| 房间/实时模块的当前实现事实 | `02-modules/r002-livekit.md`（实现）+ `r002-livekit-features.md`（功能）；**M3 能力（群聊/举手/焦点/共享）见 `02-modules/r004-room-extras.md`（实现）+ `r004-room-extras-features.md`（功能）** |
+| 房间/实时模块的当前实现事实 | `02-modules/r002-livekit.md`（实现）+ `r002-livekit-features.md`（功能）；**M3 能力（群聊/举手/焦点/共享）见 `02-modules/r004-room-extras.md`（实现）+ `r004-room-extras-features.md`（功能）；人数上限与房间事件见 `r005-fix-capacity{,-features}.md`** |
 | 账号/首页模块 | `02-modules/r001-accounts.md` + `r001-accounts-features.md` |
 | 为什么这么决定 | `03-decisions/` 下对应 ADR（跨轮的以 `global-` 开头） |
 | 怎么跑起来 / 怎么演示 | `tutorials/r002-livekit-setup.md`、`tutorials/r002-livekit-demo.md`；房内四件事（群聊/举手/焦点/共享）见 `tutorials/r004-room-extras-demo.md` |
@@ -44,7 +44,7 @@ updated: 2026-09-19
 
 - 总设计：`01-architecture/r001-app-architecture.md`（r001 起，仍是当前总设计）
 - 增量：`r002-realtime-architecture.md`（M2 实时层）、`r004-realtime-extras-architecture.md`（M3 实时层：HTTP 真相源 + Data Channel 加速）
-- ADR：`global-adr-0001-selfhosted-livekit.md`（跨轮）；`global-adr-0002-docs-convention.md`（跨轮，**proposed，未拍板**）；`r001-adr-0002..0010`（9 个）；`r002-adr-0011..0012`（2 个）；`r004-adr-0013..0015`（3 个）
+- ADR：`global-adr-0001-selfhosted-livekit.md`（跨轮）；`global-adr-0002-docs-convention.md`（跨轮，**proposed，未拍板**）；`r001-adr-0002..0010`（9 个）；`r002-adr-0011..0012`（2 个）；`r004-adr-0013..0015`（3 个）；`r005-adr-0016`（容量口径，1 个）
 
 ## 4. 轮次档案现状
 
@@ -53,7 +53,8 @@ updated: 2026-09-19
 | r001-skeleton | `r001-skeleton-accounts-rooms.md`（closed） | ✅ | ✅ | ✅ | — | 已合并 `round-r001-done` |
 | r002-livekit | `r002-livekit-room.md`（closed） | ✅（**该页无 front matter**，见 §6） | ✅ | ✅（2026-09-19 定稿） | redirect-01~07 | 已合并 `round-r002-done` |
 | r003-end-room-entry | `r003-end-room-entry.md`（closed，2026-09-19 回填） | ✅ | ✅ | ✅ | redirect-01~02 | 已合并 `round-r003-done`（`694caeb`） |
-| r004-room-extras | `r004-room-extras.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r004-room-extras`，cp tag `cp-r004-1..7`；待合并打 `round-r004-done` |
+| r005-fix-capacity | `r005-fix-capacity.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r005-fix-capacity`，cp tag `cp-r005-0..4` |
+| r004-room-extras | `r004-room-extras.md`（实现完成，**已合并** `daf7696` / `round-r004-done`） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r004-room-extras`，cp tag `cp-r004-1..7`；待合并打 `round-r004-done` |
 
 ## 5. backlog（`99-archive/`）
 
