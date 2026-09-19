@@ -1,0 +1,81 @@
+---
+title: r007 需求单：首屏向下引导 + 主题控件风格化 + 主题扩容 + 侧边栏默认收起
+description: 四条需求的读back、验收 E1~E7、cp 切分与影响面；含主题清单（少 AI、补哲学/历史/数学）。
+type: reference
+status: draft
+owner: 陀梓皓
+updated: 2026-09-19
+---
+
+<!-- overview -->
+澄清与实测证据：`docs/rounds/r007-topic-and-scrollhint/redirect-01.md`；设计：同目录 `design.md`。
+
+## 1. 目的
+
+1. **布局回退 + 可视引导**：筛选工具栏换回 hero 下方（列表上方）的原来位置；hero 底缘加一个**风格化的浮动下箭头**（纯装饰、不可点）提示「下面还有内容」；**不压缩 hero**。
+2. **主题控件风格化**：首页那个原生 `<select>` 换成自绘下拉（暗色面板 + 图标）；创建房间页的主题选择升级为带图标的可选卡片。
+3. **主题扩容**：新增主题，原有 3 个（伊壁鸠鲁主义 / 数理生物学 / 德国史模拟）**保持排在前 3**；少放 AI 主题，**哲学 / 历史 / 数学都要有**；自定义放最后。
+4. **侧边栏默认收起**：首次访问即收起（只留图标列），用户手动展开后记住选择；窄屏横向条形态不变。
+
+## 2. 口径（你 2026-09-19 的批复，按编号回读）
+
+| # | 问题 | 你的批复 | 落地口径 |
+| --- | --- | --- | --- |
+| Q1 | 箭头放哪 | **1** | hero 底缘居中 |
+| Q2 | 箭头交互 | **2** | 只浮动，**不可点** |
+| Q3 | 首页主题控件 | **1** | 自绘下拉（暗色面板 + 每主题一只 Lucide 图标 + 选中态） |
+| Q4 | 创建房间主题选择 | **1** | 带图标的可选卡片（主题名 + 一句用途） |
+| Q5 | 新增清单 | **1（修正）** | 按下方 §3 清单：**少 AI**、哲学/历史/数学都要有 |
+| Q6 | 是否压 hero | **不加** | **不压缩 hero**（列表靠箭头引导） |
+| —— | 工具栏 | 追加 | **换回去**：hero 下方、房间列表上方 |
+| —— | 侧边栏 | 追加 | **默认不开启**（收起） |
+
+## 3. 主题清单（14 项，含自定义；前 3 为你定死的原有项）
+
+| # | 标签 | value | 图标（Lucide，单一图标库） |
+| --- | --- | --- | --- |
+| 1 | 伊壁鸠鲁主义 | `epicureanism` | `Scroll` |
+| 2 | 数理生物学 | `math-biology` | `Dna` |
+| 3 | 德国史模拟 | `german-history` | `Landmark` |
+| 4 | 西方哲学史 | `philosophy-history` | `BookOpen` |
+| 5 | 中国哲学 | `chinese-philosophy` | `Feather` |
+| 6 | 伦理学 | `ethics` | `Scale` |
+| 7 | 世界近代史 | `modern-history` | `Globe` |
+| 8 | 中国古代史 | `ancient-china` | `Castle` |
+| 9 | 数学分析 | `mathematical-analysis` | `Sigma` |
+| 10 | 线性代数 | `linear-algebra` | `Table` |
+| 11 | 概率论与数理统计 | `probability-statistics` | `Percent` |
+| 12 | 数论 | `number-theory` | `Hash` |
+| 13 | 机器学习基础 | `machine-learning` | `Cpu` |
+| 14 | 自定义 | `custom` | `PenLine` |
+
+> 哲学 5（含原有 1）、历史 4（含原有 1）、数学 4、生物 1、AI 1 —— 按你「不要那么多人工智能的」的修正。
+
+## 4. 验收条目
+
+| # | 条目 | 证据 |
+| --- | --- | --- |
+| E1 | 工具栏回到 hero 下方：`toolbar.top > hero.bottom` 且 `toolbar.top - hero.bottom` 为一个区块间距（约 24~40px）；`toolbar.top` 允许在首屏外 | DOM 量测（1440×900 / 1258×566） |
+| E2 | hero 底缘居中的浮动下箭头：`role="presentation"` 纯装饰、`pointer-events: none`、不遮挡 stats 与工具栏；`prefers-reduced-motion` 下停止浮动 | DOM 属性 + 截图 + reduced-motion 复测 |
+| E3 | 首页主题为自绘下拉：暗色面板、每项带图标、选中态、`aria-haspopup="listbox"`/`aria-expanded`、`Esc` 与点外关闭、键盘可达；原生 `select` 已移除 | DOM 断言 + 截图 + 键盘实测 |
+| E4 | 创建房间主题为卡片：每张卡有图标 + 主题名 + 一句用途、选中高亮、`aria-pressed`、键盘可达 | 截图 + DOM |
+| E5 | 主题扩容：后端 `TOPICS`/`TopicLiteral` 与前端 `TOPIC_OPTIONS` 完全一致（14 项、顺序同上）；迁移 `006` 落库（`rooms_topic_check` 含新值）；用新主题建房间成功、用旧值仍成功、用非法值 400 | `pytest` 新用例 + 真实 HTTP + `db_init` 输出 |
+| E6 | 侧边栏默认收起：首次访问 `collapsed=true`（无 localStorage）；点展开后刷新仍展开（记住）；窄屏横向条仍强制展开 | DOM 断言（清空 localStorage 后首次加载）+ 截图 |
+| E7 | 门禁：`pytest` / `smoke` / `tsc` / `build` 全绿 | 命令输出 |
+
+## 5. cp 切分
+
+| cp | 内容 |
+| --- | --- |
+| cp-0 | 阶段 1 文档（需求单 + design + 台账骨架 + 索引/roadmap 回填） |
+| cp-1 | 工具栏换回 + 浮动下箭头（`ScrollHint`） |
+| cp-2 | 主题控件风格化（自绘下拉 + 创建房间卡片） |
+| cp-3 | 主题扩容（迁移 006 + 后端白名单 + 前端选项 + 用例） |
+| cp-4 | 侧边栏默认收起（含记住选择） |
+| cp-5 | 收官（真机取证、门禁、文档、review） |
+
+## 6. 变更记录
+
+| 日期 | 版本 | 改了什么 | 依据 |
+| --- | --- | --- | --- |
+| 2026-09-19 | v1 | 建页：四条需求 + Q 批复回读 + 主题清单 + E1~E7 + cp 切分 | 你 2026-09-19 的三段批复（`1 2 1 1 1` + 工具栏换回 + 侧边栏默认收起） |
