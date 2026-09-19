@@ -13,8 +13,23 @@ from pydantic import Field
 
 from app.schemas.common import CamelModel
 
-TopicLiteral = Literal["epicureanism", "math-biology", "german-history", "custom"]
-TOPICS: tuple[str, ...] = ("epicureanism", "math-biology", "german-history", "custom")
+TopicLiteral = Literal["epicureanism", "math-biology", "german-history", "philosophy-history", "chinese-philosophy", "ethics", "modern-history", "ancient-china", "mathematical-analysis", "linear-algebra", "probability-statistics", "number-theory", "machine-learning", "custom"]
+TOPICS: tuple[str, ...] = (
+    "epicureanism",
+    "math-biology",
+    "german-history",
+    "philosophy-history",
+    "chinese-philosophy",
+    "ethics",
+    "modern-history",
+    "ancient-china",
+    "mathematical-analysis",
+    "linear-algebra",
+    "probability-statistics",
+    "number-theory",
+    "machine-learning",
+    "custom",
+)
 MEMBER_ROLES = ("host", "moderator", "participant")
 
 

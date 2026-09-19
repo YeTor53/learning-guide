@@ -42,6 +42,7 @@ def test_sql_files_are_ordered() -> None:
         "003_r002_host_uniqueness",
         "004_r004_realtime_extras",
         "005_r005_statement_timestamps",
+        "006_r007_topic_taxonomy",
     ], names
 
 

@@ -17,7 +17,7 @@ updated: 2026-09-19
 | cp-r007-0 | 阶段 1 文档（需求单 / design / 台账骨架 / 索引与 roadmap 回填） | in_progress | — | —— |
 | cp-r007-1 | 工具栏换回 hero 下方 + 浮动下箭头 | **完成 2026-09-19** | 见 cp-1 提交 | E1/E2 实测（§3.1） |
 | cp-r007-2 | 主题控件风格化（自绘下拉 + 创建房间卡片） | planned | — | E3/E4 |
-| cp-r007-3 | 主题扩容（迁移 006 + 前后端白名单 + 用例） | planned | — | E5 |
+| cp-r007-3 | 主题扩容（迁移 006 + 前后端白名单 + 用例） | **完成 2026-09-19** | 见 cp-3 提交 | E5 实测（§3.3） |
 | cp-r007-4 | 侧边栏默认收起（含记住选择） | **完成 2026-09-19** | 见 cp-4 提交 | E6 实测（§3.2） |
 | cp-r007-5 | 收官（真机取证 / 门禁 / 文档 / review） | planned | — | E7 |
 
@@ -48,3 +48,10 @@ updated: 2026-09-19
 | 点「展开侧边栏」 | `collapsed` = false，宽 **264px** |
 | 刷新页面 | 仍为展开（**记住选择** ✓） |
 | 清掉 `lg.sidebar.collapsed` 再刷新 | 回到收起 ✓ |
+
+### 3.3 cp-3（E5 主题扩容）
+
+- 迁移 `006_r007_topic_taxonomy.sql` 应用成功：`db_init` 输出 `[migrate] … 006_r007_topic_taxonomy`，`schema_migrations = 6`。
+- 三处白名单一致（14 项、顺序相同：原有 3 项在前、`custom` 最后）：`schemas/rooms.py` 的 `TopicLiteral`/`TOPICS`、`api/rooms.ts` 的 `Topic`/`TOPIC_OPTIONS`。
+- 用例 `test_new_topic_accepted_and_invalid_topic_rejected`：新主题 `philosophy-history` 建房 **201**；非法主题 `quantum-cooking` 建房 **400**；筛选未知主题 **400**。
+- 门禁：`pytest` **112 passed**。

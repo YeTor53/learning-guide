@@ -251,3 +251,29 @@ def test_room_code_collision_retries_then_gives_up(client, db, monkeypatch) -> N
     resp = client.post("/api/rooms", json={"topic": "custom", "topicLabel": "自定", "title": "必失败"})
     assert resp.status_code == 500
     assert resp.json()["error"]["code"] == "INTERNAL"
+
+
+def test_new_topic_accepted_and_invalid_topic_rejected(client, db) -> None:
+    """r007：主题白名单扩容到 14 项（迁移 006）；新主题可建房，非法主题 400。
+
+    事实源：`docs/00-requirements/r007-topic-and-scrollhint.md` §3（顺序：原有 3 项在前，自定义最后）。
+    """
+    host = register_user(db, "主题房主")
+    _login_as(client, host)
+
+    created = client.post(
+        "/api/rooms",
+        json={"topic": "philosophy-history", "topicLabel": "西方哲学史", "title": "新主题房间", "description": ""},
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["data"]["topic"] == "philosophy-history"
+
+    bad = client.post(
+        "/api/rooms",
+        json={"topic": "quantum-cooking", "topicLabel": "非法", "title": "非法主题", "description": ""},
+    )
+    assert bad.status_code == 400, bad.text
+
+    # 未知主题筛选同 400（走 TOPICS 校验）
+    filtered = client.get("/api/rooms", params={"topic": "quantum-cooking"})
+    assert filtered.status_code == 400, filtered.text
