@@ -88,7 +88,7 @@ updated: 2026-09-19
 
 | 断言 | 实测（Playwright 1440×900） |
 | --- | --- |
-| 箭头两支 | `.scroll-hint svg` = **2** 支；`width/height` = **30px**（令牌 `--scroll-hint-size`）；`pointer-events: none`；箭头区间 733→793 在 hero 底（801）之内且**不压 `stats`** |
+| 箭头两支 | `.scroll-hint svg` = **2** 支；尺寸 = **45px**（`--scroll-hint-size`，30px × 150%，2026-09-19 再放大）；幅度 14px、叠压 −9px；`pointer-events: none`；1440×900 下箭头区间 714→795 在 hero 底（801）内且**不压 `stats`、不压工具栏**；1258×566 同样不压 |
 | 箭头动效 | `animation-name: scroll-hint-bob`；两支错峰（第二支延后半周期）；`prefers-reduced-motion` 下 `animation: none` |
 | 收起态用户按钮 | 首次加载 `collapsed=true`；**点击** `.side-user-btn` → `collapsed=false`（侧边栏展开，78→264px）**且** `.side-pop` 出现、`aria-expanded=true`；`Esc` 关闭 |
 | 满员卡片 | 满员房间卡片主按钮 = 「**已满**」、`disabled=true`、`title="本场名额已满（在册成员 8/8，等于上限）"`；未满房间仍是「申请加入」 |

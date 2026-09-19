@@ -520,10 +520,10 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   /* r006（ADR-0017 D4）：初始位置下移 ≈ 容器高的 10%（约 50px）；原值 -110px（容器顶略高于页面顶）。 */
   --thinker-top: -60px;
   /* r007：hero 底缘的向下提示（单点可调；2026-09-19 追加：更大 + 两支） */
-  --scroll-hint-bottom: 8px;
-  --scroll-hint-size: 30px;      /* 单支箭头尺寸 */
-  --scroll-hint-gap: -6px;       /* 两支的间距（负值＝略微叠压，更像一条向下链） */
-  --scroll-hint-travel: 9px;     /* 浮动幅度 */
+  --scroll-hint-bottom: 6px;
+  --scroll-hint-size: 45px;      /* 单支箭头尺寸（30px × 150% = 45px） */
+  --scroll-hint-gap: -9px;       /* 两支的间距（负值＝叠压；随尺寸等比放大） */
+  --scroll-hint-travel: 14px;    /* 浮动幅度（随尺寸等比放大） */
   --scroll-hint-duration: 2s;    /* 浮动周期 */
   --thinker-gap: 20px;     /* 容器底停在「创建房间」那行上方 20px */
   --hero-min-h: min(88vh, 700px);

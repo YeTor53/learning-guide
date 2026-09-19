@@ -58,7 +58,7 @@ updated: 2026-09-19
 
 ## 6.1 追加（cp-6）
 
-- **箭头**：`ScrollHint` 两支 `ChevronDown`；尺寸由 CSS 令牌 `--scroll-hint-size`（30px）控制 `svg` 的宽高；第二支 `animation-delay` 延后半周期 + `opacity .55` 形成错峰。**坑**：flex `gap` 不接受负值（退回 `normal`）→ 叠压用 `margin-top: var(--scroll-hint-gap)`（−6px）。
+- **箭头**：`ScrollHint` 两支 `ChevronDown`；尺寸由 CSS 令牌 `--scroll-hint-size`（**45px** = 30px × 150%，2026-09-19 再放大）控制 `svg` 的宽高；第二支 `animation-delay` 延后半周期 + `opacity .55` 形成错峰。**坑**：flex `gap` 不接受负值（退回 `normal`）→ 叠压用 `margin-top: var(--scroll-hint-gap)`（−9px，随尺寸等比）。
 - **收起态用户按钮**：`SidebarUserCard.activate()` —— 收起时 `onExpand()`（`SideBar` → `onToggleCollapsed`）先展开侧边栏再 `setOpen(true)`；`onFocus` 只在展开态且 `:focus-visible` 时打开（Tab 经过不改布局）。
 - **满员加入体验**：`RoomCard` 满员 → 禁用按钮「已满」（`title` 写明在册/上限）；`WaitingPage` 待批且满员 → 「房间已满…房主现在无法批准…」提示（房间满员批准会被 r005 容量不变量挡回 409）。
 

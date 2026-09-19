@@ -126,6 +126,6 @@ const [collapsed, setCollapsed] = useState<boolean>(() => {
 
 | 项 | 改法 |
 | --- | --- |
-| **箭头更大 + 两支** | `ScrollHint` 渲染两组 `ChevronDown`；尺寸走 CSS 令牌 `--scroll-hint-size`（默认 **30px**，作用于 `svg` 的 `width/height`，与组件的 `size` 解耦）；两支错峰：第二支 `animation-delay: calc(var(--scroll-hint-duration) / 2 * -1)` + `opacity: .55`；浮动幅度 `--scroll-hint-travel` 9px、周期 `--scroll-hint-duration` 2s。**坑**：flex 的 `gap` **不接受负值**（会退回 `normal`，实测两支贴不上）→ 叠压改用 `--scroll-hint-gap` 走 `margin-top`（默认 −6px）。 |
+| **箭头更大 + 两支** | `ScrollHint` 渲染两组 `ChevronDown`；尺寸走 CSS 令牌 `--scroll-hint-size`（**默认 45px** = 30px × 150%（你 2026-09-19 追加），作用于 `svg` 的 `width/height`，与组件的 `size` 解耦）；两支错峰：第二支 `animation-delay: calc(var(--scroll-hint-duration) / 2 * -1)` + `opacity: .55`；浮动幅度 `--scroll-hint-travel` 14px、周期 `--scroll-hint-duration` 2s（幅度随尺寸等比放大）。**坑**：flex 的 `gap` **不接受负值**（会退回 `normal`，实测两支贴不上）→ 叠压改用 `--scroll-hint-gap` 走 `margin-top`（默认 −9px）。 |
 | **收起态用户按钮「点了没反应」** | 根因：`SidebarUserCard` 的浮窗条件是 `open && !collapsed`，收起时 `onClick` 只切内部 `open` → 什么也不显示，但按钮仍有 focus 环。改法：`activate()` —— 收起态时 `onExpand()`（由 `SideBar` 传 `onToggleCollapsed`）**先展开侧边栏**再打开浮窗；`onFocus` 只在展开态且 `:focus-visible` 时打开（Tab 经过不会突然改布局）。 |
 | **满员时的加入体验** | ① `RoomCard`：`full` 时主按钮改成**禁用的「已满」**（`title` 写明「在册 N/N = 上限」），不再「点了才报错」；② `WaitingPage`：`pending && room.memberCount >= room.capacity` 时显示「房间已满（在册 N/N，等于上限），房主现在无法批准；你可以撤回申请，或先去看看别的房间。」（满员批准会被 r005 的容量不变量挡回 409，这条把原因讲出来） |
