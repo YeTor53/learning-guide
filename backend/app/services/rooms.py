@@ -83,6 +83,7 @@ def _room_vo(
     my_role: Optional[str] = None,
     my_request_status: Optional[str] = None,
     my_request_id: Optional[str] = None,
+    my_role_any: Optional[str] = None,
     livekit_applied: Optional[bool] = None,
 ) -> RoomVO:
     """房间行 + 聚合 → VO（列表与详情的唯一组装点；`livekit_applied` 仅触达外部服务的动作会带）。"""
@@ -104,6 +105,7 @@ def _room_vo(
         my_role=my_role,
         my_request_status=my_request_status,
         my_request_id=my_request_id,
+        my_role_any=my_role_any,
         created_at=room.created_at,
         ended_at=room.ended_at,
         livekit_applied=livekit_applied,
@@ -293,6 +295,13 @@ def get_room_detail(conn: Connection, actor: Optional[UserVO], room_id: str) -> 
     my_role = roles.get(room_id)
     # 待批申请 id：本人可见（撤回入口用；r007 修前前端走管理权限接口 → 申请人一律 403）
     my_request = repo.get_pending_request(conn, room_id, actor.id) if actor else None
+    # 含已失效成员身份的角色（房间结束后 my_role 为空，但追溯动作如「生成纪要」仍需要）——r008
+    my_role_any = my_role
+    if actor is not None and my_role is None:
+        for entry in repo.list_members(conn, room_id, include_inactive=True):
+            if entry.member.user_id == actor.id:
+                my_role_any = entry.member.role
+                break
     room = _room_vo(
         item,
         member_count=member_count,
@@ -300,6 +309,7 @@ def get_room_detail(conn: Connection, actor: Optional[UserVO], room_id: str) -> 
         my_role=my_role,
         my_request_status="pending" if room_id in pending else None,
         my_request_id=my_request.id if my_request is not None else None,
+        my_role_any=my_role_any,
     )
     include_inactive = room.status == "ended"  # 结束后展示历史成员与退出原因（功能页 F-09/F-12）
     members = [_member_vo(m) for m in repo.list_members(conn, room_id, include_inactive=include_inactive)]

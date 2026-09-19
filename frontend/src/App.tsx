@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage'
 import NewRoomPage from './pages/NewRoomPage'
 import RegisterPage from './pages/RegisterPage'
 import RoomLivePage from './pages/RoomLivePage'
+import RoomSummaryPage from './pages/RoomSummaryPage'
 import WaitingPage from './pages/WaitingPage'
 import RoomsPage from './pages/RoomsPage'
 
@@ -53,6 +54,7 @@ export default function App() {
       <Route path="/rooms/new" element={<NewRoomPage />} />
         <Route path="/rooms/:id/live" element={<RoomLivePage />} />
       <Route path="/rooms/:id/wait" element={<WaitingPage />} />
+      <Route path="/rooms/:id/summary" element={<RoomSummaryPage />} />
       {/* 旧「房间管理页」链接（分享出去的 /rooms/:id）不再报空页，直接回列表 */}
       <Route path="/rooms/:id" element={<Navigate to="/" replace />} />
       <Route

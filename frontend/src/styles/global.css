@@ -1662,3 +1662,36 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   .topic-card { transition: none; }
   .topic-card:hover { transform: none; }
 }
+
+/* ==========================================================================
+   r008 · 讨论纪要页（作业必做「会后产出」）
+   设计事实源：docs/rounds/r008-assignment-gaps/design.md §3
+   ========================================================================== */
+.summary-shell {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: var(--s-5) 0 var(--s-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.summary-card { padding: var(--s-6); }
+
+.summary-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  margin: var(--s-4) 0 var(--s-2);
+}
+
+.summary-body {
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+  white-space: pre-wrap;
+  line-height: 1.85;
+  font-size: 15px;
+  color: var(--text-dim);
+}

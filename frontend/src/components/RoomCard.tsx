@@ -1,4 +1,4 @@
-import { CalendarX2, Clock, Crown, Hash, LogIn, Radio, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { CalendarX2, Clock, Crown, FileText, Hash, LogIn, Radio, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -69,7 +69,15 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
   const pending = !room.myRole && room.myRequestStatus === 'pending'
 
   const primary = () => {
-    if (ended) return null
+    // r008：已结束的房间给「讨论纪要」入口（作业必做「结束后可查看纪要」）
+    if (ended) {
+      return (
+        <button className="btn btn-sm" onClick={() => navigate(`/rooms/${room.id}/summary`)}>
+          <FileText {...ICON} />
+          讨论纪要
+        </button>
+      )
+    }
     if (room.myRole) {
       return (
         <button className="btn btn-primary btn-sm" onClick={() => navigate(`/rooms/${room.id}/live`)}>

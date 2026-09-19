@@ -130,3 +130,20 @@ def test_get_summary_visibility_and_empty(client, db, monkeypatch) -> None:
     empty = client.get(f"/api/rooms/{empty_room['id']}/summary")
     assert empty.status_code == 200
     assert empty.json()["data"]["summary"] is None
+
+
+def test_host_can_generate_after_room_ended(client, db, monkeypatch) -> None:
+    """房间结束后房主仍能生成纪要（作业流程：结束后看纪要）；详情里 myRoleAny 保留历史身份。"""
+    host = register_user(db, "房主")
+    login(client, host)
+    room = create_room(client)
+    assert client.post(f"/api/rooms/{room['id']}/end").status_code == 200
+
+    detail = client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]
+    assert detail["myRole"] is None, "结束后活跃角色应为空"
+    assert detail["myRoleAny"] == "host", detail
+
+    monkeypatch.setattr(summary_service, "call_llm", lambda messages, settings=None: "结束后的纪要")
+    resp = client.post(f"/api/rooms/{room['id']}/summary")
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["data"]["content"] == "结束后的纪要"
