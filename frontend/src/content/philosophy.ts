@@ -31,3 +31,24 @@ export function pickDailyQuote(date: Date = new Date()): PhilosophyQuote {
   const index = ((dayOfYear % PHILOSOPHY_QUOTES.length) + PHILOSOPHY_QUOTES.length) % PHILOSOPHY_QUOTES.length
   return PHILOSOPHY_QUOTES[index]
 }
+
+/** 槽位散列（简单确定性散列：同一个槽位永远落在同一组起始下标上）。 */
+function hashSlot(slot: string): number {
+  let hash = 0
+  for (let i = 0; i < slot.length; i += 1) {
+    hash = (hash * 31 + slot.charCodeAt(i)) % 100_000
+  }
+  return hash
+}
+
+/**
+ * 给某个「文案槽位」挑一句：同一槽位**同一天**稳定（刷新不变），不同槽位尽量不撞，跨天轮换。
+ * 用法：`pickQuoteFor('home-hero')` / `pickQuoteFor('chat-empty')`。
+ */
+export function pickQuoteFor(slot: string, date: Date = new Date()): PhilosophyQuote {
+  const beijing = new Date(date.getTime() + 8 * 60 * 60 * 1000)
+  const yearStart = Date.UTC(beijing.getUTCFullYear(), 0, 1)
+  const dayOfYear = Math.floor((beijing.getTime() - yearStart) / 86_400_000)
+  const index = (hashSlot(slot) + dayOfYear) % PHILOSOPHY_QUOTES.length
+  return PHILOSOPHY_QUOTES[index]
+}

@@ -1,6 +1,7 @@
 import { Home, PanelLeftClose, PanelLeftOpen, Plus, UserRound, Users } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+import QuoteLine from './QuoteLine'
 import SidebarUserCard from './SidebarUserCard'
 import { useSession } from '../hooks/useSession'
 
@@ -112,6 +113,8 @@ export default function SideBar({ collapsed, onToggleCollapsed, hideToggle = fal
             )}
           </div>
         )}
+
+        {!collapsed && !isLoading && !user && <QuoteLine slot="guest" />}
 
         {!hideToggle && (
           <button className="side-item" onClick={onToggleCollapsed} title={collapsed ? '展开侧边栏' : '收起侧边栏'}>

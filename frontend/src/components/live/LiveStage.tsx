@@ -11,6 +11,7 @@ import { useTracks } from '@livekit/components-react'
 
 import type { Member, Role, Room } from '../../api/rooms'
 import FocusBadge from './FocusBadge'
+import QuoteLine from '../QuoteLine'
 import ParticipantTile from './ParticipantTile'
 import { computeStageLayout } from './stageLayout'
 
@@ -84,6 +85,7 @@ export default function LiveStage({
       <div className="live-stage live-stage-empty">
         <p className="live-empty-title">{connected ? '等待其他成员加入' : '还没有连上实时服务'}</p>
         <p className="live-empty-sub">今天的主题：{room.topicLabel}</p>
+        <QuoteLine slot="stage-empty" />
         <span className="live-empty-code mono">房间码 {room.roomCode}</span>
       </div>
     )

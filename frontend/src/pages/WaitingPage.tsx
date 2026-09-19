@@ -10,6 +10,7 @@ import { AlertCircle, ArrowLeft, Loader2, Undo2 } from 'lucide-react'
 
 import { ApiError } from '../api/http'
 import { roomsApi } from '../api/rooms'
+import QuoteLine from '../components/QuoteLine'
 import WaitTimeline from '../components/WaitTimeline'
 import { useWaitingRoom } from '../hooks/useWaitingRoom'
 
@@ -78,6 +79,7 @@ export default function WaitingPage() {
         <div className="wait-card">
           <Loader2 {...ICON} className="spin" />
           <p className="muted" style={{ margin: 0 }}>正在读取房间状态…</p>
+          <QuoteLine slot="waiting-load" />
         </div>
       </div>
     )

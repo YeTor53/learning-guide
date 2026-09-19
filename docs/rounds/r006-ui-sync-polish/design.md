@@ -103,6 +103,24 @@ export function pickDailyQuote(date?: Date): PhilosophyQuote  // 按 UTC+8 的�
 - **只收真实语录**（可查证的哲学/思想名句，附作者），不写自造句子；池子是本仓唯一来源，替换只改这一个文件。
 - 「每日一句」而非「每次随机」：同日多端/多次打开看到同一句（可复现、可截图取证），跨天才变。
 
+### 5.1 铺到各处的「解释性文案」旁（cp-6，按你的补充）
+
+组件 `components/QuoteLine.tsx`（`<QuoteLine slot="…" />`）：**只增不替**——功能文本原样保留，语句作为其下的一行衬线小字（`.quote-line`，左侧细强调线 + 作者）。
+
+| 槽位 | 位置 | 文件 |
+| --- | --- | --- |
+| `home-hero` | 首页 hero 副标题下 | `pages/RoomsPage.tsx` |
+| `home-guard` | 首页「我的房间」未登录空态 | `pages/RoomsPage.tsx` |
+| `guest` | 侧边栏未登录块下方（仅未登录且展开时） | `components/SideBar.tsx` |
+| `new-room` | 新建房间页说明文字下 | `pages/NewRoomPage.tsx` |
+| `waiting-load` | 等待页读取中 | `pages/WaitingPage.tsx` |
+| `stage-empty` | 交流页空态（「等待其他成员加入」） | `components/live/LiveStage.tsx` |
+| `chat-empty` | 抽屉「讨论」无消息时 | `components/live/ChatPanel.tsx` |
+| `members-empty` / `members-all` | 抽屉「成员」两类空态 | `components/live/RoomSidePanel.tsx` |
+
+选句规则 `pickQuoteFor(slot, date)`：`(hash(slot) + UTC+8 年内天数) % 池长` —— 同槽位**同一天稳定**（刷新不变）、不同槽位错开、跨天轮换。
+`pickDailyQuote()` 仍给个人信息浮窗用（浮窗 = 「今日一句」）。
+
 ## 6. ⑤ 图版初始位置（`global.css`）
 
 ```css

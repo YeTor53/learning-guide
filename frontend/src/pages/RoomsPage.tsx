@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ApiError } from '../api/http'
 import { TOPIC_OPTIONS, type RoomStatus, type Topic } from '../api/rooms'
 import FlowField from '../components/FlowField'
+import QuoteLine from '../components/QuoteLine'
 import ThinkerStatue from '../components/ThinkerStatue'
 import RoomCard from '../components/RoomCard'
 import { useSession } from '../hooks/useSession'
@@ -135,6 +136,7 @@ export default function RoomsPage() {
             面向一门学习主题的多人音视频讨论室：等候室审批、三种角色、举手与焦点发言、屏幕共享与课后纪要。
             现在可以创建房间、申请加入，并在房间结束后回看整场讨论记录。
           </p>
+          <QuoteLine slot="home-hero" />
           <div className="stats">
             <div>
               <div className="stat-value">{total}</div>
@@ -170,6 +172,7 @@ export default function RoomsPage() {
             <p className="muted" style={{ margin: '4px 0 0', fontSize: 14 }}>
               「我的房间」需要登录后才能查看。
             </p>
+            <QuoteLine slot="home-guard" />
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-primary" onClick={() => navigate(`/login?returnTo=${encodeURIComponent('/?mine=1')}`)}>
