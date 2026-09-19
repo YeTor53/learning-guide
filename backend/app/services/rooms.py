@@ -186,6 +186,19 @@ def assert_room_role(conn: Connection, actor: Optional[UserVO], room_id: str, al
     return member
 
 
+def assert_room_exists(conn: Connection, room_id: str) -> RoomWithHost:
+    """取房间行（不存在抛 404）；供其它 service 复用，避免各自拼 SQL。"""
+    item = repo.get_room(conn, room_id)
+    if item is None:
+        raise AppError(ERR_NOT_FOUND, "房间不存在", status=404)
+    return item
+
+
+def list_members_for_visibility(conn: Connection, room_id: str) -> set[str]:
+    """房间成员（含已离开）的 user_id 集合；纪要/转写的可见性判定用（房间结束后也能查）。"""
+    return {row.member.user_id for row in repo.list_members(conn, room_id, include_inactive=True)}
+
+
 def assert_manager_role(conn: Connection, actor: Optional[UserVO], room: RoomRow) -> None:
     """申请列表的可见性判定。
 
