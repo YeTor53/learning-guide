@@ -44,6 +44,19 @@ class JoinRequestIn(CamelModel):
     message: str = Field(default="", max_length=200)
 
 
+class FocusRequestVO(CamelModel):
+    """协管焦点申请（r009）。"""
+
+    id: str
+    room_id: str
+    requester_id: str
+    requester_name: str
+    status: str
+    decided_by: Optional[str] = None
+    created_at: datetime
+    decided_at: Optional[datetime] = None
+
+
 class RoomVO(CamelModel):
     id: str
     topic: str
