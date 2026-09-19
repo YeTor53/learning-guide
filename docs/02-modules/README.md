@@ -24,7 +24,7 @@ updated: 2026-09-19
 | r001 | `r001-rooms.md` | `r001-rooms-features.md` | 房间/等候室/权限的初版；**`backend/tests/test_schema.py` 仍把 `r001-rooms.md` 当作 DDL 事实源**（该页 `updated` 停在 2026-09-17，见 `docs/README.md` §6） |
 | r002 | `r002-livekit.md` | `r002-livekit-features.md` | **当前真相页**（音视频、在场、设备、治理、结束房间） |
 | r003 | — | — | r003 只动缺陷与收官回填，未新模块页；入口行为记在 r002 功能页 F-16 |
-| r004 | `r004-room-extras.md`（cp-4/5/6 产出） | `r004-room-extras-features.md`（cp-6 产出） | M3 能力（群聊/举手/焦点/共享）落地后成为**最新一轮**的真相页 |
+| r004 | `r004-room-extras.md` | `r004-room-extras-features.md` | **最新一轮的当前真相页**：M3 能力（群聊 / 举手 / 焦点发言 / 屏幕共享）；cp-2~cp-7 全部落地，验收见 `rounds/r004-room-extras/review.md` |
 
 ## 3. 阅读顺序建议
 

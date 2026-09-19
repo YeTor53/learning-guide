@@ -61,7 +61,8 @@ def main(argv: list[str] | None = None) -> int:
 
         # 1) 注册两个账号（注册即登录）
         a = host.post("/api/auth/register", json={"email": f"smoke-a-{suffix}@example.com", "displayName": "冒烟房主", "password": PASSWORD})
-        check("注册房主", a.status_code == 201, f"→ {a.status_code} user={body(a).get('data', {}).get('user', {}).get('displayName')}")
+        host_id = body(a).get("data", {}).get("user", {}).get("id", "")
+        check("注册房主", a.status_code == 201 and bool(host_id), f"→ {a.status_code} user={body(a).get('data', {}).get('user', {}).get('displayName')}")
 
         b = guest.post("/api/auth/register", json={"email": f"smoke-b-{suffix}@example.com", "displayName": "冒烟申请人", "password": PASSWORD})
         check("注册申请人", b.status_code == 201, f"→ {b.status_code}")
@@ -141,6 +142,46 @@ def main(argv: list[str] | None = None) -> int:
         # 8) 房主不能直接离开
         host_leave = host.post(f"/api/rooms/{room_id}/leave")
         check("房主拒绝离开", host_leave.status_code == 409 and body(host_leave).get("error", {}).get("code") == "HOST_CANNOT_LEAVE", f"→ {host_leave.status_code} {body(host_leave).get('error', {}).get('code')}")
+
+        # 8b) r004：群聊消息（HTTP 落库 = 唯一真相；ADR-0013）
+        sent = host.post(f"/api/rooms/{room_id}/messages", json={"body": "  冒烟：今天先聊这一段  "})
+        sent_message = body(sent).get("data", {}).get("message", {})
+        check(
+            "发消息 → 201 且正文 trim",
+            sent.status_code == 201 and sent_message.get("body") == "冒烟：今天先聊这一段",
+            f"→ {sent.status_code} body={sent_message.get('body')!r}",
+        )
+        blank = host.post(f"/api/rooms/{room_id}/messages", json={"body": "   "})
+        check("空消息 → 400", blank.status_code == 400, f"→ {blank.status_code} {body(blank).get('error', {}).get('code')}")
+        listed = body(host.get(f"/api/rooms/{room_id}/messages?limit=50")).get("data", {}).get("messages", [])
+        check("拉消息 → 含刚发的那条", any(item.get("body") == "冒烟：今天先聊这一段" for item in listed), f"→ {len(listed)} 条")
+
+        # 8c) r004：举手（幂等 → 自己放下 → 房主放下他人）
+        host.post(f"/api/rooms/{room_id}/hand-raise")
+        twice = host.post(f"/api/rooms/{room_id}/hand-raise")
+        hands_snapshot = body(twice).get("data", {}).get("hands", [])
+        check(
+            "举手两次 → 快照仍只有 1 条",
+            twice.status_code == 200 and len(hands_snapshot) == 1,
+            f"→ {twice.status_code} {len(hands_snapshot)} 条",
+        )
+        own = host.delete(f"/api/rooms/{room_id}/hand-raise")
+        check("自己放下手 → 快照清空", body(own).get("data", {}).get("hands") == [], f"→ {own.status_code}")
+
+        # 8d) r004：焦点（房主指定 → 取消）
+        set_focus = host.post(f"/api/rooms/{room_id}/focus", json={"userId": host_id})
+        focus_vo = body(set_focus).get("data", {}).get("focus", {})
+        check(
+            "房主设焦点 → 200 且回传 subject",
+            set_focus.status_code == 200 and focus_vo.get("subjectUserId") == host_id,
+            f"→ {set_focus.status_code} subject={focus_vo.get('subjectUserId')}",
+        )
+        clear_focus = host.post(f"/api/rooms/{room_id}/focus", json={"userId": None})
+        check(
+            "取消焦点 → subject 为空",
+            clear_focus.status_code == 200 and body(clear_focus).get("data", {}).get("focus", {}).get("subjectUserId") is None,
+            f"→ {clear_focus.status_code}",
+        )
 
         # 9) 结束房间
         ended = host.post(f"/api/rooms/{room_id}/end")

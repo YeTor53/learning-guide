@@ -516,13 +516,14 @@ export function computeStageLayout(input: {
 
 | 页面 | 何时写 | 事实源 |
 | --- | --- | --- |
-| 需求单 / design / 架构增量 / ADR-0013/0014 | cp-1（本批） | 本轮方案 |
-| ADR-0015 + 缺陷修复说明 | cp-3 | 首页首屏口径 |
-| `r004-room-extras.md`（实现页） | cp-4/5/6 随实现 | 接口/函数/并发事实 |
-| `r004-room-extras-features.md`（功能页 F-18~F-22） | cp-4/5/6 随实现 | 行为/文案/按钮矩阵/演示脚本 |
-| 风格指南 + 术语表 | cp-6 | 视觉与术语事实 |
-| 教学页（使用者 + 开发者补节） | cp-7（跑通后写） | 实跑输出 |
-| README / AGENTS / roadmap / 索引 | cp-2 与 cp-7 | 状态与命令 |
+| 需求单 / design / 架构增量 / ADR-0013/0014 | **landed（cp-1）** | 本轮方案 |
+| ADR-0015 + 缺陷修复说明 | **landed（cp-3）** | 首页首屏口径 |
+| `r004-room-extras.md`（实现页 §1~§11） | **landed（cp-4/5/6/7）** | 接口/函数/并发/量测事实 |
+| `r004-room-extras-features.md`（功能页 F-18~F-22） | **landed（cp-6）** | 行为/文案/按钮矩阵/演示脚本/FQ |
+| 风格指南 §12.3 + 术语表 4 条 | **landed（cp-6）** | 视觉与术语事实 |
+| 教学页：使用者 `tutorials/r004-room-extras-demo.md` + 开发者 `r002-livekit-dev-guide.md` §7~§8 | **landed（cp-7）** | 实跑输出 |
+| README / roadmap / 索引 | **landed（cp-2 + cp-7）** | 状态与命令 |
+| AGENTS | **无需改**（无新命令、无新硬规矩） | — |
 
 ## 14. 本轮设计变更记录
 
@@ -533,4 +534,6 @@ export function computeStageLayout(input: {
 | 2026-09-19 | cp-4-3 | L2 | 读取接口对 `ended` 房间**也返回 409**（设计原话是「除 GET 外一律 409」） | 采纳（收窄）：M3 无归档面，读取只服务进行中的房间；M4 归档按 `r003-ahead-m4-ended-rooms-archive.md` §3.1 另开只读面 |
 | 2026-09-19 | cp-4-4 | L1 | `clear_hands_for_room_end` 折进 `rooms.end_room`（直接调仓储） | 采纳：避免 `rooms ↔ hands` service 层循环 import |
 | 2026-09-19 | cp-4-5 | L2 | 修 `migrate.split_statements`：过滤迁移文件内的事务控制语句 | 必须：`003_` 文件自带的 `BEGIN/COMMIT` 与外层 savepoint 冲突，导致迁移中止且不记版本（r002 遗留、本轮暴露） |
+| 2026-09-19 | cp-7-1 | L2 | `useRoomConnection` 补 `RoomEvent.SignalReconnecting` → `reconnecting` | 必须：信号级掉线时状态条仍显示「已连接」、按钮不禁用，与 r002 §8.9 的「断网 1~3 秒内可见」契约不符（本轮验证时发现） |
+| 2026-09-19 | cp-7-2 | L1 | E21 的列数口径按 design §7.4 的 k 折算（1/1/2/3），需求单「按人数粗写」的措辞保留 | 采纳：编号与验收内容不变，只在 review 与需求单该行注明口径 |
 | 2026-09-19 | — | **文档整理（本轮，L1，无行为变化）**：新增 §0 导航与单一事实源表；§7 由「焦点优先级」扩为「舞台结构与布局动力学」（7.1~7.8，原 §7.5 的下挂小节提升为同级）；§8 重排为 8.1~8.11 并**合并两张令牌表为 §8.9 唯一来源**；补齐 §8.6「举手与聊天的样式」（原标题名不副实）；§10 拆为 10.1 映射 + 10.2 断线；统一函数名为 `computeStageLayout`（删去 `pickFocusTile` 的另立说法）；修正 §6.1/§6.2 编号与全页引用 | 用户「你的文档写的开始混乱了，解决这个先」 |

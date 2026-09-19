@@ -36,6 +36,9 @@ export function useRoomConnection(): RoomConnection {
 
   useEffect(() => {
     const onReconnecting = () => setStatus('reconnecting')
+    // 信号级中断（WS 掉线）也要进 reconnecting：SDK 认为「用户多半察觉不到」，
+    // 但 r002 §8.9 的契约是「断网 1~3 秒内状态条可见 + 控制坞禁用」，所以这里必须接。
+    const onSignalReconnecting = () => setStatus('reconnecting')
     const onReconnected = () => {
       setStatus('connected')
       setReason(null)
@@ -50,11 +53,13 @@ export function useRoomConnection(): RoomConnection {
     }
     room
       .on(RoomEvent.Reconnecting, onReconnecting)
+      .on(RoomEvent.SignalReconnecting, onSignalReconnecting)
       .on(RoomEvent.Reconnected, onReconnected)
       .on(RoomEvent.Disconnected, onDisconnected)
     return () => {
       room
         .off(RoomEvent.Reconnecting, onReconnecting)
+        .off(RoomEvent.SignalReconnecting, onSignalReconnecting)
         .off(RoomEvent.Reconnected, onReconnected)
         .off(RoomEvent.Disconnected, onDisconnected)
     }
