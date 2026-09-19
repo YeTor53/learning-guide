@@ -1,5 +1,8 @@
 /** 侧边栏底部：个人信息的**紧凑入口 + 点击 / focus 才展开的浮窗**（r006，ADR-0017 D3）。
  *
+ * 注：语录池放在 `content/` 而不是 `data/` —— 仓库 `.gitignore` 有未锚定的 `data/` 规则，
+ * 任何叫 data 的目录都会被忽略（cp-3 实测踩到：文件没进版本库）。
+ *
  * 口径：
  * - 默认只留一行（头像 + 名字），不再直接铺开邮箱 / id / 注册日期；
  * - 点击或键盘 focus 打开浮窗（`aria-haspopup="dialog"` / `aria-expanded`）；`Esc` 或点击外部关闭；
@@ -10,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronUp, LogOut } from 'lucide-react'
 
 import type { User } from '../api/auth'
-import { pickDailyQuote } from '../data/philosophy'
+import { pickDailyQuote } from '../content/philosophy'
 
 interface Props {
   user: User

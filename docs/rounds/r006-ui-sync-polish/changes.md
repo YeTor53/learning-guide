@@ -33,7 +33,7 @@ updated: 2026-09-19
 | `frontend/src/components/live/ParticipantTile.tsx` | 前端 | 麦徽标改由 `micMuted` 驱动（静音才显示、只图标 + title）；删掉挂在 `!showVideo` 上的旧图标 | design §2 | landed（cp-1） |
 | `frontend/src/components/live/LiveStage.tsx`、`pages/RoomLivePage.tsx`、`styles/global.css` | 前端 | 接 `micStates` 并逐格传 `micMuted`；`.live-tile-mic` 样式 | design §2 | landed（cp-1） |
 | `frontend/src/hooks/useDataChannel.ts`、`hooks/useRosterSync.ts`（新）、`pages/RoomLivePage.tsx` | 前端 | `lg.roster` topic + 广播/接收 + 聚焦·可见性·进房重连·30 秒兜底四个刷新触发点；5 处房间动作补广播 | design §3 | landed（cp-2） |
-| `frontend/src/data/philosophy.ts`（新） | 前端 | 12 条真实语录 + `pickDailyQuote()`（UTC+8 年内天数取模） | design §5 | landed（cp-3） |
+| `frontend/src/content/philosophy.ts`（新） | 前端 | 12 条真实语录 + `pickDailyQuote()`（UTC+8 年内天数取模）。**注意**：最初放在 `src/data/`，被仓库 `.gitignore` 的未锚定 `data/` 规则吞掉（文件没进版本库）→ 改为 `content/` | design §5 | landed（cp-3 + cp-5 更正） |
 | `frontend/src/components/SidebarUserCard.tsx`（新）、`SideBar.tsx` | 前端 | 紧凑入口（头像+名字）+ 点击/键盘 focus 展开浮窗（Esc/点击外部关闭）+ 引文/加入日期/登出 | design §4 | landed（cp-3） |
 | `frontend/src/styles/global.css` | 前端 | `.side-user-btn`/`.side-pop*` 样式 + 窄屏向下弹 + reduced-motion；`--thinker-top` -110px → -60px（窄屏 -92px → -46px） | design §4/§6 | landed（cp-3/cp-4） |
 
@@ -90,3 +90,9 @@ updated: 2026-09-19
 | 图版初始位置（竖屏 780×1100） | 194px → 240px，**下移 46px** |
 | 原生弹窗清点 | 全仓 `alert/confirm` **0 处**（承载页面 `RoomDetailPage.tsx` 已随 r002 redirect-06 删除；批准/拒绝入口在房内抽屉）→ roadmap 该行关闭 |
 | 首页筛选条 | r004 cp-3 已修，本轮 E9 防回归（详见 review） |
+
+### 3.5 cp-5 更正（提交阶段抓到的真问题）
+
+- **新建 `frontend/src/data/philosophy.ts` 后 `git add` 报 ignored**：仓库 `.gitignore` 第 23 行是**未锚定**的 `data/`，任何层级下叫 `data` 的目录都被忽略 → 该文件根本没进版本库（cp-3 的提交里缺这个文件，等于「新克隆跑不起来」）。
+- **处置**：移到 `frontend/src/content/philosophy.ts` 并改导入；`.gitignore` 保持不动（那条规则是给根目录数据目录用的，改它有连带风险）。
+- **教训（写进实现页）**：前端不要用 `data/` 作目录名。
