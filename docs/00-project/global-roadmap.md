@@ -101,7 +101,8 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 
 1. ~~人工复核 r001~~ 已完成：r001 已合入 `main` 并打 `round-r001-done`（2026-09-18）。
 2. ~~r002（M2）~~ **已完成（2026-09-18）**：设计已批并实现，合入 `main`（`7f2e994`）并打 `round-r002-done`；审查报告与覆盖矩阵已于 2026-09-19 定稿（r003 `cp-r003-1`）。
-3. **r003（补轮）当前：进行中（设计已批，2026-09-19）**。范围 = ① r002 收官回填（先还债）② 房主「结束房间」入口落回交流页控制坞（`redirect-07`）。入口：`docs/00-requirements/r003-end-room-entry.md` + `docs/rounds/r003-end-room-entry/design.md`。收官后下一轮 = **M3**（群聊落库 / 举手 / 焦点发言 / 屏幕共享与优先级）。
+3. ~~r003（补轮）~~ **已完成（2026-09-19）**：① 还清 r002 收官欠账（review 定稿 / 需求单转 closed / 索引与 roadmap 回填 / 补交开发者教学页）② 房主「结束房间」入口落回交流页控制坞。合入 `main`（`694caeb`）并打 `round-r003-done`；cp tag `cp-r003-1/2/3` 齐；真机取证见 `docs/rounds/r003-end-room-entry/review.md`。收官回填（索引表/需求单/§9 台账）由 r004 `cp-2` 完成。
+4. **r004（M3）当前：进行中（设计待批，2026-09-19）**。范围 = 群聊落库 + 举手 + 焦点发言 + 屏幕共享与「焦点 × 共享」优先级，另并入两项界面缺陷（首页筛选条上移、侧边栏竖屏）与还债（smoke 四步 + 三处实测留痕）。入口：`docs/00-requirements/r004-room-extras.md` + `docs/rounds/r004-room-extras/design.md`（§0 导航）。
 4. P11（npm 发布对象 / 仓库公开性 / zip 主次）仍**暂缓**：达到提交阶段再拍，届时补 README 交付章节与可能的包目录。
 
 ## 8. 文档产出顺序与现状盘点（2026-09-17）
@@ -201,6 +202,8 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | **r002 开发者教学页曾缺交付**（`docs/tutorials/r002-livekit-dev-guide.md`，覆盖矩阵 D 行） | 文档欠账（收官回填漏项，四件套缺一） | **已偿还**：r003 `cp-r003-1` 按代码补齐（模块地图 / Token 策略换法 / 自助加能力 / 打桩与排障 / 情绪令牌 / 实测 6 个坑） | `docs/tutorials/r002-livekit-dev-guide.md` |
 | **r002 收官时 `review.md` 未定稿 / 需求单未转 `closed` / 索引表与 roadmap 未回填** | 文档欠账（铁律 6「每轮成档」未闭合） | **已偿还**：r003 `cp-r003-1` 一次性定稿与回填（含 §3/§7 三处矛盾修正） | `docs/rounds/r002-livekit/review.md`、`docs/00-requirements/README.md` |
 | **`cp-r002-1` / `cp-r002-5` 未打 tag** | 命名五处一致缺口（只有 `cp-r002-2/3/4`） | **登记待你一句话**：补打两个 tag（建议指向 `7b95a6b` / `cbd9caf`），或接受现状（审查报告 §6 已记） | 本行 |
+| **已收官页的元数据不一致 3 项**（`rounds/r002-livekit/design.md` 无 front matter；`redirect-06.md` 的 `status` 写成一整句话；`r002-realtime-architecture.md`、`02-modules/r002-livekit{,-features}.md`、`rounds/r002-livekit/changes.md` 仍为 `draft`） | 文档整洁问题（形式，不影响结论）：r002 已合并打 tag，按硬规矩 5 不得回改，故未擅动 | **待你一句话**：批准在本轮以「元数据修正」单独提交（不改正文），或留到后续轮次 | `docs/README.md` §6 第 1~3 行 |
+| **`backend/tests/test_schema.py` 的 DDL 事实源页停更**（指向 `docs/02-modules/r001-rooms.md`，其 `updated` 停在 2026-09-17） | 测试与文档漂移风险：该页被当作 schema 事实源，但 r002 加了 `003_r002_host_uniqueness.sql` 之后未回写 | **登记**：修法要么让测试指向更稳的事实源（迁移文件本身），要么更新该页——两者都涉已收官页/测试断言，需独立小轮或你批准 | `docs/README.md` §6 第 5 行 |
 
 ### 9.1 暂留（2026-09-18 讨论，均未拍板、未排期）
 
