@@ -242,7 +242,7 @@ export default function RoomSidePanel({
         {activeMembers.length === 0 ? (
           <>
             <p className="muted" style={{ fontSize: 13, margin: 0 }}>此刻没有人在房间里</p>
-            <QuoteLine slot="members-empty" />
+            <QuoteLine scene="meet" />
           </>
         ) : (
           activeMembers.map((member) => renderRow(member, true))
@@ -259,7 +259,7 @@ export default function RoomSidePanel({
         {inactiveMembers.length === 0 ? (
           <>
             <p className="muted" style={{ fontSize: 13, margin: 0 }}>全部成员都在房间里</p>
-            <QuoteLine slot="members-all" />
+            <QuoteLine scene="meet" />
           </>
         ) : (
           inactiveMembers.map((member) => renderRow(member, false))

@@ -1,6 +1,7 @@
 import { ArrowRight, UserPlus } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
+import QuoteLine from '../components/QuoteLine'
 import RegisterForm from '../components/RegisterForm'
 import { useSession } from '../hooks/useSession'
 import { safeReturnTo } from './LoginPage'
@@ -15,10 +16,7 @@ export default function RegisterPage() {
     <div className="auth-wrap">
       <div>
         <span className="kicker">New account</span>
-        <p className="auth-quote">
-          「先有一个名字，<br />
-          再有一个可以坐下来的房间。」
-        </p>
+        <QuoteLine scene="learn" className="auth-quote-line" />
         <p className="dim" style={{ fontSize: 13, marginTop: 16 }}>
           注册成功即登录，直接回到你要去的地方。
         </p>

@@ -31,12 +31,14 @@ updated: 2026-09-19
 - 坑：`onFocus` 与 `onClick` 会**互相抵消**（鼠标点击先 focus 打开、click 再取反 → 点了打不开）；只在 `:focus-visible` 时用 focus 打开才正确。
 - 窄屏（横向条）：浮窗改为向下弹，实测 900×1000 完整在视口内。
 
-## 4. 哲学语句池（`content/philosophy.ts` + `components/QuoteLine.tsx`）
+## 4. 名言（`content/philosophy.ts` + `components/QuoteLine.tsx`）
 
-- **只收真实语录**（12 条，中文译句 + 作者），单文件可替换。
-- `pickDailyQuote()`（浮窗「今日一句」）与 `pickQuoteFor(slot, date)`（各处解释性文案：`hash(slot)+年内天数` 取模）。
-- `<QuoteLine slot="…" />`：**只增不替**，功能文本原样保留。已铺：首页 hero、首页未登录空态、侧边栏未登录块、新建房间页、等待页、交流页空态、抽屉讨论/成员空态。
-- **目录命名坑**：仓库 `.gitignore` 第 23 行是**未锚定**的 `data/` → 任何层级的 `data` 目录都被忽略。最初放在 `frontend/src/data/` 的语录池**没进版本库**（新克隆会编译失败）→ 改放 `frontend/src/content/`。**前端不要用 `data/` 作目录名**。
+- **池子**：46 条真实名言（哲学 / 诗词 / 科学），`{text, author, tag}`，标签 7 组：求知 / 科学 / 耐心 / 相遇 / 自省 / 诗意 / 告别；只写作者。
+- **场景表** `QUOTE_SCENES`：`hero`（求知+自省+诗意）、`learn`（求知+科学）、`patience`（耐心）、`meet`（相遇+求知）、`self`（自省）、`farewell`（告别+诗意）、`poetics`（诗意）。`pickQuote(scene, random?)` 组内随机（`random` 可注入，便于用例断言）。
+- **用法** `<QuoteLine scene="…" />`：挂载时取一次 → **每次进入页面随机**（实测首页连刷 8 次得 8 种）。
+- **替换口径**（redirect-02 批复）：替换引导性解释文字 11 处；**保留**状态事实句与全部功能文案；被删引导处由视觉/入口代偿（E12）。
+- **目录命名坑**：不要用 `src/data/`（仓库 `.gitignore` 的 `data/` 规则会吞掉）—— 现放 `src/content/`。
+- 坑：prop 曾叫 `slot`（按槽位哈希、同日稳定），cp-7 起改为 `scene`（场景随机）；`SidebarUserCard` 同步改为 `pickQuote('self')`。
 
 ## 5. 图版初始位置（`styles/global.css`）
 

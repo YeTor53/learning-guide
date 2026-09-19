@@ -103,23 +103,27 @@ export function pickDailyQuote(date?: Date): PhilosophyQuote  // 按 UTC+8 的�
 - **只收真实语录**（可查证的哲学/思想名句，附作者），不写自造句子；池子是本仓唯一来源，替换只改这一个文件。
 - 「每日一句」而非「每次随机」：同日多端/多次打开看到同一句（可复现、可截图取证），跨天才变。
 
-### 5.1 铺到各处的「解释性文案」旁（cp-6，按你的补充）
+### 5.1 铺开与替换（cp-6 起，cp-7 按 redirect-02 批复定稿）
 
-组件 `components/QuoteLine.tsx`（`<QuoteLine slot="…" />`）：**只增不替**——功能文本原样保留，语句作为其下的一行衬线小字（`.quote-line`，左侧细强调线 + 作者）。
+组件 `components/QuoteLine.tsx`（`<QuoteLine scene="…" />`）：衬线小字 + 作者 + 左侧细线。
 
-| 槽位 | 位置 | 文件 |
+**口径（2026-09-19 批复）**：**替换**引导性解释文字（引导改由视觉与操作入口承担）；保留状态事实与功能文案；短语按**场景**取、**每次进入随机**；只写作者。
+
+| 场景 | 标签组 | 用在哪 |
 | --- | --- | --- |
-| `home-hero` | 首页 hero 副标题下 | `pages/RoomsPage.tsx` |
-| `home-guard` | 首页「我的房间」未登录空态 | `pages/RoomsPage.tsx` |
-| `guest` | 侧边栏未登录块下方（仅未登录且展开时） | `components/SideBar.tsx` |
-| `new-room` | 新建房间页说明文字下 | `pages/NewRoomPage.tsx` |
-| `waiting-load` | 等待页读取中 | `pages/WaitingPage.tsx` |
-| `stage-empty` | 交流页空态（「等待其他成员加入」） | `components/live/LiveStage.tsx` |
-| `chat-empty` | 抽屉「讨论」无消息时 | `components/live/ChatPanel.tsx` |
-| `members-empty` / `members-all` | 抽屉「成员」两类空态 | `components/live/RoomSidePanel.tsx` |
+| `hero` | 求知 + 自省 + 诗意 | 首页主视觉 |
+| `learn` | 求知 + 科学 | 登录页 / 注册页 / 新建房间页 |
+| `patience` | 耐心 | 等待页（待批、读取中） |
+| `meet` | 相遇 + 求知 | 空房间 / 空消息 / 空成员 / 交流页空态 |
+| `self` | 自省 | 侧边栏未登录、需登录空态、筛选空态、个人信息浮窗 |
+| `farewell` | 告别 + 诗意 | 404 页、被拒/撤回的等待页 |
 
-选句规则 `pickQuoteFor(slot, date)`：`(hash(slot) + UTC+8 年内天数) % 池长` —— 同槽位**同一天稳定**（刷新不变）、不同槽位错开、跨天轮换。
-`pickDailyQuote()` 仍给个人信息浮窗用（浮窗 = 「今日一句」）。
+池子 46 条、标签 7 组（求知/科学/耐心/相遇/自省/诗意/告别）；`pickQuote(scene, random?)` 纯函数便于用例固定取值；
+`QuoteLine` 在挂载时取一次 —— 每次进入页面换新（实测首页连刷 8 次得 8 种）。
+
+**替换清单**（A 段，共 11 处）：首页 hero 副标题段 · 首页未登录空态说明 · 首页与筛选空态的引导句 · 「我的房间」需登录说明 · 侧边栏未登录说明 · 新建房间页房主职责说明 · 等待页两条操作引导 · 登录页抒情段 · 注册页抒情段 · 404 页说明（并删掉内部话）。
+
+**视觉/操作引导代偿**（E12）：首页空态就地主按钮「创建房间」；「请先登录」保留「去登录」；筛选空态保留「清空筛选」；等待页进度由 `WaitTimeline` 承担；顶栏保留登录入口；404 保留「回房间列表」。
 
 ## 6. ⑤ 图版初始位置（`global.css`）
 

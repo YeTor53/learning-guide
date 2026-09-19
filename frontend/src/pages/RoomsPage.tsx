@@ -132,11 +132,8 @@ export default function RoomsPage() {
             <br />
             <em>think together</em>
           </h1>
-          <p className="hero-sub">
-            面向一门学习主题的多人音视频讨论室：等候室审批、三种角色、举手与焦点发言、屏幕共享与课后纪要。
-            现在可以创建房间、申请加入，并在房间结束后回看整场讨论记录。
-          </p>
-          <QuoteLine slot="home-hero" />
+          {/* redirect-02（Q2=2）：这段解释性说明由名言替换 —— 功能引导交给 kicker、统计与下方按钮 */}
+          <QuoteLine scene="hero" />
           <div className="stats">
             <div>
               <div className="stat-value">{total}</div>
@@ -169,10 +166,7 @@ export default function RoomsPage() {
           </span>
           <div>
             <h3 style={{ fontSize: 18 }}>请先登录</h3>
-            <p className="muted" style={{ margin: '4px 0 0', fontSize: 14 }}>
-              「我的房间」需要登录后才能查看。
-            </p>
-            <QuoteLine slot="home-guard" />
+            <QuoteLine scene="self" />
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-primary" onClick={() => navigate(`/login?returnTo=${encodeURIComponent('/?mine=1')}`)}>
@@ -209,9 +203,7 @@ export default function RoomsPage() {
           <span className="icon-ring">{filtered ? <SearchX size={20} strokeWidth={1.75} /> : <Plus size={20} strokeWidth={1.75} />}</span>
           <div>
             <h3 style={{ fontSize: 18 }}>{filtered ? '没有符合条件的房间' : '还没有房间'}</h3>
-            <p className="muted" style={{ margin: '4px 0 0', fontSize: 14 }}>
-              {filtered ? '试试切换主题或状态筛选' : '点击右上角创建第一个学习讨论室'}
-            </p>
+            <QuoteLine scene={filtered ? 'self' : 'meet'} />
           </div>
           {filtered ? (
             <button

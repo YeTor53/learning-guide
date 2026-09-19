@@ -70,7 +70,7 @@ export default function ChatPanel({ chat, myUserId, onChanged }: Props) {
         {rows.length === 0 && (
           <>
             <p className="chat-empty">还没有人发言</p>
-            <QuoteLine slot="chat-empty" />
+            <QuoteLine scene="meet" />
           </>
         )}
         {rows.map((row) => (

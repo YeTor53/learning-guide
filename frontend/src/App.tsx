@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
+import QuoteLine from './components/QuoteLine'
 import NavBar from './components/NavBar'
 import SideBar from './components/SideBar'
 import useNarrowStrip from './hooks/useNarrowStrip'
@@ -38,9 +39,7 @@ export default function App() {
         element={
           <div className="card" style={{ maxWidth: 420, margin: '48px auto', textAlign: 'center' }}>
             <p style={{ margin: '0 0 4px' }}>页面不存在</p>
-            <p className="muted" style={{ margin: '0 0 14px', fontSize: 13 }}>
-              链接可能已经失效（房间管理页已在 r002 移除）
-            </p>
+            <QuoteLine scene="farewell" />
             <Link className="btn btn-sm" to="/">
               回房间列表
             </Link>

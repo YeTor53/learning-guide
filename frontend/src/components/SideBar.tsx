@@ -100,11 +100,7 @@ export default function SideBar({ collapsed, onToggleCollapsed, hideToggle = fal
                 <div className="side-avatar" aria-hidden>
                   <UserRound size={16} strokeWidth={1.75} />
                 </div>
-                <div className="dim" style={{ fontSize: 12, lineHeight: 1.5 }}>
-                  未登录
-                  <br />
-                  右上角登录后可见
-                </div>
+                <QuoteLine scene="self" className="side-quote" />
               </>
             ) : (
               <div className="side-avatar" aria-hidden>
@@ -113,8 +109,6 @@ export default function SideBar({ collapsed, onToggleCollapsed, hideToggle = fal
             )}
           </div>
         )}
-
-        {!collapsed && !isLoading && !user && <QuoteLine slot="guest" />}
 
         {!hideToggle && (
           <button className="side-item" onClick={onToggleCollapsed} title={collapsed ? '展开侧边栏' : '收起侧边栏'}>

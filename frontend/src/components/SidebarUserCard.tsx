@@ -9,11 +9,11 @@
  * - 浮窗内容 = 身份信息（名字 / 邮箱 / 加入日期）+ **一句哲学语句（带作者，按日固定）** + 登出；
  * - 收起态（`collapsed`）只显示头像，浮窗不展开（侧边栏太窄放不下）。
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronUp, LogOut } from 'lucide-react'
 
 import type { User } from '../api/auth'
-import { pickDailyQuote } from '../content/philosophy'
+import { pickQuote } from '../content/philosophy'
 
 interface Props {
   user: User
@@ -27,7 +27,7 @@ const ICON = { size: 18, strokeWidth: 1.75 } as const
 export default function SidebarUserCard({ user, collapsed, logoutPending, onLogout }: Props) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const quote = useMemo(() => pickDailyQuote(), [])
+  const [quote] = useState(() => pickQuote('self'))
 
   useEffect(() => {
     if (!open) return
