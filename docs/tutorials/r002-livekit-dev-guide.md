@@ -141,3 +141,19 @@ with sync_playwright() as pw:
 - **归因枚举是数字**：`PARTICIPANT_REMOVED=4`、`ROOM_DELETED=5`、`DUPLICATE_IDENTITY=2`、`CLIENT_INITIATED=1`（传字符串名字不会命中映射）；
 - **Playwright 的网络离线模拟不能替代真断网**：`ctx.set_offline(True)` 不会在 8 秒窗口内让 SDK 进入重连态（实测恢复后才判定），要验真实断网得用 `reconnect-drill.bat` 手动断 Wi-Fi。
 
+## 9. 容量口径与「留痕 + 抛错」的事务陷阱（r005）
+
+**口径**：房间人数 = 本库 `room_members.status='active'` 计数；LiveKit 不参与人数判定（ADR-0016 取代 ADR-0012 的 D1/D2/D3/D5）。
+
+**判定点**：`request_join`（满 → 拒）、`approve_join_request`（满 → 拒）、`issue_room_token`（不查 LiveKit、在册即放行）。三处都在 `lock_room` 之后、同一事务里判。
+
+**陷阱（真踩过）**：`db_conn` 是 psycopg_pool 的 `with connection()` —— **请求内抛异常 = 整条请求事务回滚**。
+所以「写一条留痕 → 再抛 409」的写法里，留痕会被回滚掉（实测：409 有了、库里没有那条消息）。
+两条正解：
+
+1. **让请求正常返回**：service 返回一个结果标记（如 `RoomFullNotice`），路由层用 `fail(code, message, status)` 返回错误信封 —— 事务正常提交，留痕保住（r005 采用这条）；
+2. 若确实要在抛错的同时留痕，就必须换一条**独立连接**（`get_conn()`）去写，并接受它不在请求事务里（本仓未采用）。
+
+反面写法（别写）：在 service 里 `conn.commit()` —— 在测试夹具的外层 `Transaction` 上下文里会直接 `ProgrammingError: Explicit commit() forbidden within a Transaction context`。
+
+**前端口径**：列表卡、交流页状态条、准入判定三处都用「在册 / 容量」；在场标记（在房间里/不在房间）只属于成员抽屉。

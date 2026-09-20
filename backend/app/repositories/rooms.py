@@ -99,6 +99,17 @@ class MemberRowWithName:
 
 
 @dataclass(frozen=True)
+class NewMessage:
+    """写一条消息（r005 起用于房间事件：`kind='system'`）。"""
+
+    id: str
+    room_id: str
+    user_id: str
+    body: str
+    kind: str = "system"
+
+
+@dataclass(frozen=True)
 class NewJoinRequest:
     id: str
     room_id: str
@@ -210,7 +221,7 @@ def list_rooms(conn: Connection, f: RoomFilter) -> tuple[list[RoomWithHost], int
     rows = conn.execute(
         f"""SELECT {ROOM_COLUMNS}, u.display_name FROM rooms r JOIN users u ON u.id = r.host_id
             {where}
-            ORDER BY (r.status = 'active') DESC, r.created_at DESC
+            ORDER BY (r.status = 'active') DESC, r.created_at DESC, r.id DESC
             LIMIT %s OFFSET %s""",
         [*params, f.limit, f.offset],
     ).fetchall()
@@ -287,6 +298,21 @@ def get_active_member(conn: Connection, room_id: str, user_id: str) -> Optional[
     return _member(row) if row else None
 
 
+def insert_message(conn: Connection, message: NewMessage) -> None:
+    """插入一条消息；`kind='system'` 用于房间事件留痕（与状态变更同事务调用）。"""
+    conn.execute(
+        """INSERT INTO chat_messages (id, room_id, user_id, body, kind)
+           VALUES (%s, %s, %s, %s, %s)""",
+        (message.id, message.room_id, message.user_id, message.body, message.kind),
+    )
+
+
+def get_display_name(conn: Connection, user_id: str) -> Optional[str]:
+    """取用户显示名（房间事件文案里要点名，而成员行不带名字）。"""
+    row = conn.execute("SELECT display_name FROM users WHERE id = %s", (user_id,)).fetchone()
+    return row[0] if row else None
+
+
 def count_active_members(conn: Connection, room_id: str) -> int:
     return conn.execute(
         "SELECT count(*) FROM room_members WHERE room_id = %s AND status = 'active'", (room_id,)
@@ -299,7 +325,7 @@ def list_members(conn: Connection, room_id: str, include_inactive: bool = False)
     rows = conn.execute(
         f"""SELECT {MEMBER_COLUMNS}, u.display_name FROM room_members m JOIN users u ON u.id = m.user_id
             WHERE m.room_id = %s {condition}
-            ORDER BY (m.status = 'active') DESC, m.joined_at ASC""",
+            ORDER BY (m.status = 'active') DESC, m.joined_at ASC, m.id ASC""",
         (room_id,),
     ).fetchall()
     return [MemberRowWithName(_member(row[:8]), row[8]) for row in rows]
@@ -364,7 +390,7 @@ def list_join_requests(conn: Connection, room_id: str, status: Optional[str] = N
     rows = conn.execute(
         f"""SELECT {REQUEST_COLUMNS}, u.display_name FROM join_requests r JOIN users u ON u.id = r.user_id
             WHERE r.room_id = %s {condition}
-            ORDER BY (r.status = 'pending') DESC, r.created_at ASC""",
+            ORDER BY (r.status = 'pending') DESC, r.created_at ASC, r.id ASC""",
         params,
     ).fetchall()
     return [JoinRequestRowWithName(_request(row[:8]), row[8]) for row in rows]

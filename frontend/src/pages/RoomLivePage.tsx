@@ -332,8 +332,10 @@ export default function RoomLivePage() {
             </button>
             <span className="live-sep" aria-hidden />
             <span className="live-title">{room?.title ?? '交流页'}</span>
-            <span className="live-quiet mono" title="此刻在房间里的人数（在场口径，不是成员总数）">
-              {onlineIds.length} / {room?.capacity ?? 8} 在房间
+            {/* r005（ADR-0016）：人数按**在册成员**（本库）显示，与准入/列表卡同一口径；
+                「此刻谁在线」看成员抽屉（那一列是 LiveKit 事件驱动的在场标记）。 */}
+            <span className="live-quiet mono" title="本场已获准进场的人数（在册成员 / 上限）；此刻谁在线看「成员」抽屉">
+              {room?.memberCount ?? 0} / {room?.capacity ?? 8} 成员
             </span>
             <span className="live-quiet mono">{room?.roomCode}</span>
             {connection.status === 'connected' && (

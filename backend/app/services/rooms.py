@@ -7,8 +7,9 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 from psycopg import Connection
 from psycopg.errors import UniqueViolation
@@ -138,6 +139,29 @@ def _request_vo(item: repo.JoinRequestRowWithName) -> JoinRequestVO:
         created_at=request.created_at,
         decided_at=request.decided_at,
         decided_by=request.decided_by,
+    )
+
+
+@dataclass(frozen=True)
+class RoomFullNotice:
+    """满员拒绝的返回标记（r005）。
+
+    为什么不直接抛 `AppError`：`db_conn` 用 psycopg_pool 的 `with connection()`（**异常即回滚**），
+    抛错会把同一请求里刚写的「满员拒绝」留痕一起回滚掉（cp-2 实测踩过：库里查不到那条消息）。
+    这里改成把 409 交给路由层用 `fail(...)` 正常返回 —— 请求事务正常提交，留痕保住。
+    """
+
+    capacity: int
+
+
+def _system_message(conn: Connection, room_id: str, actor_id: str, body: str) -> None:
+    """写一条房间事件系统消息（r005：满员拒绝 / 加入 / 离开 / 被移出 / 移交 / 结束）。
+
+    必须在**同一个事务**内调用（失败就一起回滚）；唯一例外是「满员拒绝」——
+    那一支要先提交消息再抛 409，否则消息会被抛错带回滚（见 `request_join`）。
+    """
+    repo.insert_message(
+        conn, repo.NewMessage(id=new_id("msg"), room_id=room_id, user_id=actor_id, body=body)
     )
 
 
@@ -285,21 +309,28 @@ def derive_room_phase(conn: Connection, room_id: str) -> str:
 
 # ---------------- 加入申请 ----------------
 
-def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) -> JoinRequestVO:
-    """提交申请：五种拦截（未登录在依赖层）→ 写申请；唯一冲突映射为 `ALREADY_PENDING`。"""
-    item = repo.get_room(conn, room_id)
-    room = assert_room_active(item.room if item else None)
-    if repo.get_active_member(conn, room_id, actor.id) is not None:
-        raise AppError(ERR_ALREADY_MEMBER, "你已在房间中", status=409)
-    if repo.get_pending_request(conn, room_id, actor.id) is not None:
-        raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409)
-    # 申请**不校验容量**（ADR-0012 修订 D2）：申请人总能进等待室；容量闸唯一在取票。
+def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) -> Union[JoinRequestVO, RoomFullNotice]:
+    """提交申请：六种拦截（未登录在依赖层）→ 写申请；唯一冲突映射为 `ALREADY_PENDING`。
+
+    r005（ADR-0016）：人数上限按**在册成员**（本库）判定，满员直接拒 —— 不再让申请人进等待室。
+    判定与写申请在同一事务、先锁房间行，因此并发申请不会挤进第 N+1 个名额。
+    **满员时返回 `RoomFullNotice`（不抛错）**：同一事务里写一条留痕，再由路由层返回 409。
+    """
     request_id = new_id("req")
-    try:
-        with conn.transaction():
+    with conn.transaction():
+        room = assert_room_active(repo.lock_room(conn, room_id))
+        if repo.get_active_member(conn, room_id, actor.id) is not None:
+            raise AppError(ERR_ALREADY_MEMBER, "你已在房间中", status=409)
+        if repo.get_pending_request(conn, room_id, actor.id) is not None:
+            raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409)
+        if repo.count_active_members(conn, room_id) >= room.capacity:
+            # 满员：留痕（Q3「留一个消息」）+ 返回拒绝标记；事务正常提交，留痕不会被回滚
+            _system_message(conn, room_id, actor.id, f"房间已满（上限 {room.capacity} 人），本次申请未通过")
+            return RoomFullNotice(capacity=room.capacity)
+        try:
             repo.insert_join_request(conn, repo.NewJoinRequest(id=request_id, room_id=room_id, user_id=actor.id, message=message))
-    except UniqueViolation as exc:  # 并发双击
-        raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409) from exc
+        except UniqueViolation as exc:  # 并发双击
+            raise AppError(ERR_ALREADY_PENDING, "你已提交过申请，请等待房主处理", status=409) from exc
     created = repo.get_join_request(conn, request_id)
     if created is None:
         raise AppError(ERR_INTERNAL, "提交申请后无法读取", status=500)
@@ -346,14 +377,20 @@ def approve_join_request(conn: Connection, actor: UserVO, request_id: str) -> Ap
         current = repo.get_join_request(conn, request_id)
         if current is None or current.status != "pending":
             raise AppError(ERR_CONFLICT, "该申请已被处理", status=409)
-        # 批准**不校验容量**（ADR-0012 修订 D3）：批准 = 授予本场入场资格，满不满由取票时的在场数决定。
         if repo.get_active_member(conn, request.room_id, request.user_id) is not None:
             raise AppError(ERR_ALREADY_MEMBER, "该用户已在房间中", status=409)
+        # r005（ADR-0016）：批准前再按在册数核一次，保证不变量「在册 ≤ capacity」（并发时由房间行锁串行）。
+        if repo.count_active_members(conn, request.room_id) >= room.capacity:
+            raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.capacity} 人）", status=409)
         member_id = new_id("mem")
         repo.insert_member(
             conn, repo.NewMember(id=member_id, room_id=request.room_id, user_id=request.user_id, role="participant")
         )
         repo.decide_join_request(conn, request_id, "approved", actor.id, _now())
+        _system_message(
+            conn, request.room_id, actor.id,
+            f"{repo.get_display_name(conn, request.user_id) or '有人'} 加入了房间",
+        )
     approved = repo.get_join_request(conn, request_id)
     members = repo.list_members(conn, request.room_id, include_inactive=True)
     new_member = next((m for m in members if m.member.id == member_id), None)
@@ -393,6 +430,7 @@ def leave_room(conn: Connection, actor: UserVO, room_id: str) -> None:
         if member.role == "host":
             raise AppError(ERR_HOST_CANNOT_LEAVE, "房主不能直接离开，请先结束房间或移交房主", status=409)
         repo.deactivate_member(conn, room_id, actor.id, "self_leave", _now())
+        _system_message(conn, room_id, actor.id, f"{actor.display_name} 离开了房间")
 
 
 def end_room(conn: Connection, actor: UserVO, room_id: str) -> RoomVO:
@@ -407,6 +445,7 @@ def end_room(conn: Connection, actor: UserVO, room_id: str) -> RoomVO:
         repo.cancel_pending_requests(conn, room_id, ended_at)
         # r004（M3）：清空活跃举手（同一个事务，与上面三项并列的连带动作）
         extras_repo.lower_all_hands(conn, room_id)
+        _system_message(conn, room_id, actor.id, "房间已结束")
     # 外部调用一律在事务提交之后（ADR-0011 条 4）：失败不回滚库状态，用 livekit_applied 如实上报
     livekit_applied = _safe_livekit(lambda: livekit_service.delete_room(room_id))
     item = repo.get_room(conn, room_id)
@@ -438,11 +477,9 @@ def issue_room_token(conn: Connection, actor: Optional[UserVO], room_id: str) ->
     if member is None:
         raise AppError(ERR_NOT_MEMBER, "你不在该房间中（或已被移出）", status=403)
     settings = load_settings()
-    # 容量闸（ADR-0012 修订 D5）：按**在场人数**算（不含自己，重连时自己已连着）；
-    # LiveKit 查询失败会降级为 []（不因监控失败拦人），由 Token 的 max_participants 兜底。
-    present = livekit_service.list_participant_identities(room_id, settings=settings)
-    if len([identity for identity in present if identity != actor.id]) >= room.room.capacity:
-        raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.room.capacity} 人）", status=409)
+    # r005（ADR-0016）：人数上限由**本库在册成员**决定，已在申请/批准两处封顶；取票不再查 LiveKit
+    # （省掉一次 0.8~1.8s 的外部调用，也消除「外部查询失败就放人」的洞）。
+    # LiveKit 的 `max_participants` 仍写进 Token，但只作音视频承载兜底，不再是人数权威。
     token = livekit_service.issue_token(
         room_id,
         actor.id,
@@ -480,6 +517,10 @@ def kick_member(conn: Connection, actor: Optional[UserVO], room_id: str, user_id
         if target.role == "moderator" and actor_member.role == "moderator":
             raise AppError(ERR_FORBIDDEN, "协管不能移出协管", status=403)
         repo.deactivate_member(conn, room_id, user_id, "kicked", _now())
+        _system_message(
+            conn, room_id, actor.id,
+            f"{repo.get_display_name(conn, user_id) or '有人'} 被移出房间",
+        )
     livekit_applied = _safe_livekit(lambda: livekit_service.remove_participant(room_id, user_id))
     item = next((m for m in repo.list_members(conn, room_id, include_inactive=True) if m.member.user_id == user_id), None)
     if item is None:
@@ -532,6 +573,10 @@ def transfer_host(conn: Connection, actor: Optional[UserVO], room_id: str, new_h
         repo.update_room_host(conn, room_id, new_host_id)
         if repo.count_active_hosts(conn, room_id) != 1:  # 不变量：活跃 Host 恒为 1
             raise AppError(ERR_INTERNAL, "移交后活跃房主数量异常", status=500)
+        _system_message(
+            conn, room_id, actor.id,
+            f"{repo.get_display_name(conn, new_host_id) or '有人'} 成为房主",
+        )
     room = repo.get_room(conn, room_id)
     if room is None:
         raise AppError(ERR_INTERNAL, "移交后无法读取房间", status=500)

@@ -65,6 +65,7 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
 
   const filled = room.capacity > 0 ? Math.min(100, Math.round((room.memberCount / room.capacity) * 100)) : 0
   const ended = room.status === 'ended'
+  const full = room.status === 'active' && room.memberCount >= room.capacity
   const pending = !room.myRole && room.myRequestStatus === 'pending'
 
   const primary = () => {
@@ -117,6 +118,12 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
           <Hash {...ICON} />
           {room.topicLabel}
         </span>
+        {!ended && full && (
+          <span className="chip chip-warn">
+            <Users {...ICON} />
+            已满
+          </span>
+        )}
         {ended ? (
           <span className="chip chip-quiet">
             <CalendarX2 {...ICON} />
@@ -157,9 +164,10 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
         <span className="dim" style={{ fontSize: 12 }}>
           {room.hostName}
         </span>
-        <span className="chip chip-quiet">
+        <span className={`chip ${full ? 'chip-warn' : 'chip-quiet'}`} title={full ? '本场名额已满（在册成员 = 上限）' : '在册成员 / 上限'}>
           <Users {...ICON} />
           {room.memberCount}/{room.capacity}
+          {full ? ' 已满' : ''}
         </span>
       </div>
 
