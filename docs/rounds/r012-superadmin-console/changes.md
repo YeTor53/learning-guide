@@ -65,3 +65,4 @@ updated: 2026-09-20
 | 2026-09-20 | cp-2 | 迁移 011/012 + 身份 + 在线心跳 + 提权脚本 + ADR-0024 + 模块实现页首版；用例 174 passed、tsc 0；`roles.py`「角色判据唯一入口」随本 cp 提前落地（提权脚本要用，属 cp-3 计划的同一模块） | 需求单 §9 cp-2、§10.1（Q1/Q14/Q15）；ADR-0024 |
 | 2026-09-20 | cp-3 | 超管隐身进房（hidden/只读 Token + `room_visits`）+ 两处旁路收敛 + `effective_role` + worker 跳过超管；用例 182 passed | 需求单 §9 cp-3、§10.1（Q2/Q3/Q4/Q8）、ADR-0024 D2~D5 |
 | 2026-09-20 | cp-4 | 管理后台后端（三列表 + 三动作 + 审计 + 鉴权依赖）；用例 191 passed；查询参数定 snake_case（与既有 `mine=` 同口径，design §3.3 同步修正） | 需求单 §9 cp-4、§10.1（Q5/Q6/Q7/Q16）、ADR-0024 D6 |
+| 2026-09-20 | cp-4b | **补交**：`services/presence.py::online_since()`——cp-4 提交时漏登记该文件，导致 `GET /api/admin/users?online_only=1` 在 cp-4 树里引用了不存在的函数（本地工作区有、提交里没有）。教训记在此：**冷启动核对**（提交后 `git status` 必须为空，本轮 cp-4 曾遗留一个未登记的已改文件） | cp-4 自审发现 |

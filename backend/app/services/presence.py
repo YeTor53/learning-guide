@@ -40,8 +40,12 @@ def is_online(
     return (now or _now()) - last_seen_at <= timedelta(seconds=window)
 
 
+def online_since(*, now: Optional[datetime] = None) -> datetime:
+    """「在线」的下界时间（= now - 判据窗口）；管理后台的 `onlineOnly=1` 直接用它当过滤条件。"""
+    window = load_settings().presence_online_seconds
+    return (now or _now()) - timedelta(seconds=window)
+
+
 def online_user_ids(conn: Connection, *, now: Optional[datetime] = None) -> set[str]:
     """当前在线用户 id 集合（大屏面板的「在线」判据；一次 SQL 取回）。"""
-    window = load_settings().presence_online_seconds
-    since = (now or _now()) - timedelta(seconds=window)
-    return users_repo.list_online_user_ids(conn, since)
+    return users_repo.list_online_user_ids(conn, online_since(now=now))
