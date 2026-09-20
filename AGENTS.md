@@ -40,11 +40,11 @@
 ## r002 起新增的验证命令（实时房间）
 
 ```bash
-pytest backend/tests -q                                  # 95 项
+pytest backend/tests -q                                  # 156 项（2026-09-20 实测；数字会漂，以命令输出为准）
 npx tsc --noEmit --project frontend                      # 前端类型
-python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # PASS 22/22
+python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # PASS 46/46（2026-09-20 实测）
 ```
 
 - 实时凭据只在 `.env`（`LIVEKIT_MODE` / `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`）；**不得写进代码、文档、提交信息或聊天**。
 - 禁区不变：装依赖需先问；helper 不接触明文密钥；不用 `git commit --amend`。
-- 现状口径（改动前必读）：房间 = **一次性讨论**（ADR-0012）；治理动作**只在交流页抽屉**（房间管理页已删除，redirect-06）；容量按**在场人数**在**取票时**校验。
+- 现状口径（改动前必读）：房间 = **一次性讨论**（ADR-0012）；治理动作**只在交流页抽屉**（房间管理页已删除，redirect-06）；容量按**本库在册成员**（ADR-0016 取代 ADR-0012 的 D1/D2/D3/D5）：满员时**申请与批准都被挡**（`POST /join-requests` 与 `/approve` 均 409 `ROOM_FULL`）；取票不再查 LiveKit（r005，1650ms → 3.2ms）。
