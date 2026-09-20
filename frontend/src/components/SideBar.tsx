@@ -1,6 +1,8 @@
-import { Calendar, Home, LogOut, Mail, PanelLeftClose, PanelLeftOpen, Plus, UserRound, Users } from 'lucide-react'
+import { Home, PanelLeftClose, PanelLeftOpen, Plus, UserRound, Users } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+import QuoteLine from './QuoteLine'
+import SidebarUserCard from './SidebarUserCard'
 import { useSession } from '../hooks/useSession'
 
 interface Props {
@@ -85,42 +87,12 @@ export default function SideBar({ collapsed, onToggleCollapsed, hideToggle = fal
             {collapsed ? '·' : '加载中…'}
           </span>
         ) : user ? (
-          <>
-            <div className="side-user">
-              <div className="side-avatar" aria-hidden>
-                {user.displayName.slice(0, 1)}
-              </div>
-              {!collapsed && (
-                <div style={{ minWidth: 0 }}>
-                  <div className="side-user-name">{user.displayName}</div>
-                  <div className="mono dim" style={{ fontSize: 11 }}>
-                    {user.id.slice(0, 12)}
-                  </div>
-                </div>
-              )}
-            </div>
-            {!collapsed && (
-              <>
-                <div className="side-user-line" title={user.email}>
-                  <Mail size={12} strokeWidth={1.75} style={{ verticalAlign: -1, marginRight: 6 }} />
-                  {user.email}
-                </div>
-                <div className="side-user-line">
-                  <Calendar size={12} strokeWidth={1.75} style={{ verticalAlign: -1, marginRight: 6 }} />
-                  注册于 {new Date(user.createdAt).toLocaleDateString('zh-CN')}
-                </div>
-              </>
-            )}
-            <button
-              className="side-item"
-              disabled={logout.isPending}
-              onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/') })}
-              title="登出"
-            >
-              <LogOut {...ICON} />
-              {!collapsed && <span className="label">登出</span>}
-            </button>
-          </>
+          <SidebarUserCard
+            user={user}
+            collapsed={collapsed}
+            logoutPending={logout.isPending}
+            onLogout={() => logout.mutate(undefined, { onSuccess: () => navigate('/') })}
+          />
         ) : (
           <div className="side-user">
             {!collapsed ? (
@@ -128,11 +100,7 @@ export default function SideBar({ collapsed, onToggleCollapsed, hideToggle = fal
                 <div className="side-avatar" aria-hidden>
                   <UserRound size={16} strokeWidth={1.75} />
                 </div>
-                <div className="dim" style={{ fontSize: 12, lineHeight: 1.5 }}>
-                  未登录
-                  <br />
-                  右上角登录后可见
-                </div>
+                <QuoteLine scene="self" className="side-quote" />
               </>
             ) : (
               <div className="side-avatar" aria-hidden>

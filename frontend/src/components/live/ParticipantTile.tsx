@@ -20,6 +20,8 @@ interface Props {
   speaking?: boolean
   /** 焦点/共享徽标（只有人为状态才传，见 FocusBadge 的口径）。 */
   badge?: ReactNode
+  /** r006（ADR-0017 D1）：麦克风是否静音；不传则按 participant 的实时状态兜底。 */
+  micMuted?: boolean
   /** 覆盖显示名（离线焦点等没有 Participant 的场景）。 */
   displayNameOverride?: string
 }
@@ -37,8 +39,12 @@ export default function ParticipantTile({
   speaking = false,
   badge,
   displayNameOverride,
+  micMuted,
 }: Props) {
   const name = displayNameOverride || participant.name || participant.identity
+  // r006（ADR-0017 D1）：徽标读**真实麦克风状态**；旧实现挂在 `!showVideo` 上（有没有摄像头），
+  // 导致没人开摄像头时人人恒显「麦克风未开」、真静音时反而不变。
+  const muted = micMuted ?? !participant.isMicrophoneEnabled
   const showVideo = Boolean(publication && !publication.isMuted)
   const classes = ['live-tile']
   if (isFocus) classes.push('live-tile-focus')
@@ -60,7 +66,11 @@ export default function ParticipantTile({
       <div className="live-tile-bar">
         <span className="live-tile-name">{name}</span>
         {role && <span className={`chip ${role === 'host' ? 'chip-warn' : 'chip-quiet'}`}>{ROLE_LABEL[role]}</span>}
-        {!showVideo && <MicOff {...ICON} aria-label="麦克风未开" />}
+        {muted && (
+          <span className="live-tile-mic" title="麦克风已静音" aria-label="麦克风已静音">
+            <MicOff {...ICON} />
+          </span>
+        )}
       </div>
     </div>
   )

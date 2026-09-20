@@ -1,6 +1,7 @@
 import { LogIn, Sparkles } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
+import QuoteLine from '../components/QuoteLine'
 import RoomForm from '../components/RoomForm'
 import { useSession } from '../hooks/useSession'
 import { useCreateRoom } from '../hooks/useRooms'
@@ -42,9 +43,8 @@ export default function NewRoomPage() {
         New room
       </span>
       <h1 style={{ fontSize: 'clamp(26px, 4vw, 40px)', marginBottom: 8 }}>创建一个学习讨论室</h1>
-      <p className="muted" style={{ marginTop: 0, marginBottom: 24 }}>
-        你将成为这个房间的房主：负责批准加入申请、结束房间。
-      </p>
+      {/* redirect-02（Q2=2）：房主职责那句解释由名言替换 —— 表单本身与下方按钮承担引导 */}
+      <QuoteLine scene="learn" />
       <div className="card">
         <RoomForm
           submitting={createRoom.isPending}

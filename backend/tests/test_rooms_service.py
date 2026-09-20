@@ -286,10 +286,13 @@ def test_list_rooms_filters_and_aggregates(db) -> None:
     rooms_service.end_room(db, host, ended_room.id)
     req = _join(db, guest, active_room.id)
 
-    active_items, active_total = rooms_service.list_rooms(db, None, repo.RoomFilter(status="active"))
+    # 显式给大页长：演示库里的房间数早已超过默认页长（默认 20），
+    # 不能再用「total == 本页条数」这种依赖数据量的断言（cp-5 实测：total 26 vs 返回 20）。
+    active_items, active_total = rooms_service.list_rooms(db, None, repo.RoomFilter(status="active", limit=100))
     titles = {item.title for item in active_items}
     assert "进行中的房间" in titles and "已结束的房间" not in titles
-    assert active_total == len(active_items)
+    assert active_total >= len(active_items)
+    assert all(item.status == "active" for item in active_items)
     guest_view = next(i for i in active_items if i.id == active_room.id)
     assert guest_view.pending_count == 0 and guest_view.my_role is None  # 非管理者：服务端严格返回 0（FQ-4）
     host_view = next(

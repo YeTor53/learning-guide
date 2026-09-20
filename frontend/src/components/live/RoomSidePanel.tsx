@@ -17,6 +17,7 @@ import type { FocusState } from '../../hooks/useRoomFocus'
 import type { HandState } from '../../hooks/useHandRaise'
 import type { ScreenShareState } from '../../hooks/useScreenShare'
 import ChatPanel from './ChatPanel'
+import QuoteLine from '../QuoteLine'
 
 const ICON = { size: 14, strokeWidth: 1.75 } as const
 
@@ -239,7 +240,10 @@ export default function RoomSidePanel({
           </span>
         </h2>
         {activeMembers.length === 0 ? (
-          <p className="muted" style={{ fontSize: 13, margin: 0 }}>此刻没有人在房间里</p>
+          <>
+            <p className="muted" style={{ fontSize: 13, margin: 0 }}>此刻没有人在房间里</p>
+            <QuoteLine scene="meet" />
+          </>
         ) : (
           activeMembers.map((member) => renderRow(member, true))
         )}
@@ -253,7 +257,10 @@ export default function RoomSidePanel({
           </span>
         </h2>
         {inactiveMembers.length === 0 ? (
-          <p className="muted" style={{ fontSize: 13, margin: 0 }}>全部成员都在房间里</p>
+          <>
+            <p className="muted" style={{ fontSize: 13, margin: 0 }}>全部成员都在房间里</p>
+            <QuoteLine scene="meet" />
+          </>
         ) : (
           inactiveMembers.map((member) => renderRow(member, false))
         )}

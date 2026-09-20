@@ -1,6 +1,7 @@
 import { ArrowRight, LogIn } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
+import QuoteLine from '../components/QuoteLine'
 import LoginForm from '../components/LoginForm'
 import { useSession } from '../hooks/useSession'
 
@@ -20,10 +21,7 @@ export default function LoginPage() {
     <div className="auth-wrap">
       <div>
         <span className="kicker">Welcome back</span>
-        <p className="auth-quote">
-          「房间不是会议室，<br />
-          是一起把一个问题想透的地方。」
-        </p>
+        <QuoteLine scene="learn" className="auth-quote-line" />
         <p className="dim" style={{ fontSize: 13, marginTop: 16 }}>
           演示账号 host@example.com / demo1234
         </p>

@@ -10,6 +10,7 @@ import { AlertCircle, ArrowLeft, Loader2, Undo2 } from 'lucide-react'
 
 import { ApiError } from '../api/http'
 import { roomsApi } from '../api/rooms'
+import QuoteLine from '../components/QuoteLine'
 import WaitTimeline from '../components/WaitTimeline'
 import { useWaitingRoom } from '../hooks/useWaitingRoom'
 
@@ -78,6 +79,7 @@ export default function WaitingPage() {
         <div className="wait-card">
           <Loader2 {...ICON} className="spin" />
           <p className="muted" style={{ margin: 0 }}>正在读取房间状态…</p>
+          <QuoteLine scene="patience" />
         </div>
       </div>
     )
@@ -129,13 +131,13 @@ export default function WaitingPage() {
           </div>
         )}
 
-        <p className="wait-note">
-          {approved
-            ? '马上自动进入，不用点任何按钮'
-            : pending
-              ? '房主通常很快处理——等待的时候可以先看一眼今天的讨论主题'
-              : '你可以重新申请，或先去看看别的房间'}
-        </p>
+        {/* redirect-02（Q2=2）：这里的操作引导改为名言；「进度」由上方 WaitTimeline 视觉承担，
+            「能做什么」由下方按钮承担 */}
+        {approved ? (
+          <p className="wait-note">马上自动进入，不用点任何按钮</p>
+        ) : (
+          <QuoteLine scene={pending ? 'patience' : 'farewell'} />
+        )}
 
         {error && (
           <p className="wait-note" style={{ color: 'var(--danger)' }}>{error}</p>

@@ -11,6 +11,8 @@ export const CHANNEL_TOPIC = {
   hands: 'lg.hands',
   focus: 'lg.focus',
   screenStop: 'lg.screen.stop',
+  /** r006（ADR-0017 D2）：名册 / 待批变更的「快重取」信号（HTTP 仍是唯一真相）。 */
+  roster: 'lg.roster',
 } as const
 
 export type ChannelTopic = (typeof CHANNEL_TOPIC)[keyof typeof CHANNEL_TOPIC]
