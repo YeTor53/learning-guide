@@ -111,6 +111,7 @@ updated: 2026-09-20
 | 教学两页补两处 | `docs/tutorials/r012-*-guide.md`（大屏 tab）、新增回看小节 | planned |
 | 需求/模块索引行 | `docs/00-requirements/README.md`、`docs/02-modules/README.md` | done |
 | roadmap §9 回填 | `docs/00-project/global-roadmap.md` | done（§9 两行回填） |
+| 交付说明页（项目级，作业交付用） | `docs/00-project/global-delivery.md` | done（cp-17） |
 
 ## 9. cp 切分（计划）
 

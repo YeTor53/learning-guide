@@ -15,7 +15,7 @@ updated: 2026-09-20
 
 | 目录 | 放什么 | 页数 | 索引 |
 | --- | --- | --- | --- |
-| `00-project/` | 方向：目标、里程碑、项目级台账 | 3 | `global-roadmap.md` 自身含 §3 里程碑、§7 轮次台账、§9 遗留台账 |
+| `00-project/` | 方向：目标、里程碑、项目级台账、交付说明 | 4 | `global-roadmap.md` 自身含 §3 里程碑、§7 轮次台账、§9 遗留台账 |
 | `00-requirements/` | 每轮**需求单**（契约：目的/边界/验收） | 12 | `00-requirements/README.md`（轮次索引表） |
 | `01-architecture/` | 总设计与**每轮增量**设计 | 3 | 无独立索引，见本文 §3 |
 | `02-modules/` | 模块页：实现页（代码事实）+ 功能页（人可见行为） | 19 | **`02-modules/README.md`**（模块 → 轮次页 → 当前真相页） |
@@ -40,6 +40,7 @@ updated: 2026-09-20
 | 怎么跑起来 / 怎么演示 | `tutorials/r002-livekit-setup.md`、`tutorials/r002-livekit-demo.md`；房内四件事（群聊/举手/焦点/共享）见 `tutorials/r004-room-extras-demo.md` |
 | 动手改代码前先读什么 | `tutorials/r002-livekit-dev-guide.md` |
 | 术语（房间码、等候室、一次性讨论…） | `glossary.md` |
+| **交付/提交给评审**（题目 A 交付物四项、提交命名与口径、复核路径、证据索引） | `00-project/global-delivery.md` |
 
 ## 3. 架构页与 ADR 一览（按轮次）
 
