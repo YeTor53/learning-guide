@@ -1,15 +1,36 @@
 @echo off
-REM r010 è½¬å†™ worker å¯åŠ¨è„šæœ¬ï¼ˆADR-0023ï¼‰ï¼šç‹¬ç«‹çŽ¯å¢ƒ lg_agentsï¼Œæœ¬æœºæ¼”ç¤º/å¼€å‘ç”¨
-REM ç”¨æ³•ï¼šagents.bat                         èµ° LiveKit Inferenceï¼ˆé»˜è®¤ï¼Œæ¶ˆè€—å…è´¹æ¡£é¢åº¦ï¼‰
-REM       set AGENT_STT=fake && agents.bat    èµ°ç¦»çº¿å‡ STTï¼ˆé›¶é…é¢ï¼Œè”è°ƒ/æ¼”ç¤ºé™çº§ï¼‰
-REM è¯´æ˜Žï¼šworker å®žæµ‹ä¼šå›  LiveKit FFI ä¸€æ¬¡æ€§ panic é€€å‡ºï¼ˆroom connect è¶…æ—¶ï¼Œè§ review æœªé—­åˆ â‘ ï¼‰ï¼Œ
-REM       æ•…è¿™é‡Œå¸¦**è‡ªåŠ¨é‡å¯**ï¼›ç”Ÿäº§çŽ¯å¢ƒè¯·äº¤ç»™è¿›ç¨‹ç®¡ç†å™¨ï¼ˆsystemd / ä»»åŠ¡è®¡åˆ’ / å®¹å™¨ï¼‰ã€‚
-setlocal
-call C:\ProgramData\miniconda3\Scripts\activate.bat lg_agents
+REM r010 ×ªÐ´ worker Æô¶¯½Å±¾£¨ADR-0023£©£º¶ÀÁ¢»·¾³ lg_agents£¬±¾»úÑÝÊ¾/¿ª·¢ÓÃ
+REM ÓÃ·¨£ºagents.bat                          Ä¬ÈÏ×ß LiveKit Inference£¨ÏûºÄÃâ·Ñµµ¶î¶È£©
+REM       set AGENT_STT=fake && agents.bat     ×ßÀëÏß¼Ù STT£¨ÁãÅä¶î£¬Áªµ÷/ÑÝÊ¾½µ¼¶£©
+REM
+REM 2026-09-20 ÐÞÁ½´¦£º
+REM   ¢Ù »»ÐÐÔøÐ´³É¡¸Ë« CR¡¹ÇÒÒÔ UTF-8 ´æÅÌ ¡ª¡ª cmd °´ GBK ¶Á»á°ÑÖÐÎÄ×¢ÊÍ²ð³öÀ´µ±ÃüÁîÖ´ÐÐ
+REM      £¨±¨¡¸²»ÊÇÄÚ²¿»òÍâ²¿ÃüÁî¡¹£©£¬ÏÖ¸Ä»Ø GBK + ±ê×¼ CRLF¡£
+REM   ¢Ú lg_agents »·¾³Ã»×° python-dotenv£¬worker ×Ô¼º²»»á¶Á .env ¡ª¡ª ËùÒÔÕâÀïÏÈ°Ñ²Ö¿â¸ù
+REM      .env ×¢Èë»·¾³±äÁ¿ÔÙÆô¶¯£»·ñÔò worker ±¨ "ws_url is required"£¬È»ºóÍË³ö-ÖØÆôÑ­»·¡£
+setlocal enabledelayedexpansion
 cd /d %~dp0
-echo [agents] AGENT_STT=%AGENT_STT%  (inference=èµ° LiveKit Inference / fake=ç¦»çº¿æ¡©)
+if not exist ".env" (
+  echo [agents] ÕÒ²»µ½²Ö¿â¸ùµÄ .env ¡ª¡ª worker ÐèÒª LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET
+  pause
+  exit /b 2
+)
+for /f "usebackq eol=# tokens=1,* delims==" %%a in (".env") do (
+  set "AGENT_ENV_VAL=%%b"
+  set "AGENT_ENV_VAL=!AGENT_ENV_VAL:"=!"
+  for /f "tokens=* delims= " %%c in ("!AGENT_ENV_VAL!") do set "%%a=%%c"
+)
+if not defined AGENT_STT set "AGENT_STT=inference"
+if not defined AGENT_BACKEND_URL set "AGENT_BACKEND_URL=http://127.0.0.1:8000"
+echo [agents] AGENT_STT=%AGENT_STT%   £¨inference=×ß LiveKit Inference / fake=ÀëÏß×®£©
+if defined LIVEKIT_URL (echo [agents] LIVEKIT_URL ÒÑ´Ó .env ×¢Èë) else (echo [agents] £¡LIVEKIT_URL È±Ê§£¬worker »áÆð²»À´)
+if defined LIVEKIT_API_KEY (echo [agents] LIVEKIT_API_KEY ÒÑ×¢Èë) else (echo [agents] £¡LIVEKIT_API_KEY È±Ê§)
+echo [agents] ÐÄÌøÉÏ±¨Ä¿±ê AGENT_BACKEND_URL=%AGENT_BACKEND_URL%£¨ºó¶ËÒªÔÚÅÜ£©
+echo.
+call C:\ProgramData\miniconda3\Scripts\activate.bat lg_agents
 :loop
 python backend\agents\transcriber.py dev
-echo [agents] è¿›ç¨‹é€€å‡ºï¼ˆcode %ERRORLEVEL%ï¼‰ï¼Œ3 ç§’åŽè‡ªåŠ¨é‡å¯â€¦ï¼ˆCtrl+C åœæ­¢ï¼‰
+echo.
+echo [agents] ½ø³ÌÍË³ö£¨code %ERRORLEVEL%£©£¬3 Ãëºó×Ô¶¯ÖØÆô¡­£¨Ctrl+C Í£Ö¹£©
 timeout /t 3 /nobreak >nul
 goto loop

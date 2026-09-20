@@ -16,6 +16,7 @@ rounds: [r013]
 | cp | 提交 | 内容 | 测试/证据 | 文档 |
 | --- | --- | --- | --- | --- |
 | cp-r013-1 | 文档先行 | 需求单（含断线方案 §10.5）+ 逐文件函数级设计 + 台账骨架 | 不适用（纯文档） | 需求单、design |
+| cp-r013-13 | 本次提交 | 修 `agents.bat`（你实测报错）：① 文件曾是「双 CR + UTF-8」，cmd 按 GBK 读会把中文注释拆出来当命令执行 → 改为 **GBK + 标准 CRLF**；② `lg_agents` 环境**没装 python-dotenv**，worker 不会自己读 `.env` → 脚本改为先把 `.env` 注入环境变量再启动（原症状：`ValueError: ws_url is required` + 退出-重启循环）；③ 启动打印注入自检（只报「有没有」，不回显值） | 实测：worker `registered worker {"agent_name":"learning-guide-transcriber","region":"Japan"}` | 台本 §0、本表 |
 | cp-r013-12 | 本次提交 | 演示库清理：删 **169 间**测试房 + **593 个**脚本账号 + 大屏测试消息与残留举手/访问；新增可复跑 `backend/scripts/clean_demo_junk.py`（默认干跑、`--yes` 真删、`--keep-users`）；台本 §0/§6 改用该脚本并纠正「演示前 `--reset`」旧指引 | 清后：房 8（3 间 seed + 5 间你的演示房）/ 账号 4 / 成员 17 / 聊天 16 / 大屏 0 / 审计 1 | 台本 §0 §6、本表 |
 | cp-r013-11 | 本次提交 | 修「隐藏就断链」：① 连接层识别 `freeze`/`pagehide`（SDK 无条件挂钩导致的静默断开）→ 正确归因 + `autoDisconnected`；② 页面层回到可见自动重连（3 次退避）+ 失败走「重新连接」banner；③ `demo-window.bat` 加抗冻结/抗节流开关 | 确定性冻结→解冻后 **4.5 秒自回「已连接」**；带开关离屏 **45 秒**全程「已连接」；tsc/build 绿 | 需求单 §10.7、台本 §3.5 |
 | cp-r013-9 | 本次提交 | 断线道具**首选方案**：`demo-firewall-cut.bat` + `backend/scripts/demo_firewall_cut.py`（临时防火墙拦 LiveKit 出网 N 秒，`try/finally` 删规则 + `--remove` 兜底 + `--status` 自检）；netsh 输出按 GBK 解码修乱码；台本 §3.5 改为首选防火墙法、进程冻结降为备选；需求单 §10.6 补实测表与前提 | 干净基线：断中 1.0/3.0 秒进「正在重连…」，恢复后 5~6 秒回「已连接」，举手保持，规则无残留 | 台本 §3.5、需求单 §10.6 |
