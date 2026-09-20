@@ -117,3 +117,27 @@ def test_conversation_readable_after_room_ended(client, db) -> None:
     resp = client.get(f"/api/rooms/{room['id']}/conversation")
     assert resp.status_code == 200, resp.text
     assert any(item["text"] == "结束前留一句" for item in resp.json()["data"]["items"])
+
+
+def test_transcription_feeds_summary_material(client, db, monkeypatch) -> None:
+    """R5：转写要进纪要素材——用桩捕获给 LLM 的 messages，断言转写文本与说话人都在里面。"""
+    from app.services import summary as summary_service
+
+    host = register_user(db, "房主")
+    login(client, host)
+    room = create_room(client)
+    assert post_segment(client, room["id"], speaker=host.id, seg="SG_s1", text="线性回归的关键是最小二乘", started="2026-09-20T10:00:00Z").status_code == 201
+
+    captured: dict = {}
+
+    def fake_call_llm(messages, settings=None):
+        captured["messages"] = messages
+        return "纪要正文"
+
+    monkeypatch.setattr(summary_service, "call_llm", fake_call_llm)
+    resp = client.post(f"/api/rooms/{room['id']}/summary")
+    assert resp.status_code == 201, resp.text
+    payload = captured["messages"][1]["content"]
+    assert "线性回归的关键是最小二乘" in payload, "转写文本必须进素材"
+    assert "语音转写" in payload and "房主" in payload
+    assert "speech=1" in resp.json()["data"]["inputDigest"]

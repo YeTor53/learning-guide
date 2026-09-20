@@ -25,6 +25,7 @@ from app.api.errors import (
 )
 from app.config import Settings, load_settings
 from app.repositories import summaries as summaries_repo
+from app.repositories import transcripts as transcripts_repo
 from app.repositories.summaries import NewSummary, SummaryRow
 from app.schemas.auth import UserVO
 from app.schemas.summary import SessionSummaryVO
@@ -57,7 +58,10 @@ LlmClient = Callable[[list[dict]], str]
 
 @dataclass(frozen=True)
 class SummaryInput:
-    """纪要素材（也是 `input_digest` 的来源，便于复核「用了多少料」）。"""
+    """纪要素材（也是 `input_digest` 的来源，便于复核「用了多少料」）。
+
+    r010：素材增加**语音转写**（R5「转写进纪要」）——转写与聊天/系统消息同列，按时间正序。
+    """
 
     room_id: str
     title: str
@@ -66,6 +70,7 @@ class SummaryInput:
     host_name: str
     member_lines: tuple[str, ...]
     message_lines: tuple[str, ...]
+    speech_lines: tuple[str, ...]
     digest: str
 
     def as_text(self) -> str:
@@ -76,6 +81,11 @@ class SummaryInput:
             f"房主：{self.host_name}\n\n"
             f"成员（{len(self.member_lines)} 人）：\n" + "\n".join(self.member_lines) + "\n\n"
             f"讨论记录（{len(self.message_lines)} 条）：\n" + "\n".join(self.message_lines)
+            + (
+                f"\n\n语音转写（{len(self.speech_lines)} 段，来自房间侧识别）：\n" + "\n".join(self.speech_lines)
+                if self.speech_lines
+                else "\n\n语音转写：（无）"
+            )
         )
 
 
@@ -133,7 +143,15 @@ def build_summary_input(conn: Connection, room_id: str) -> SummaryInput:
         + ("（系统）" if m.kind == "system" else "")
         for m in detail.messages
     )
-    digest = f"messages={len(message_lines)};members={len(member_lines)};topic={room.topic_label}"
+    # r010（R5）：把语音转写也交给纪要（只取最终稿；A/B 两条路径都落在 transcripts 表）
+    speech_lines = tuple(
+        f"[{found.transcript.started_at.strftime('%H:%M')}] {found.display_name}（语音）：{found.transcript.text}"
+        for found in reversed(transcripts_repo.list_transcripts(conn, room_id, limit=MESSAGE_LIMIT))
+    )
+    digest = (
+        f"messages={len(message_lines)};members={len(member_lines)};"
+        f"speech={len(speech_lines)};topic={room.topic_label}"
+    )
     return SummaryInput(
         room_id=room.id,
         title=room.title,
@@ -142,6 +160,7 @@ def build_summary_input(conn: Connection, room_id: str) -> SummaryInput:
         host_name=room.host_name,
         member_lines=member_lines,
         message_lines=message_lines,
+        speech_lines=speech_lines,
         digest=digest,
     )
 
