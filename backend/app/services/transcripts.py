@@ -1,4 +1,8 @@
-"""转写片段（r010 路径 B）：校验 → STT → 落库；只落最终稿。
+"""转写片段（r010）：两条落地路径。
+- **A 路径（本轮启用，ADR-0023）**：Agents worker 识别 → 前端回传最终稿文本段 → `ingest_segment` 落库（幂等键 = 官方 segment.id）；
+- **B 路径（保留不激活）**：本端上传音频 → `transcribe_segment` 调 STT 落库（幂等键 = 分段序号）。
+
+两条路径共用同一张表与同一套可见性规则；都只落最终稿（中间稿不落库）。
 
 设计事实源：`docs/rounds/r010-transcription/design.md` §2.4；决定见 ADR-0022；需求 `docs/00-requirements/r010-transcription.md`（R6 隐私）。
 口径：
@@ -38,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 TRANSCRIPT_LIMIT_DEFAULT = 200
 TRANSCRIPT_LIMIT_MAX = 200
+SEGMENT_TEXT_MAX_CHARS = 2000   # 单段文本上限（前端回传；超长即 400，防脏数据）
+AGENT_PROVIDER = "livekit"       # A 路径记为房间侧识别
 
 
 def _vo(item: repo.TranscriptRowWithName) -> TranscriptVO:
@@ -48,6 +54,7 @@ def _vo(item: repo.TranscriptRowWithName) -> TranscriptVO:
         speaker_id=row.speaker_id,
         speaker_name=item.display_name,
         segment_index=row.segment_index,
+        external_id=row.external_id,
         text=row.text,
         language=row.language,
         started_at=row.started_at,
@@ -156,6 +163,64 @@ def transcribe_segment(
     if row is None:
         raise AppError("INTERNAL", "写入后读不到转写段", status=500)
     return _vo(row)
+
+
+def ingest_segment(
+    conn: Connection,
+    actor: Optional[UserVO],
+    room_id: str,
+    *,
+    external_id: str,
+    speaker_identity: str,
+    text: str,
+    started_at: datetime,
+    duration_ms: int = 0,
+    language: str = "zh",
+) -> tuple[TranscriptVO, bool]:
+    """A 路径：落一段**最终稿**（前端回传）。
+
+    - 权限：`actor` 必须是本房**活跃成员**（与上传口径一致：未登录 401 → 404 → 409 → 403）；
+    - `speaker_identity` 必须**也是本房成员**（含已离开）——防止把外人写进房间记录；本项目身份＝`user_id`；
+    - 幂等：`(room_id, external_id)` 命中即返回已存在的那行（`created=False`）——**谁先到谁落**，多端冗余上报安全；
+    - `duration_ms` 允许为 0（真 STT 的 startTime/endTime 可能缺省），落库前兜底为 1（表约束要求 > 0）。
+    """
+    settings = load_settings()
+    with conn.transaction():
+        _guard_upload(conn, actor, room_id)
+        if not external_id or len(external_id) > 128:
+            raise AppError(ERR_VALIDATION, "externalId 不合法", status=400)
+        members = rooms_service.list_members_for_visibility(conn, room_id)
+        if speaker_identity not in members:
+            raise AppError(ERR_VALIDATION, "说话人不是本房间成员", status=400)
+        body = (text or "").strip()
+        if not body:
+            raise AppError(ERR_VALIDATION, "转写文本为空", status=400)
+        if len(body) > SEGMENT_TEXT_MAX_CHARS:
+            raise AppError(ERR_VALIDATION, f"单段文本上限 {SEGMENT_TEXT_MAX_CHARS} 字", status=400)
+
+        existing = repo.get_by_external_id(conn, room_id, external_id)
+        if existing is not None:
+            return _vo(existing), False
+
+        repo.insert_transcript(
+            conn,
+            NewTranscript(
+                id=new_id("trs"),
+                room_id=room_id,
+                speaker_id=speaker_identity,
+                text=body,
+                language=(language or "zh"),
+                started_at=started_at,
+                duration_ms=max(1, int(duration_ms or 0)),
+                provider=AGENT_PROVIDER,
+                model=settings.stt_agent_name,
+                external_id=external_id,
+            ),
+        )
+    row = repo.get_by_external_id(conn, room_id, external_id)
+    if row is None:
+        raise AppError("INTERNAL", "写入后读不到转写段", status=500)
+    return _vo(row), True
 
 
 def list_transcripts(

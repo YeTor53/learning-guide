@@ -33,6 +33,11 @@ DEFAULT_STT_MODEL = "whisper-1"
 DEFAULT_STT_SEGMENT_SECONDS = 8          # 前端建议分段（回给前端，改一处即生效）
 DEFAULT_STT_MAX_SECONDS = 30             # 单段时长上限（秒）
 DEFAULT_STT_MAX_BYTES = 10 * 1024 * 1024  # 单段体积上限
+# r010 换轨（ADR-0023）：转写识别侧。agent = LiveKit Agents worker（默认）；backend = 本端上传音频；off = 关闭
+VALID_STT_MODES = ("agent", "backend", "off")
+DEFAULT_STT_MODE = "agent"
+DEFAULT_STT_AGENT_NAME = "learning-guide-transcriber"
+DEFAULT_STT_MAX_SESSIONS = 5            # 免费档 Inference STT 并发上限（worker 侧护栏）
 LIVEKIT_TOKEN_TTL_SECONDS = {"cloud": 3600, "self": 300}
 DEFAULT_LIVEKIT_TIMEOUT_SECONDS = 10
 
@@ -62,6 +67,9 @@ class Settings:
     stt_segment_seconds: int = DEFAULT_STT_SEGMENT_SECONDS
     stt_max_seconds: int = DEFAULT_STT_MAX_SECONDS
     stt_max_bytes: int = DEFAULT_STT_MAX_BYTES
+    stt_mode: str = DEFAULT_STT_MODE
+    stt_agent_name: str = DEFAULT_STT_AGENT_NAME
+    stt_max_sessions: int = DEFAULT_STT_MAX_SESSIONS
 
     @property
     def is_demo(self) -> bool:
@@ -131,6 +139,10 @@ def validate_startup(s: Settings) -> None:
         raise AppError(ERR_CONFIG_MISSING, "STT_MAX_SECONDS 必须在 1~120 秒之间", status=500)
     if s.stt_max_bytes < 1024:
         raise AppError(ERR_CONFIG_MISSING, "STT_MAX_BYTES 至少 1024 字节", status=500)
+    if s.stt_mode not in VALID_STT_MODES:
+        raise AppError(ERR_CONFIG_MISSING, f"STT_MODE 只能是 {'/'.join(VALID_STT_MODES)}", status=500)
+    if not (1 <= s.stt_max_sessions <= 50):
+        raise AppError(ERR_CONFIG_MISSING, "STT_MAX_SESSIONS 必须在 1~50 之间", status=500)
 
 
 @lru_cache(maxsize=1)
@@ -161,6 +173,9 @@ def load_settings() -> Settings:
         stt_segment_seconds=int(require_env("STT_SEGMENT_SECONDS", str(DEFAULT_STT_SEGMENT_SECONDS))),
         stt_max_seconds=int(require_env("STT_MAX_SECONDS", str(DEFAULT_STT_MAX_SECONDS))),
         stt_max_bytes=int(require_env("STT_MAX_BYTES", str(DEFAULT_STT_MAX_BYTES))),
+        stt_mode=_optional_env("STT_MODE", DEFAULT_STT_MODE),
+        stt_agent_name=_optional_env("STT_AGENT_NAME", DEFAULT_STT_AGENT_NAME),
+        stt_max_sessions=int(require_env("STT_MAX_SESSIONS", str(DEFAULT_STT_MAX_SESSIONS))),
     )
     validate_startup(settings)
     return settings

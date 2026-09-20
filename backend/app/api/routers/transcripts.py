@@ -1,14 +1,15 @@
-"""转写接口（r010 路径 B；路由薄壳：取依赖 → 调 service → 信封）。
+"""转写接口（r010；路由薄壳：取依赖 → 调 service → 信封）。
 
-设计事实源：`docs/rounds/r010-transcription/design.md` §2.5；决定见 ADR-0022。
-只有两条：上传一段（multipart）与按房间读（列表）。三源合一的 `/conversation` 在 cp-2 落。
+设计事实源：`docs/rounds/r010-transcription/design.md` §2.5（B 路径）与 §9.3.4（A 路径）；决定见 ADR-0023。
+- A 路径（本轮启用）：`POST /rooms/{id}/transcripts/segments`（前端回传最终稿文本）+ `GET /stt/status`；
+- B 路径（保留不激活）：`POST /rooms/{id}/transcripts`（音频 multipart，`STT_MODE=backend` 时才有意义）。
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from psycopg import Connection
 
 from app.api.deps import current_user, db_conn
@@ -16,6 +17,7 @@ from app.api.envelope import ok
 from app.api.errors import ERR_VALIDATION, AppError
 from app.config import load_settings
 from app.schemas.auth import UserVO
+from app.schemas.transcripts import SegmentIn
 from app.services import transcripts as transcripts_service
 
 router = APIRouter(tags=["transcripts"])
@@ -66,6 +68,51 @@ async def upload_transcript(
         language=language,
     )
     return ok(_dump(item), status=201)
+
+
+@router.post("/rooms/{room_id}/transcripts/segments", status_code=201)
+def ingest_segment(
+    room_id: str,
+    payload: SegmentIn,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """A 路径：接收前端回传的转写段。
+
+    - `final=false`（中间稿）→ **204 且不落库**（只落最终稿，ADR-0022 D3）；
+    - `final=true` → 201 `{transcript, created}`；同 `externalId` 重复上报 → `created=false`（幂等）。
+    """
+    if not payload.final:
+        return Response(status_code=204)
+    item, created = transcripts_service.ingest_segment(
+        conn,
+        actor,
+        room_id,
+        external_id=payload.external_id,
+        speaker_identity=payload.speaker_identity,
+        text=payload.text,
+        started_at=payload.started_at,
+        duration_ms=payload.duration_ms,
+        language=payload.language,
+    )
+    return ok({"transcript": _dump(item), "created": created}, status=201)
+
+
+@router.get("/stt/status", status_code=200)
+def read_stt_status(
+    actor: UserVO = Depends(current_user),
+):
+    """转写配置状态（前端据此显示"转写：开启/未开启"，不报错、不伪装）。"""
+    settings = load_settings()
+    return ok(
+        {
+            "mode": settings.stt_mode,
+            "agentName": settings.stt_agent_name,
+            "maxSessions": settings.stt_max_sessions,
+            "segmentSeconds": settings.stt_segment_seconds,
+        },
+        status=200,
+    )
 
 
 @router.get("/rooms/{room_id}/transcripts", status_code=200)

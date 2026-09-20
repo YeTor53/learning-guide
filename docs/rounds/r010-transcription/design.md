@@ -182,6 +182,7 @@ def build_conversation(conn, actor: UserVO, room_id: str, *, limit: int = 200) -
 
 > **本节取代** §1~§4 中与「路径 B（本端上传音频）」相关的实现细节：迁移改为 010（§9.3.1）、后端不再需要 `STT_*` 才能工作（§9.3.4）、前端不再做 MediaRecorder 分段（§9.4）。**§4 失败与边界、§5 教学契约、§6 文档产出**中与 B 路径绑定的条目按本节口径改写。依据：`spike-01-path-a.md`（实测）+ `cr-02.md`（换轨 CR）+ `ADR-0023`（proposed）。
 > 三条已核事实：`identity = user_id`（ADR-0011 条 2）、**LiveKit 房间名 = `rooms.id`**、建房可带 `RoomAgentDispatch`。
+> **状态：已批（2026-09-20）**，`cr-02` accepted、`ADR-0023` accepted。**验证纪律（你 2026-09-20 定）**：不再花配额做实验——后端用例全用桩、worker 支持 `STT_MODE=fake` 离线自测、真机 E2E 默认假 STT（零配额）。
 
 ### 9.1 拓扑与运行形态（最小演示）
 

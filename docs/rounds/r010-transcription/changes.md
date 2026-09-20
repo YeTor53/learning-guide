@@ -19,8 +19,8 @@ updated: 2026-09-20
 | spike-01 | 路径 A（Agents 侧转写）实测：独立环境 + 一次性脚本，主线零改动 | **完成 2026-09-20** | 见 spike 报告（未进主线提交，只提交文档） | `spike-01-path-a.md` |
 | cp-r010-0b | **阶段 1 契约补齐**：design 加 §3.2 视觉契约（3 个新令牌 / 动效清单 / 界面文案 / 一次视觉验收动作）+ §5 教学契约；需求单加 §2.1 界面口径卡七项；design 状态 `approved` → **`draft`（等你读完再批）** | **完成 2026-09-20** | 见 cp-0b 提交 | 契约核对（见 §3.0） |
 | cp-r010-1 | 迁移 009 + `services/stt.py`（唯一出口、可打桩）+ `repositories/transcripts.py` + 上传/列表路由 + 用例 | **完成 2026-09-20**（含 CR r010-01 依赖处置：装 `python-multipart==0.0.32`） | 见 cp-1 提交 | E1/E2/E3 |
-| cp-r010-2a | 迁移 010（`external_id` 幂等键）+ `ingest_segment` + `/transcripts/segments` + `/api/stt/status` + 派单能力 + 用例（含并发幂等） | planned（换轨后口径，见 design §9.3/§9.8） | — | E2/E3/E6/E14 |
-| cp-r010-2w | 转写 worker：`backend/agents/transcriber.py` + `requirements-agents.txt` + `agents.bat` + 探活说明 | planned（design §9.2） | — | 3 人房识别成功 |
+| cp-r010-2a | 迁移 010（`external_id` 幂等键）+ `ingest_segment` + `/transcripts/segments` + `/api/stt/status` + 派单能力 + 用例（含并发幂等） | **完成 2026-09-20** | 见 cp-2a 提交 | E2/E3/E6/E14（用例 9 条，全量 **152 passed**） |
+| cp-r010-2w | 转写 worker：`backend/agents/transcriber.py` + `requirements-agents.txt` + `agents.bat` + `backend/scripts/dispatch_agent.py` | **完成 2026-09-20**（离线自检通过；真机联调见 cp-5，默认用假 STT 零配额） | 见 cp-2w 提交 | 离线自检：FakeSTT 1.3s 出 3 条 |
 | cp-r010-2 | 三源合一：`build_conversation` + `GET /conversation` + 前端 `ConversationPanel` | planned（架构不变，可能并入 cp-2a） | — | E4 |
 | cp-r010-3 | 前端：**监听 `TranscriptionReceived` 渲染 + 上报 final 段**（不再 MediaRecorder 分段）+ 告知条文案改写 + 闸门状态 + 气泡 | planned（design §9.4） | — | E5/E13 |
 | cp-r010-4 | 纪要接上转写素材 | planned | — | E7 |
@@ -53,6 +53,19 @@ updated: 2026-09-20
 - **口径卡七项全有值**（含"不适用 + 理由"项：外部参考物不适用）；
 - 设计小节顺序 1~7（插入位置修正过一次：初版误把 §5 插到 §4 之前，已改正）；
 - 说明：本次只落**契约文字**，样式代码一行未动（按界面类轮次规矩：视觉契约未批不动样式）。
+
+### 3.0c cp-2a / cp-2w（2026-09-20 实测，**零外部调用**）
+
+**cp-2a 后端（换轨后口径）**
+- 迁移：`python backend/scripts/db_init.py` → `本次应用版本：010_r010_agent_transcripts`；`schema_migrations = 10`。
+- 用例：`pytest backend/tests/test_transcript_segments.py -q` → **8 passed**；全量 `pytest backend/tests -q` → **152 passed**（47.01s，原 143 + 新增 9）。
+- 覆盖：401/403/404；说话人必须是本房成员（400）；成功落库（`segmentIndex = NULL`、`provider = livekit`、`durationMs` 原样）；**同 `externalId` 重复上报 → `created=false` 且库里仍 1 行**；`final=false` → **204 不落库**；`durationMs=0` → 兜底为 1；文本超 2000 字 → 400；`startedAt` 非法 → 400；房间结束 → 409 且**已落转写仍可读**；`GET /api/stt/status` → `mode=agent / agentName=learning-guide-transcriber / maxSessions=5`；建房触发一次派单（spy 断言）。
+- **纪律落实**：`conftest.py` 加 autouse 桩 `livekit.ensure_transcriber`（用例**零外部调用、零配额**）；需要断言的用例自行覆盖为 spy。
+
+**cp-2w worker**
+- 离线自检（`lg_agents` 环境，无网络）：`FakeSTT` 1.3 秒出 **3 条**最终稿；常量 `AGENT_NAME=learning-guide-transcriber / MAX_SESSIONS=5`。
+- 组件：worker 主体 + `requirements-agents.txt`（独立环境，**不进主环境**）+ `agents.bat`（`AGENT_STT=fake|inference` 一键切换）+ `backend/scripts/dispatch_agent.py`（给已有房补派单）。
+- 并发护栏：只给**有音频轨**的参与者开会话；`MAX_SESSIONS=5` 超限告警跳过。
 
 ### 3.1 cp-1（2026-09-20 实测）
 
