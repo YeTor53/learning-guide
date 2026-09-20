@@ -41,7 +41,7 @@ updated: 2026-09-20
 5. **渐进字幕（B 路径没有的能力）**：同一条 STT 输出在前端表现为 **`final=false` 的渐进片段 → `final=true` 的定稿**（示例：`一章` → `第一章线性回归等` → `第一章线性回归的基本思想`），即官方 `synchronizer` 直接给了"逐字上屏"。
 6. **延迟（端到端，含 LiveKit Cloud 日本节点往返）**：假 STT 模式 22 条配对样本 **中位 257~267ms、最小 254ms、最大 1170~2426ms**；真 STT 模式官方日志自带 `transcript_delay: 0.5516s`。
 7. **真语音识别（真 STT 全链路）**：`inference.STT("deepgram/nova-3")` **直通**——**无需我们自备 STT key**（走 LiveKit Cloud Inference）；识别结果「今天我们先讲第一张线性回归的基本思想。」（TTS 同音字「章」→「张」，其余准确），三端都收到。
-8. **边界（如实）**：① 不发麦克风的观察者**不产生**房间转写，但 worker 仍为它建了 session（空转，属可优化点）；② 全程无 `ERROR`/异常；③ **未测**：8 人满员、worker 掉线/重启中断、长时（>1 小时）稳定性、计费与配额。
+8. **边界（如实）**：① 不发麦克风的观察者**不产生**房间转写，但 worker 仍为它建了 session（空转，属可优化点）；② 全程无 `ERROR`/异常；③ **未测**：8 人满员、worker 掉线/重启中断、长时（>1 小时）稳定性；**配额与单价已查证并写入 §8**（项目实际扣减需看控制台）。
 
 ## 4. 对 A/B 对比的修正（我此前有两处估计偏保守）
 
@@ -74,8 +74,55 @@ python %TEMP%\lg_r010_spikeA\mint.py [房间名]              # 建房 + 派单 
 C:\ProgramData\miniconda3\python.exe %TEMP%\lg_r010_spikeA\drive.py   # Playwright 三端取证
 ```
 
+
+## 8. 配额与成本（2026-09-20 查证，来源：`livekit.io/pricing`、`livekit.io/pricing/inference`、`docs.livekit.io/home/cloud/quotas-and-limits/`，均以渲染后的页面原文为准）
+
+### 8.1 免费档（Build，$0/mo，无需信用卡）的额度与上限（官方原文）
+
+| 项 | 免费档额度/上限 | 原话（节选） |
+| --- | --- | --- |
+| Agent session minutes | **1,000 分钟/月** | 「1,000 free agent session minutes monthly」；定义＝agent 连到 WebRTC/电话会话的活跃时间 |
+| LiveKit Inference | **$2.50 额度/月** | 「The monthly included allowance for LiveKit Inference is expressed in credits, measured in USD」 |
+| Inference STT 并发 | **5 条连接** | 「Active STT connections to LiveKit Inference models. 5 connections」 |
+| WebRTC participant minutes | 5,000/月 | — |
+| 下游流量 | 50 GB/月 | 「Downstream data transfer GB」 |
+| Agent 可观测事件 | 100,000/月；**1,000 事件/分钟**限流 | — |
+| 全站 Participant 并发 | 100 | 「Total number of connected agents and end-users across all rooms」 |
+
+### 8.2 STT 单价（每音频分钟，Build/Ship 档）
+
+| 供应商/模型 | 单价 | 备注 |
+| --- | --- | --- |
+| AssemblyAI Universal-Streaming | **$0.0025/min** | 表内最便宜 |
+| Cartesia Ink Whisper | $0.0030/min | |
+| SpaceXAI Speech to Text | $0.0033/min | |
+| **Deepgram Nova-3 (Monolingual)** | **$0.0048/min** | **本次 spike 用的就是它**（Scale 档 $0.0042） |
+| Deepgram Nova-3 (Multilingual) | $0.0058/min | 中文/多语种 |
+| Google Gemini 3.5 Transcribe Live | $0.0095/min | 表内最贵 |
+
+### 8.3 我们场景的估算（口径写明，便于复核）
+
+| 场景 | 用量 | 按 Nova-3 $0.0048/min | 按最便宜 AssemblyAI $0.0025/min |
+| --- | --- | --- | --- |
+| 3 人 × 1 小时讨论 | 3 路音频 × 60 分钟 = **180 音频分钟** | **≈ $0.86/场** | ≈ $0.45/场 |
+| 8 人 × 1 小时（满员） | **480 音频分钟** | ≈ $2.30/场 | ≈ $1.20/场 |
+| 免费档 $2.50 额度能撑多久 | — | **约 2.9 场**（3 人 1 小时）或约 520 音频分钟 | 约 5.8 场 |
+
+> 注：官方在 Inference 页给的估算是「$2.50 in credits ≈ **~50 minutes**」——比按上表单价的算术保守得多（它按"混合模型价"估）。**以控制台实际扣减为准**，我这里两种口径都列。
+
+### 8.4 三个必须知道的硬约束（对选型有直接影响）
+
+1. **免费档 Inference STT 并发只有 5 条** —— 本项目房容量是 **8**，而 A 路径是「每个参与者一条 STT 连接」：**8 人满员会超限**（本次 spike 3 人 = 3 条，未撞到）。要么「按需连接」（只给正在说话的参与者连 STT，VAD 门控），要么升档（Ship 20 并发 / Scale 50）。
+2. **Agent session minutes 的计费单位待核实**：官方定义是「agent 连到会话的活跃时间」。我的 spike 实现是**每个参与者一个 `AgentSession`**，若按 session 计费则是 3 人 × 60 分钟 = 180 分钟/场 → **免费档约 5 场/月**；若按"agent 连房时间"计则是 60 分钟/场 → 约 16 场/月。**这条要以账单为准**（我无法从 API 读账单；需在你的 LiveKit Cloud 控制台看 Usage/Billing）。
+3. **免费额度是月度的**（每项资源各自一份），超了按上表单价计费；$0 档不能创建自定义音色（与转写无关，仅记录）。
+
+### 8.5 项目当前实际余额/档位
+
+本机**读不到**（LiveKit 无公开账单 API），需你在控制台看：LiveKit Cloud → 项目 `learning-guide-2t4uq5f2` → **Usage / Billing**。本次 spike 的 Inference 调用**成功且无鉴权/配额报错**，说明当前账号至少可用（是否已扣减 $2.50 额度、扣了多少，只能看控制台）。
+
 ## 7. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1 | 建页：两个问题 + 8 条实测证据 + A/B 对比修正 + 三种落地选项 | 你 2026-09-20「那就测试一下A」；本轮实测日志与报告 JSON |
+| 2026-09-20 | v2 | 补 **§8 配额与成本**（免费档额度、STT 单价表、我们场景估算、三条硬约束、控制台自查位置） | 你 2026-09-20「搜一下配额」；三个官方页面渲染后原文 |
