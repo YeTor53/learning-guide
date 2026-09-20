@@ -240,6 +240,10 @@ class TranscriberPool:
             return
         if pid.startswith("agent-") or not self._has_audio(participant):
             return
+        # r012（ADR-0024 D3）：超管不发布音视频，也不进转写与纪要素材。
+        # `hidden` 参与者通常对 worker 本就不可见，这里按 Token 属性再挡一次（双保险）。
+        if (getattr(participant, "attributes", None) or {}).get("lg-role") == "superadmin":
+            return
         if len(self._sessions) + len(self._pending) >= MAX_SESSIONS:
             logger.warning("已达 MAX_SESSIONS=%d，跳过 %s（免费档并发护栏）", MAX_SESSIONS, pid)
             return

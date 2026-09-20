@@ -34,6 +34,11 @@ def issue_token(
     settings: Optional[Settings] = None,
     ttl_seconds: Optional[int] = None,
     max_participants: Optional[int] = None,
+    *,
+    hidden: bool = False,
+    attributes: Optional[dict[str, str]] = None,
+    can_publish: bool = True,
+    can_publish_data: bool = True,
 ) -> str:
     """签一张进房 Token（JWT，本地签名，不联网）。
 
@@ -41,6 +46,11 @@ def issue_token(
     - `room_admin` 仅 Host 为真；
     - TTL 默认按模式派生（cloud 3600 / self 300，ADR-0011 条 3）；
     - `RoomConfiguration.max_participants` 取 `settings.room_capacity`（ADR-0011 条 9 的兜底闸）。
+
+    r012 新增（ADR-0024；**普通成员一律走默认值，行为不变**）：
+    - `hidden=True` → `VideoGrants.hidden`：对**其他参与者不可见**（超管隐身，实测字段存在于 livekit-api 1.2.1）；
+    - `attributes` → `AccessToken.with_attributes`：随参与者广播的键值（本项目用 `lg-role` 给转写 worker 做过滤）；
+    - `can_publish` / `can_publish_data`：超管关掉发布（不发音频/视频/数据通道）——音视频走 LiveKit 计费，超管只管理。
     """
     s = _settings(settings)
     ttl = ttl_seconds if ttl_seconds is not None else s.livekit_token_ttl_seconds
@@ -48,20 +58,23 @@ def issue_token(
     grants = api.VideoGrants(
         room_join=True,
         room=room_name,
-        can_publish=True,
+        can_publish=can_publish,
         can_subscribe=True,
-        can_publish_data=True,
+        can_publish_data=can_publish_data,
         room_admin=(role == "host"),
+        hidden=True if hidden else None,   # None = 不写该 claim（保持旧 Token 形状）
     )
-    return (
+    token = (
         api.AccessToken(s.livekit_api_key, s.livekit_api_secret)
         .with_identity(user_id)
         .with_name(display_name)
         .with_grants(grants)
         .with_room_config(api.RoomConfiguration(max_participants=capacity))
         .with_ttl(timedelta(seconds=ttl))
-        .to_jwt()
     )
+    if attributes:
+        token = token.with_attributes(attributes)
+    return token.to_jwt()
 
 
 def _run(call: Callable[[api.LiveKitAPI], Any], settings: Optional[Settings] = None) -> Any:

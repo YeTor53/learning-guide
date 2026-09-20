@@ -49,6 +49,7 @@ from app.schemas.rooms import (
     TransferHostResult,
 )
 from app.services import livekit as livekit_service
+from app.services import roles as roles_service
 from app.security.ids import new_code, new_id
 
 logger = logging.getLogger("app")
@@ -113,8 +114,29 @@ def _room_vo(
 
 
 def _visible_pending_count(my_role: Optional[str], pending_count: int) -> int:
-    """待批申请数只对房主/协管有意义（功能页 FQ-4：服务端强制，非管理者一律返回 0）。"""
-    return pending_count if my_role in MANAGER_ROLES else 0
+    """待批申请数只对房主/协管有意义（功能页 FQ-4：服务端强制，非管理者一律返回 0）。
+
+    r012：超管视为管理者（`my_role='superadmin'`，ADR-0024 D4）。
+    """
+    return pending_count if my_role in (*MANAGER_ROLES, roles_service.SUPERADMIN) else 0
+
+
+def _virtual_admin_member(actor: UserVO, room_id: str) -> repo.MemberRow:
+    """超管的**虚拟成员行**：只让既有调用点读到 `role='host'`，**永不写库**（ADR-0024 D4）。
+
+    `id` 故意留空串（一眼看出不是真成员行）；`joined_at` 取当前时间。审计与留痕由
+    `admin_audit`（cp-4）与房内系统消息承担，不依赖这张虚拟行。
+    """
+    return repo.MemberRow(
+        id="",
+        room_id=room_id,
+        user_id=actor.id,
+        role="host",
+        status="active",
+        exit_reason=None,
+        joined_at=_now(),
+        left_at=None,
+    )
 
 
 def _member_vo(item: repo.MemberRowWithName) -> MemberVO:
@@ -189,6 +211,17 @@ def _auto_reject_pending(conn: Connection, room: RoomRow, actor: UserVO) -> int:
     return rejected
 
 
+def _record_admin_visit(conn: Connection, room_id: str, user_id: str) -> None:
+    """r012：超管进房记账（`room_visits`，天然隐身与不占人数）。
+
+    已有未关闭记录即复用（不重复插；`ux_room_visits_open` 唯一索引兜底并发）。
+    """
+    if repo.has_open_visit(conn, room_id, user_id):
+        return
+    with conn.transaction():
+        repo.insert_room_visit(conn, repo.NewRoomVisit(id=new_id("visit"), room_id=room_id, user_id=user_id))
+
+
 def assert_room_active(room: Optional[RoomRow]) -> RoomRow:
     """存在否则 `NOT_FOUND`；`active` 否则 `ROOM_ENDED`（前置拦截按此顺序）。"""
     if room is None:
@@ -199,13 +232,34 @@ def assert_room_active(room: Optional[RoomRow]) -> RoomRow:
 
 
 def assert_room_role(conn: Connection, actor: Optional[UserVO], room_id: str, allowed: Sequence[str]) -> MemberRow:
-    """未登录 `UNAUTHORIZED`；非活跃成员 / 角色不符 `FORBIDDEN`。"""
+    """未登录 `UNAUTHORIZED`；非活跃成员 / 角色不符 `FORBIDDEN`；**超管旁路**（ADR-0024 D4）。
+
+    超管旁路：房间存在即放行（返回不落库的虚拟成员行）；房间不存在仍 404 —— 不因超管身份凭空造房。
+    """
     if actor is None:
         raise AppError(ERR_UNAUTHORIZED, "请先登录", status=401)
+    if roles_service.is_superadmin(actor):
+        if repo.get_room(conn, room_id) is None:
+            raise AppError(ERR_NOT_FOUND, "房间不存在", status=404)
+        return _virtual_admin_member(actor, room_id)
     member = repo.get_active_member(conn, room_id, actor.id)
     if member is None or member.role not in allowed:
         raise AppError(ERR_FORBIDDEN, "你没有该操作的权限", status=403)
     return member
+
+
+def effective_role(conn: Connection, actor: Optional[UserVO], room_id: str) -> Optional[str]:
+    """对外视角的「我的身份」（列表/详情填 `myRole`）：超管 → `'superadmin'`，否则在册成员角色。
+
+    前端据此显示治理入口与管理后台链接；**服务端仍按 `assert_room_role` 强制校验**，
+    前端可见性不是安全边界（ADR-0024 D1）。
+    """
+    if actor is None:
+        return None
+    if roles_service.is_superadmin(actor):
+        return roles_service.SUPERADMIN
+    member = repo.get_active_member(conn, room_id, actor.id)
+    return member.role if member is not None else None
 
 
 def assert_room_exists(conn: Connection, room_id: str) -> RoomWithHost:
@@ -229,6 +283,8 @@ def assert_manager_role(conn: Connection, actor: Optional[UserVO], room: RoomRow
     """
     if actor is None:
         raise AppError(ERR_UNAUTHORIZED, "请先登录", status=401)
+    if roles_service.is_superadmin(actor):     # r012：超管视为管理者（ADR-0024 D4）
+        return
     member = repo.get_active_member(conn, room.id, actor.id)
     if member is not None and member.role in MANAGER_ROLES:
         return
@@ -288,12 +344,13 @@ def list_rooms(conn: Connection, actor: Optional[UserVO], f: repo.RoomFilter) ->
     items, total = repo.list_rooms(conn, f)
     room_ids = [item.room.id for item in items]
     aggregates = repo.room_aggregates(conn, room_ids)
-    roles = repo.my_active_roles(conn, actor.id, room_ids) if actor else {}
+    is_admin = roles_service.is_superadmin(actor)
+    roles = {} if is_admin else (repo.my_active_roles(conn, actor.id, room_ids) if actor else {})
     pending = repo.my_pending_requests(conn, actor.id, room_ids) if actor else set()
     result: list[RoomListItem] = []
     for item in items:
         member_count, pending_count = aggregates.get(item.room.id, (0, 0))
-        my_role = roles.get(item.room.id)
+        my_role = roles_service.SUPERADMIN if is_admin else roles.get(item.room.id)
         result.append(
             RoomListItem(
                 **_room_vo(
@@ -315,9 +372,10 @@ def get_room_detail(conn: Connection, actor: Optional[UserVO], room_id: str) -> 
         raise AppError(ERR_NOT_FOUND, "房间不存在", status=404)
     aggregates = repo.room_aggregates(conn, [room_id])
     member_count, pending_count = aggregates.get(room_id, (0, 0))
-    roles = repo.my_active_roles(conn, actor.id, [room_id]) if actor else {}
+    is_admin = roles_service.is_superadmin(actor)
+    roles = {} if is_admin else (repo.my_active_roles(conn, actor.id, [room_id]) if actor else {})
     pending = repo.my_pending_requests(conn, actor.id, [room_id]) if actor else set()
-    my_role = roles.get(room_id)
+    my_role = roles_service.SUPERADMIN if is_admin else roles.get(room_id)
     # 待批申请 id：本人可见（撤回入口用；r007 修前前端走管理权限接口 → 申请人一律 403）
     my_request = repo.get_pending_request(conn, room_id, actor.id) if actor else None
     # 含已失效成员身份的角色（房间结束后 my_role 为空，但追溯动作如「生成纪要」仍需要）——r008
@@ -487,6 +545,10 @@ def leave_room(conn: Connection, actor: UserVO, room_id: str) -> None:
     with conn.transaction():
         room_row = repo.lock_room(conn, room_id)
         assert_room_active(room_row)
+        if roles_service.is_superadmin(actor):
+            # r012：超管没有成员行，离开只收口访问记录（幂等；没进过房也不报错）
+            repo.close_room_visit(conn, room_id, actor.id, _now())
+            return
         member = repo.get_active_member(conn, room_id, actor.id)
         if member is None:
             raise AppError(ERR_NOT_MEMBER, "你不在该房间中", status=409)
@@ -506,6 +568,7 @@ def end_room(conn: Connection, actor: UserVO, room_id: str) -> RoomVO:
         repo.update_room_ended(conn, room_id, ended_at)
         repo.deactivate_all_members(conn, room_id, ended_at)
         repo.cancel_pending_requests(conn, room_id, ended_at)
+        repo.close_all_visits(conn, room_id, ended_at)   # r012：超管访问记录一并收口
         # r004（M3）：清空活跃举手（同一个事务，与上面三项并列的连带动作）
         extras_repo.lower_all_hands(conn, room_id)
         _system_message(conn, room_id, actor.id, "房间已结束")
@@ -536,10 +599,31 @@ def issue_room_token(conn: Connection, actor: Optional[UserVO], room_id: str) ->
         raise AppError(ERR_NOT_FOUND, "房间不存在", status=404)
     if room.room.status != "active":
         raise AppError(ERR_ROOM_ENDED, "该房间已结束，仅可查看历史内容", status=409)
+    settings = load_settings()
+    if roles_service.is_superadmin(actor):
+        # r012（ADR-0024 D2/D3）：超管免「活跃成员」校验（可进满员房），Token 隐身且**不许发布**。
+        _record_admin_visit(conn, room_id, actor.id)
+        token = livekit_service.issue_token(
+            room_id,
+            actor.id,
+            actor.display_name,
+            "participant",          # 不借 LiveKit 管控权（room_admin=False）；管理能力一律走我方 HTTP
+            settings=settings,
+            max_participants=room.room.capacity,
+            hidden=True,
+            attributes={"lg-role": roles_service.SUPERADMIN},
+            can_publish=False,
+            can_publish_data=False,
+        )
+        return RoomTokenVO(
+            token=token,
+            url=settings.livekit_url,
+            room_name=room_id,
+            expires_in=settings.livekit_token_ttl_seconds,
+        )
     member = repo.get_active_member(conn, room_id, actor.id)
     if member is None:
         raise AppError(ERR_NOT_MEMBER, "你不在该房间中（或已被移出）", status=403)
-    settings = load_settings()
     # r005（ADR-0016）：人数上限由**本库在册成员**决定，已在申请/批准两处封顶；取票不再查 LiveKit
     # （省掉一次 0.8~1.8s 的外部调用，也消除「外部查询失败就放人」的洞）。
     # LiveKit 的 `max_participants` 仍写进 Token，但只作音视频承载兜底，不再是人数权威。

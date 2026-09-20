@@ -209,3 +209,18 @@ updated: 2026-09-17
 
 降级：`prefers-reduced-motion: reduce` 下取消上缘线展开、徽标与消息淡入、举手脉冲与所有尺寸过渡（仅保留颜色/透明度变化）。
 
+## 12.4 r012 令牌（右侧大屏面板 / 管理后台）
+
+事实源：`docs/02-modules/r012-superadmin-console.md`、ADR-0025；实现于 `frontend/src/styles/global.css` 末尾的 r012 参数区。
+
+| 令牌 | 默认值 | 作用 |
+| --- | --- | --- |
+| `--gc-w` | `360px` | 右侧大屏面板宽度（建议 320~420） |
+| `--gc-h` | `min(62vh, 560px)` | 消息列表最大高度 |
+| `--gc-offset` | `16px` | 面板与视口右缘的距离 |
+| `--gc-row-gap` | `var(--s-2)` | 消息行间距 |
+| `--ad-pad-y` / `--ad-pad-x` | `10px` / `12px` | 后台表格单元格内边距（密度） |
+
+动效：右侧面板展开/收起 = 宽度位移 + 透明度，`--t-base` + `--ease`；面板内新消息沿用既有 `--msg-enter`；后台表格行 hover 用 `--t-fast` 提亮（`--accent-soft`）。
+降级：`prefers-reduced-motion: reduce` 下面板直接显示/隐藏（无位移过渡）；窄屏（≤900px）面板改为整屏覆盖（`right/left/top/bottom: 0`）。
+

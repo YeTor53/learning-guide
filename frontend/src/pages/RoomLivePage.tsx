@@ -7,13 +7,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ArrowLeft, BellRing, Crosshair, Loader2, MonitorUp, PanelRightOpen, RotateCw } from 'lucide-react'
+import { AlertCircle, ArrowLeft, BellRing, Crosshair, Loader2, MonitorUp, PanelRightOpen, RotateCw, ShieldCheck } from 'lucide-react'
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react'
 
 import { request } from '../api/http'
 import { ApiError } from '../api/http'
 import { livekitApi } from '../api/livekit'
-import { roomsApi, type Member, type Role } from '../api/rooms'
+import { roomsApi, type Member, type Role, type ViewerRole } from '../api/rooms'
 import DeviceBar from '../components/live/DeviceBar'
 import LiveStage from '../components/live/LiveStage'
 import RoomSidePanel from '../components/live/RoomSidePanel'
@@ -68,13 +68,14 @@ export default function RoomLivePage() {
   })
   const room = detail.data?.room
   const members: Member[] = detail.data?.members ?? []
-  const myRole: Role | null = room?.myRole ?? null
+  const myRole: ViewerRole | null = room?.myRole ?? null
   const canJoin = Boolean(room && room.status === 'active' && myRole)
 
   const tokenQuery = useRoomToken(id, canJoin)
   const connection = useRoomConnection()
   const speaker = useActiveSpeaker(connection.room)
-  const devices = useLocalDeviceState(connection.room, connection.status)
+  // r012：超管不发布音视频（Token canPublish=false），设备层直接不启用
+  const devices = useLocalDeviceState(connection.room, connection.status, myRole !== 'superadmin')
   const onlineIds = useOnlineIdentities(connection.room, connection.status)
   const micStates = useMicStates(connection.room) // r006：麦徽标的真实状态源（ADR-0017 D1）
   const micLevel = useMicLevel(connection.room, devices.micEnabled && connection.status === 'connected')
@@ -257,6 +258,9 @@ export default function RoomLivePage() {
   const refreshRoster = () => {
     void queryClient.invalidateQueries({ queryKey: ['live-room', id] })
     void queryClient.invalidateQueries({ queryKey: ['live-room-requests', id] })
+    // 治理动作（批准 / 移出 / 离开 / 结束）会由服务端写入系统消息；连带拉一次聊天流，
+    // 由 `useChatMessages` 把新出现的系统消息补广播给在场所有人（cp-8c）。
+    void chat.refresh()
   }
   /** 本端做完房间动作后广播一次：让别端秒级跟上（收端在 useRosterSync 里）。 */
   const broadcastRoster = useRosterSync(connection.room, liveReady, refreshRoster)
@@ -456,7 +460,16 @@ export default function RoomLivePage() {
           </div>
         )}
 
-        {liveReady && transcribe.mode !== 'off' && <TranscribeNotice onMicOff={() => void devices.toggleMic()} />}
+        {myRole === 'superadmin' && (
+          <div className="live-notice live-superadmin-notice" role="status">
+            <ShieldCheck {...ICON} />
+            管理视角：你以隐身方式在场（不出现在成员列表与舞台、不计入人数），不发布音视频，只做管理。
+          </div>
+        )}
+
+        {liveReady && transcribe.mode !== 'off' && myRole !== 'superadmin' && (
+          <TranscribeNotice onMicOff={() => void devices.toggleMic()} />
+        )}
 
         {connection.reason && (
           <div className="alert alert-warn live-alert" role="status">
@@ -499,6 +512,7 @@ export default function RoomLivePage() {
               sharing={screen.sharing}
               onStopShare={() => void screen.stop()}
               handIds={hands.hands.map((item) => item.userId)}
+              excludeIdentity={myRole === 'superadmin' ? localIdentity : null}
               canGrant={canManage}
               onGrantFocus={(identity) => void grantFocusFromHand(identity)}
               onLowerHand={(identity) => void hands.lowerOther(identity)}
@@ -591,7 +605,8 @@ export default function RoomLivePage() {
           micEnabled={devices.micEnabled}
           camEnabled={devices.camEnabled}
           micLevel={micLevel}
-          isHost={myRole === 'host'}
+          isHost={myRole === 'host' || myRole === 'superadmin'}
+          superadminMode={myRole === 'superadmin'}
           disabled={connection.status === 'connecting' || connection.status === 'reconnecting'}
           idle={chromeIdle}
           confirmingLeave={confirmingLeave}

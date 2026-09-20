@@ -34,6 +34,8 @@ interface Props {
   canGrant?: boolean
   onGrantFocus?: (identity: string) => void
   onLowerHand?: (identity: string) => void
+  /** r012：舞台不渲染这个 identity（超管隐身：自己也不占格）。 */
+  excludeIdentity?: string | null
 }
 
 /** callback ref 包装：节点出现/替换都触发一次 state 更新（见 useStageArea 注释）。 */
@@ -78,23 +80,7 @@ function useStageArea(node: HTMLDivElement | null) {
   return area
 }
 
-export default function LiveStage({
-  room,
-  connected,
-  members,
-  onlineIds,
-  speakerIdentity,
-  localIdentity,
-  focusUserId,
-  screenOwnerId,
-  micStates,
-  sharing,
-  onStopShare,
-  handIds = [],
-  canGrant = false,
-  onGrantFocus,
-  onLowerHand,
-}: Props) {
+export default function LiveStage({ room, connected, members, onlineIds, speakerIdentity, localIdentity, focusUserId, screenOwnerId, micStates, sharing, onStopShare, handIds = [], canGrant = false, onGrantFocus, onLowerHand, excludeIdentity }: Props) {
   const rawTracks = useTracks(
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }, { source: Track.Source.Camera, withPlaceholder: true }],
     { onlySubscribed: false },
@@ -102,7 +88,13 @@ export default function LiveStage({
   // r010：房间里的 agent（转写 worker）也是 LiveKit 参与者，但**不是房间成员**——
   // `withPlaceholder: true` 会给每个没有摄像头的人发占位轨，agent 因此会在舞台上多占一格（实测踩到）。
   // 这里统一剔除：舞台只渲染人。
-  const tracks = useMemo(() => rawTracks.filter((item) => !isAgentParticipant(item.participant)), [rawTracks])
+  const tracks = useMemo(
+    () =>
+      rawTracks.filter(
+        (item) => !isAgentParticipant(item.participant) && item.participant.identity !== excludeIdentity,
+      ),
+    [rawTracks, excludeIdentity],
+  )
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null)
   const stageRef = useCallbackRef(setStageEl)
   const area = useStageArea(stageEl)

@@ -8,7 +8,7 @@
  * 其他人是「离开」。房主没有「离开」——他必须先结束或先移交（r001 FQ-2 / ADR-0012 条 8）。
  */
 import { useEffect } from 'react'
-import { DoorOpen, Hand, Mic, MicOff, MonitorUp, PhoneOff, Settings2, Video, VideoOff } from 'lucide-react'
+import { DoorOpen, Hand, Mic, MicOff, MonitorUp, PhoneOff, Settings2, ShieldCheck, Video, VideoOff } from 'lucide-react'
 
 const ICON = { size: 18, strokeWidth: 1.75 } as const
 
@@ -48,6 +48,9 @@ interface Props {
   /** r010：房间侧转写状态（只读展示；关掉麦克风即不参与转写）。
    *  r011：加 `lastHeartbeatAt`（毫秒）——worker 掉线时提示里能看到「最后心跳 X 秒前」。 */
   transcribe?: { on: boolean; lastHeartbeatAt?: number | null }
+  /** r012：超管视角 —— 不发布音视频（Token 无发布权限），故**不渲染设备/举手/共享控件**，
+   *  只留管理与离场（同时给「结束房间」与「离开」）。 */
+  superadminMode?: boolean
 }
 
 const LEVEL_BARS = 3
@@ -77,9 +80,11 @@ export default function DeviceBar({
   onToggleHand,
   onToggleShare,
   transcribe,
+  superadminMode = false,
 }: Props) {
   // 快捷键：M 切麦、V 切摄像头（离开不绑定快捷键——离场必须是有意的）
   useEffect(() => {
+    if (superadminMode) return   // 超管没有设备可切，不绑快捷键
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return
@@ -89,13 +94,23 @@ export default function DeviceBar({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [disabled, onToggleMic, onToggleCam])
+  }, [disabled, onToggleMic, onToggleCam, superadminMode])
 
   const level = Math.min(1, Math.max(0, micLevel))
   const activeBars = micEnabled ? Math.ceil(level * LEVEL_BARS * 4) : 0
 
   return (
     <div className={`live-dock${idle ? ' live-chrome-idle' : ''}`} role="toolbar" aria-label="房间控制">
+      {superadminMode ? (
+        /* r012：超管的 Token 没有发布权限（ADR-0024 D3）→ 不渲染任何设备/举手/共享控件，
+           只显示一枚只读标识，避免「有控件但点了发不出」的假动作。 */
+        <div className="live-dock-group">
+          <span className="live-superadmin-chip" title="管理员以隐身方式在场：不发布音视频，只做管理">
+            <ShieldCheck size={16} strokeWidth={1.75} />
+            管理视角 · 隐身
+          </span>
+        </div>
+      ) : (
       <div className="live-dock-group">
         <button
           className={`live-ctrl${micEnabled ? '' : ' live-ctrl-off'}`}
@@ -172,10 +187,22 @@ export default function DeviceBar({
           <span className="live-ctrl-state">{camEnabled ? '已开' : '已关'}</span>
         </button>
       </div>
+      )}
 
       <span className="live-dock-sep" aria-hidden />
 
       <div className="live-dock-group">
+        {superadminMode && (
+          <button
+            className="live-ctrl live-ctrl-leave"
+            onClick={onRequestLeave}
+            disabled={disabled}
+            title="离开房间（不绑定快捷键）"
+          >
+            <DoorOpen {...ICON} />
+            <span className="live-ctrl-text">离开</span>
+          </button>
+        )}
         {isHost ? (
           confirmingEnd ? (
             <div className="live-dock-confirm" role="dialog" aria-modal="false" aria-label="确认结束房间">
@@ -224,7 +251,8 @@ export default function DeviceBar({
       </div>
 
       <span className="live-dock-hint" aria-hidden>
-        <Settings2 size={12} strokeWidth={1.75} /> M 静音 · V 摄像头 · 静默 30 秒后界面淡出
+        <Settings2 size={12} strokeWidth={1.75} />{' '}
+        {superadminMode ? '隐身在场：不发布音视频 · 静默 30 秒后界面淡出' : 'M 静音 · V 摄像头 · 静默 30 秒后界面淡出'}
       </span>
     </div>
   )

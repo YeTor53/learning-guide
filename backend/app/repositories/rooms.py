@@ -99,6 +99,25 @@ class MemberRowWithName:
 
 
 @dataclass(frozen=True)
+class NewRoomVisit:
+    """r012：超管进房的旁路记录（不写 `room_members`，天然隐身、天然不占人数）。"""
+
+    id: str
+    room_id: str
+    user_id: str
+
+
+@dataclass(frozen=True)
+class RoomVisitRow:
+    id: str
+    room_id: str
+    user_id: str
+    entered_at: datetime
+    left_at: Optional[datetime]
+    hidden: bool
+
+
+@dataclass(frozen=True)
 class NewMessage:
     """写一条消息（r005 起用于房间事件：`kind='system'`）。"""
 
@@ -317,6 +336,60 @@ def count_active_members(conn: Connection, room_id: str) -> int:
     return conn.execute(
         "SELECT count(*) FROM room_members WHERE room_id = %s AND status = 'active'", (room_id,)
     ).fetchone()[0]
+
+
+VISIT_FIELDS = ("id", "room_id", "user_id", "entered_at", "left_at", "hidden")
+VISIT_COLUMNS = _columns(VISIT_FIELDS, "v")
+
+
+def _visit(row: tuple) -> RoomVisitRow:
+    return RoomVisitRow(row[0], row[1], row[2], row[3], row[4], row[5])
+
+
+def insert_room_visit(conn: Connection, row: NewRoomVisit) -> None:
+    """插一条访问记录（`hidden` 默认 true，见 011 迁移）。"""
+    conn.execute(
+        "INSERT INTO room_visits (id, room_id, user_id) VALUES (%s, %s, %s)",
+        (row.id, row.room_id, row.user_id),
+    )
+
+
+def has_open_visit(conn: Connection, room_id: str, user_id: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM room_visits WHERE room_id = %s AND user_id = %s AND left_at IS NULL LIMIT 1",
+        (room_id, user_id),
+    ).fetchone()
+    return row is not None
+
+
+def close_room_visit(conn: Connection, room_id: str, user_id: str, at: datetime) -> int:
+    """补 `left_at`（幂等：只更新仍开着的那条）；返回影响行数。"""
+    cursor = conn.execute(
+        """UPDATE room_visits SET left_at = %s
+           WHERE room_id = %s AND user_id = %s AND left_at IS NULL""",
+        (at, room_id, user_id),
+    )
+    return cursor.rowcount
+
+
+def close_all_visits(conn: Connection, room_id: str, at: datetime) -> int:
+    """房间结束时收口全部未关闭的访问记录（与 `deactivate_all_members` 并列的连带动作）。"""
+    cursor = conn.execute(
+        "UPDATE room_visits SET left_at = %s WHERE room_id = %s AND left_at IS NULL",
+        (at, room_id),
+    )
+    return cursor.rowcount
+
+
+def list_open_visits(conn: Connection, room_id: str) -> list[RoomVisitRow]:
+    """房里还挂着的访问记录（超管在场时非空；后台/诊断用）。"""
+    rows = conn.execute(
+        f"""SELECT {VISIT_COLUMNS} FROM room_visits v
+            WHERE v.room_id = %s AND v.left_at IS NULL
+            ORDER BY v.entered_at ASC, v.id ASC""",
+        (room_id,),
+    ).fetchall()
+    return [_visit(row) for row in rows]
 
 
 def list_members(conn: Connection, room_id: str, include_inactive: bool = False) -> list[MemberRowWithName]:

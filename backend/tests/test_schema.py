@@ -35,7 +35,8 @@ def _normalize(statements: list[str]) -> list[str]:
 def test_sql_files_are_ordered() -> None:
     """迁移按序号执行；新增迁移必须追加在末尾（003_ = R-6 活跃 Host 唯一索引；004_ = r004 举手与焦点；
     005_ = r005 时间戳默认改语句级；006_ = r007 主题扩容；007_ = r008 纪要；008_ = r009 焦点申请；
-    009_ = r010 转写段；010_ = r010 换轨后 A 路径的幂等键与可空分段号）。"""
+    009_ = r010 转写段；010_ = r010 换轨后 A 路径的幂等键与可空分段号；
+    011_ = r012 超管身份/旁路/大屏聊天/审计；012_ = r012 演示超管账号）。"""
     names = [p.stem for p in sql_files()]
     assert names == [
         "001_schema",
@@ -48,6 +49,8 @@ def test_sql_files_are_ordered() -> None:
         "008_r009_focus_requests",
         "009_r010_transcripts",
         "010_r010_agent_transcripts",
+        "011_r012_superadmin_global_chat",
+        "012_r012_seed_superadmin",
     ], names
 
 
@@ -88,6 +91,9 @@ def test_counted_tables_cover_business_tables() -> None:
         "room_focus",
     "session_summaries",
     "transcripts",
+    "room_visits",
+    "global_messages",
+    "admin_audit",
     )
 
 
@@ -107,6 +113,24 @@ def room_ctx(db):
            VALUES ('r_1', 'u_1', 'custom', '主题', '标题', 8, 'C00001')"""
     )
     return "u_1", "u_2", "r_1"
+
+
+def test_r012_identity_presence_and_chat_objects_exist(db) -> None:
+    """r012 迁移 011 的列与表都在（身份 / 在线 / 大屏聊天 / 审计）。"""
+    columns = {
+        row[0]
+        for row in db.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'users'"
+        ).fetchall()
+    }
+    assert {"role", "last_seen_at"} <= columns, columns
+    tables = {
+        row[0]
+        for row in db.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+        ).fetchall()
+    }
+    assert {"room_visits", "global_messages", "admin_audit"} <= tables, tables
 
 
 def test_tables_exist(db) -> None:

@@ -40,6 +40,16 @@ DEFAULT_STT_AGENT_NAME = "learning-guide-transcriber"
 DEFAULT_STT_MAX_SESSIONS = 5            # 免费档 Inference STT 并发上限（worker 侧护栏）
 LIVEKIT_TOKEN_TTL_SECONDS = {"cloud": 3600, "self": 300}
 DEFAULT_LIVEKIT_TIMEOUT_SECONDS = 10
+# r012：在线判据窗口（秒）= 2× 前端 60 秒心跳周期（容一次丢包不掉线）；改这里一个数即可
+DEFAULT_PRESENCE_ONLINE_SECONDS = 120
+# r012：全服大屏聊天（限流 / 单页条数）——一个数可调
+DEFAULT_GLOBAL_CHAT_RATE_LIMIT = 5
+DEFAULT_GLOBAL_CHAT_RATE_WINDOW_SECONDS = 10
+DEFAULT_GLOBAL_CHAT_PAGE = 50
+# r012：SSE 通知通道（保活 / 订阅者队列 / 订阅上限）
+DEFAULT_SSE_KEEPALIVE_SECONDS = 15
+DEFAULT_SSE_SUBSCRIBER_QUEUE_MAX = 32
+DEFAULT_SSE_MAX_SUBSCRIBERS = 200
 
 
 @dataclass(frozen=True)
@@ -70,6 +80,16 @@ class Settings:
     stt_mode: str = DEFAULT_STT_MODE
     stt_agent_name: str = DEFAULT_STT_AGENT_NAME
     stt_max_sessions: int = DEFAULT_STT_MAX_SESSIONS
+    # r012：在线口径（前端 POST /api/presence 心跳 → users.last_seen_at，判据窗口见下）
+    presence_online_seconds: int = DEFAULT_PRESENCE_ONLINE_SECONDS
+    # r012：全服大屏聊天（限流窗口 / 条数 / 单页默认）
+    global_chat_rate_limit: int = DEFAULT_GLOBAL_CHAT_RATE_LIMIT
+    global_chat_rate_window_seconds: int = DEFAULT_GLOBAL_CHAT_RATE_WINDOW_SECONDS
+    global_chat_page_default: int = DEFAULT_GLOBAL_CHAT_PAGE
+    # r012：SSE（保活间隔 / 每订阅者队列上限 / 订阅者总数上限）
+    sse_keepalive_seconds: int = DEFAULT_SSE_KEEPALIVE_SECONDS
+    sse_subscriber_queue_max: int = DEFAULT_SSE_SUBSCRIBER_QUEUE_MAX
+    sse_max_subscribers: int = DEFAULT_SSE_MAX_SUBSCRIBERS
 
     @property
     def is_demo(self) -> bool:
@@ -143,6 +163,22 @@ def validate_startup(s: Settings) -> None:
         raise AppError(ERR_CONFIG_MISSING, f"STT_MODE 只能是 {'/'.join(VALID_STT_MODES)}", status=500)
     if not (1 <= s.stt_max_sessions <= 50):
         raise AppError(ERR_CONFIG_MISSING, "STT_MAX_SESSIONS 必须在 1~50 之间", status=500)
+    # r012：判据窗口必须 ≥ 前端心跳周期（60 秒），否则一丢包就「不在线」
+    if not (60 <= s.presence_online_seconds <= 3600):
+        raise AppError(ERR_CONFIG_MISSING, "PRESENCE_ONLINE_SECONDS 必须在 60~3600 秒之间", status=500)
+    # r012：全服聊天与 SSE 的取值护栏（越界即启动失败，不做静默降级）
+    if not (1 <= s.global_chat_rate_limit <= 60):
+        raise AppError(ERR_CONFIG_MISSING, "GLOBAL_CHAT_RATE_LIMIT 必须在 1~60 之间", status=500)
+    if not (1 <= s.global_chat_rate_window_seconds <= 600):
+        raise AppError(ERR_CONFIG_MISSING, "GLOBAL_CHAT_RATE_WINDOW_SECONDS 必须在 1~600 秒之间", status=500)
+    if not (1 <= s.global_chat_page_default <= 200):
+        raise AppError(ERR_CONFIG_MISSING, "GLOBAL_CHAT_PAGE 必须在 1~200 之间", status=500)
+    if not (5 <= s.sse_keepalive_seconds <= 120):
+        raise AppError(ERR_CONFIG_MISSING, "SSE_KEEPALIVE_SECONDS 必须在 5~120 秒之间", status=500)
+    if not (1 <= s.sse_subscriber_queue_max <= 1000):
+        raise AppError(ERR_CONFIG_MISSING, "SSE_SUBSCRIBER_QUEUE_MAX 必须在 1~1000 之间", status=500)
+    if not (1 <= s.sse_max_subscribers <= 10000):
+        raise AppError(ERR_CONFIG_MISSING, "SSE_MAX_SUBSCRIBERS 必须在 1~10000 之间", status=500)
 
 
 @lru_cache(maxsize=1)
@@ -176,6 +212,23 @@ def load_settings() -> Settings:
         stt_mode=_optional_env("STT_MODE", DEFAULT_STT_MODE),
         stt_agent_name=_optional_env("STT_AGENT_NAME", DEFAULT_STT_AGENT_NAME),
         stt_max_sessions=int(require_env("STT_MAX_SESSIONS", str(DEFAULT_STT_MAX_SESSIONS))),
+        presence_online_seconds=int(
+            require_env("PRESENCE_ONLINE_SECONDS", str(DEFAULT_PRESENCE_ONLINE_SECONDS))
+        ),
+        global_chat_rate_limit=int(
+            require_env("GLOBAL_CHAT_RATE_LIMIT", str(DEFAULT_GLOBAL_CHAT_RATE_LIMIT))
+        ),
+        global_chat_rate_window_seconds=int(
+            require_env("GLOBAL_CHAT_RATE_WINDOW_SECONDS", str(DEFAULT_GLOBAL_CHAT_RATE_WINDOW_SECONDS))
+        ),
+        global_chat_page_default=int(require_env("GLOBAL_CHAT_PAGE", str(DEFAULT_GLOBAL_CHAT_PAGE))),
+        sse_keepalive_seconds=int(
+            require_env("SSE_KEEPALIVE_SECONDS", str(DEFAULT_SSE_KEEPALIVE_SECONDS))
+        ),
+        sse_subscriber_queue_max=int(
+            require_env("SSE_SUBSCRIBER_QUEUE_MAX", str(DEFAULT_SSE_SUBSCRIBER_QUEUE_MAX))
+        ),
+        sse_max_subscribers=int(require_env("SSE_MAX_SUBSCRIBERS", str(DEFAULT_SSE_MAX_SUBSCRIBERS))),
     )
     validate_startup(settings)
     return settings

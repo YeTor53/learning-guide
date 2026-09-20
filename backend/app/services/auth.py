@@ -22,7 +22,9 @@ EMAIL_TAKEN_MESSAGE = "该邮箱已注册"
 
 def to_vo(row: UserRow) -> UserVO:
     """库行 → VO（唯一转换点，避免 `password_hash` 意外外泄）。"""
-    return UserVO(id=row.id, email=row.email, display_name=row.display_name, created_at=row.created_at)
+    return UserVO(
+        id=row.id, email=row.email, display_name=row.display_name, role=row.role, created_at=row.created_at
+    )
 
 
 def register(conn: Connection, data: RegisterIn) -> UserVO:

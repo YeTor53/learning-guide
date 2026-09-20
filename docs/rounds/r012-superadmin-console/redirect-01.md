@@ -90,3 +90,9 @@ CREATE TABLE admin_audit (id TEXT PRIMARY KEY, actor_id TEXT REFERENCES users(id
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | redirect-01 | 建页：超管读back + 冲突点 + 数据模型草案 + Q1~Q8 + 风险；并收入同批已定的管理后台与全服大屏聊天 | 你 2026-09-20 的口述 |
+
+## 8. 后续（2026-09-20 追加）
+
+- 阶段 1 文档已出：需求单 `docs/00-requirements/r012-superadmin-console.md`（含界面口径卡、E1~E12、覆盖矩阵、cp 切分；Q1~Q8 原样搬入 §10 并续编 Q9~Q18）+ 设计 `design.md`（逐文件函数级）。
+- 本单 §4 的「已定参数」原样沿用，未改；§5 的 Q1~Q8 未答，仍 `status: proposed`（改由 `ASK-r012-1` 统一收口）。
+- 好友 / 定向邀请那套：**作废**（只保留 SSE 口径），见 `docs/rounds/r011-friends-and-invites/redirect-01.md`。

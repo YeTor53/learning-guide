@@ -26,6 +26,9 @@ BUSINESS_TABLES = (
     "room_focus",
     "session_summaries",
     "transcripts",
+    "room_visits",       # r012：超管进房旁路记录
+    "global_messages",   # r012：全服大屏聊天
+    "admin_audit",       # r012：管理动作审计
 )
 COUNTED_TABLES = (VERSION_TABLE,) + BUSINESS_TABLES
 
