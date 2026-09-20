@@ -18,7 +18,7 @@ updated: 2026-09-20
 | cp-r009.5-2 | 台账与 tag 补正（r009 changes 回填 + 4 tag + r008/r009 review 修正回填） | **完成 2026-09-20** | 见 cp-2 提交 | E1~E4 |
 | cp-r009.5-3 | 文档纠错与索引回填（轮次号 / 路径 / 旧文件名 / 合并顺序 / docs README §2·§4·§5 / roadmap §3·§7·§9） | **完成 2026-09-20** | 见 cp-3 提交 | E5/E8 |
 | cp-r009.5-4 | 配置与死代码（`.env.example` 三键 + 删 `stageLayout.ts` + 注释同步） | **完成 2026-09-20** | 见 cp-4 提交 | E6/E7 |
-| cp-r009.5-5 | 门禁与取证收官（pytest/smoke/tsc/build + E0 实测 + E11 截图 + 两页教学页 + review 定稿 + 模块页变更记录 + 索引最终回填） | planned | — | E9~E12 |
+| cp-r009.5-5 | 门禁与取证收官（pytest/smoke/tsc/build + E0 实测 + E11 截图 + 两页教学页 + review 定稿 + 模块页变更记录 + 索引最终回填） | **完成 2026-09-20** | 见 cp-5 提交 | E9~E12 |
 
 ## 2. 用户消息台账（首行回执对账用）
 
@@ -73,14 +73,40 @@ updated: 2026-09-20
 - 引用核查：`git grep -n stageLayout -- frontend/src` 实测**仅剩本轮改写后的注释**中「旧 `stageLayout.ts`」一处（描述被删对象），无 import/调用。
 - 顺带：roadmap frontmatter `updated` 由 2026-09-18 更正为 **2026-09-20**。
 
-### 3.5 cp-5 门禁与取证（待填）
+### 3.5 cp-5 门禁与取证（2026-09-20 实测）
+
+**门禁（本机，`learningguide` conda 环境 + 起 8000/5173）**
+
+| 项 | 命令 | 结果 |
+| --- | --- | --- |
+| 后端用例 | `python -m pytest backend/tests -q`（`C:\ProgramData\miniconda3\envs\learningguide\python.exe`） | **128 passed**, 3 warnings, 41.46s（警告仍为 starlette/httpx 与 jwt 长度，与 r009 一致） |
+| 真实 HTTP 冒烟 | `python backend/scripts/smoke.py --base-url http://127.0.0.1:8000` | **PASS 46/46**（含限时邀请 4 步、纪要两分支：本次 `ready` **680 字**） |
+| 前端类型 | `cd frontend && npx tsc --noEmit` | **exit 0**（无输出） |
+| 前端构建 | `npm run build` | **exit 0**，`✓ 2006 modules transformed` / `✓ built in 3.92s`（仅既有 chunk>500kB 警告） |
+
+**E0 动效真机（`frontend/scripts/verify-stage-motion.py`；Playwright / conda base；1440×900；房主 + 参与者）**
+
+| 场景 | 采样 | 位移 | 单帧最大位移 | 比值 | 动画时长 | 终点误差 | 重叠 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 入场重排 1 → 2 人 | 418 帧 / 7.0s | **344.5px** | 99.92px | **0.290** | **240ms**（= 令牌 `--stage-move-ms`）+ 220ms 淡入 | **0.0px** | 0 对 |
+| 焦点切换期间重排（第三人加入） | 283 帧 / 4.8s | **25.53px** | 8.96px | **0.351** | **240ms** + 220ms | **0.0px** | 0 对 |
+
+判据：比值 ≪ 1 即无瞬移；终点误差 = 动画末帧中心 vs 静止位置（≤1px 达标）。**E0 第 4 项**（交替说话 30 秒焦点切换 ≤3 次）需真人语音，**未取证**（脚本按纪律不发布测试音源）→ 未闭合 ④。
+
+**E11 声波证据（同一脚本）**：`.live-level` = 容器 + **3 个 `<i>` 竖条**（单条 6px），令牌 `--mic-pulse-ms` = **320ms**；本轮 `on` 计数 **0**（未发布麦克风，符合纪律）→ 数值序列未取，截图 `%TEMP%\lg_r009.5\mic-wave.png` 已落盘。
+
+**E12 教学流程复跑（同脚本，房主 + 两位参与者三浏览器）**：邀请面板 UI（生成码 6 位 + 倒计时「50 秒后过期 · 已用 1/5」）✓；凭码加入页预填并直接进房 ✓；举手 → 房主「给焦点」→ 举手清空、对方控制坞变「退出焦点」✓；结束房间 → 列表「讨论纪要」入口可见 → 生成纪要成功（**9.1 秒**，页面正文 858 字）✓。截图 5 张（`mic-wave / invite-panel / join-page / focus-granted / summary-page`）落 `%TEMP%\lg_r009.5\`。
+
+**本轮新登记观测（未归因，不修）**：三人档下房主点格上「给焦点」后，**房主自己**的界面 `data-stage-mode` 仍 `uniform`、`.live-cell.is-focus` = 0（焦点未进布局），而被给焦点的一方界面正确；同脚本两人档两次运行两端同步。**同一流程复现 2/2**（两次都发生在第三人正在加入的时刻），未做最小复现 → 只登记，见 r009 `review.md` 未闭合 ⑤。
+
+**取证脚本踩坑三条（写进开发者教学页）**：① 加了 `--use-fake-ui-for-media-stream` 会自动批准麦克风 → 真发布假麦（实测 `isMicrophoneEnabled=true`）；只给 `permissions=["camera"]` 即可避免。② `context.request` 的 origin 必须与页面一致（`127.0.0.1` 与 `localhost` 的 Cookie 不共享）→ 否则页面内请求全 401。③ 给某人开摄像头**不改变格子数**（每人在场即一格），要触发布局变化得用加入/离开/焦点切换；而**直调 HTTP 焦点接口没有广播**，本端不重排，须走 UI 点击。
 
 ## 4. 门禁记录（cp-5）
 
 | 时点 | pytest | smoke | tsc | build |
 | --- | --- | --- | --- | --- |
 | cp-1（进入本轮前，r009 收官口径） | 128 passed（历史） | 46/46（历史） | exit 0（历史） | 绿（历史） |
-| cp-5（本轮实测） | 待填 | 待填 | 待填 | 待填 |
+| cp-5（本轮实测 2026-09-20） | **128 passed**（41.46s） | **PASS 46/46** | **exit 0** | **exit 0**（3.92s） |
 
 ## 5. 文件台账
 
@@ -96,6 +122,6 @@ updated: 2026-09-20
 | `.env.example` | 改（+3 键） | cp-4 |
 | `frontend/src/components/live/stageLayout.ts` | 删 | cp-4 |
 | `frontend/src/components/live/stageGeometry.ts` | 改（1 行注释） | cp-4 |
-| `frontend/scripts/verify-stage-motion.py` | 新增（取证脚本） | cp-5 |
+| `frontend/scripts/verify-stage-motion.py` | 新增（取证脚本，324 行） | cp-5 |
 | `docs/tutorials/r009.5-r008-r009-user-guide.md`、`docs/tutorials/r009.5-stage-motion-verify-dev.md` | 新增 | cp-5 |
 | `docs/02-modules/r005..r009` 五页「变更记录」 | 各追加 1 行 | cp-5 |

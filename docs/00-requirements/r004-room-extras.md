@@ -185,7 +185,7 @@ updated: 2026-09-19
 | `docs/02-modules/r004-room-extras.md` | 模块（实现） | 文件、接口、函数签名、并发与边界、验证矩阵 | planned（cp-4/5/6 随实现） |
 | `docs/02-modules/r004-room-extras-features.md` | 模块（功能） | F-18~F-22 行为、按钮矩阵、文案表、演示脚本、FQ | planned（cp-4/5/6 随实现） |
 | `docs/04-style/global-style.md` | 风格 | 新控件/徽标/动效令牌与降级口径 | planned（cp-6） |
-| `docs/tutorials/r004-room-extras.md` | 教学（使用者） | 怎么发消息 / 举手 / 要焦点 / 共享屏幕 | planned（cp-7，实跑后写） |
+| `docs/tutorials/r004-room-extras-demo.md` | 教学（使用者） | 怎么发消息 / 举手 / 要焦点 / 共享屏幕 | planned（cp-7，实跑后写） |
 | `docs/tutorials/r002-livekit-dev-guide.md` | 教学（开发者） | 加一节「第六个房内能力怎么接（Data Channel 协议 + 状态快照）」 | planned（cp-7） |
 | `README.md` / `AGENTS.md` / `docs/00-project/global-roadmap.md` / `docs/00-requirements/README.md` | 项目级 | 状态、验证命令、里程碑与台账回填 | planned（散在 cp-2/7） |
 | `docs/glossary.md` | 术语 | 新增「举手 / 焦点发言 / 屏幕共享 / 数据通道」四条 | planned（cp-6） |
