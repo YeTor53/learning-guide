@@ -18,7 +18,7 @@ updated: 2026-09-20
 | E2 | r002 §4 36 条逐条有状态 | 36 条全部 `[x]` 或 `[~]`（32 勾 / 4 转剧本），每行带依据 | **通过** |
 | E3 | r005 §5 8 条逐条有状态 | 8 条全部处理（7 勾 / 1 转 MV-10） | **通过** |
 | E4 | 满员自动拒 | 用例 3 条（`test_room_full_auto_reject.py`：批量 rejected + 汇总系统消息、批准路径清理不被回滚、pending 列表清空）+ smoke 47/47 含新检查「满员时待批申请被自动拒绝留痕」；**真机肉眼**见 MV-9 步 4（未跑 → 部分） | **通过（用例+脚本）／真机未跑** |
-| E5 | 邀请码入口 + `returnTo` 闭环 | 代码：`NavBar.tsx`（顶栏常驻入口）、`JoinByCodePage.tsx`（未登录→登录→回来自动加入，`useRef` 防重复）；`tsc`+`build` 绿；**人工**见 MV-9 步 1/2（未跑） | **通过（代码）／真机未跑** |
+| E5 | 邀请码入口 + `returnTo` 闭环 | 代码：`SideBar.tsx`（侧边栏常驻入口，cp-9 由顶栏移来）、`JoinByCodePage.tsx`（未登录→登录→回来自动加入，`useRef` 防重复）；`tsc`+`build` 绿；**人工**见 MV-9 步 1/2（未跑） | **通过（代码）／真机未跑** |
 | E6 | worker 健康上报 | 用例 3 条（`test_stt_heartbeat.py`：错/缺令牌 401、本房与全局状态、无心跳为 null）；`/openapi.json` 端点 **34** 个（+2：`POST /stt/heartbeat`、`GET /rooms/{id}/stt-status`）；**人工**见 MV-9 步 5（未跑） | **通过（用例）／真机未跑** |
 | E7 | `STT_MODE=off` 用例 | 2 条（`test_transcript_segments.py`：off 不派单、状态如实报 off） | **通过** |
 | E8 | 门禁四项在最终树复跑 | `pytest backend/tests -q` → **164 passed**（51.06s）；`smoke.py` → **PASS 47/47**；`npx tsc --noEmit` → **exit 0**；`npm run build` → **exit 0**（2010 modules，4.00s） | **通过** |
@@ -65,7 +65,7 @@ updated: 2026-09-20
 **本轮已落地可保留**
 1. 文档回填：README / AGENTS / 覆盖页 / 需求索引 / roadmap（§7 第 10~13 条、§9 两行）/ r002 36 条 + r005 8 条验收清单回勾（cp-1~cp-3）。
 2. 满员自动拒待批申请：`reject_pending_requests` + `_auto_reject_pending`（两处调用点，批准路径「先提交后抛错」）+ 等待页文案 + smoke 新检查（cp-4）。
-3. 邀请码入口与未登录闭环：顶栏常驻入口 + `/join` 自动提交 + 教学页（cp-4）。
+3. 邀请码入口与未登录闭环：常驻入口 + `/join` 自动提交 + 教学页（cp-4 落顶栏 → **cp-9 移到侧边栏**）。
 4. worker 健康上报：`POST /stt/heartbeat`（HMAC）+ `/rooms/{id}/stt-status` + worker 心跳循环 + 芯片「最后心跳」提示（cp-5）。
 5. 焦点规则收窄：说话不再获得焦点（删说话者档与 `useStableSpeaker` 死代码）+ ADR-0014 变更记录 + 模块页/教学页同步（cp-6/6b）。
 6. 用例 +8（自动拒 3 / 心跳 3 / off 2），既有满员用例按新语义更新；smoke 由 46 → **47** 步（新增自动拒留痕检查）。

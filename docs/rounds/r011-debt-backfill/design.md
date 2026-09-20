@@ -25,7 +25,7 @@ updated: 2026-09-20
 
 | 文件 | 现在是什么 | 改成什么 | 依据 |
 | --- | --- | --- | --- |
-| `README.md` | 状态段写「r002 已完成并合入 main」；`schema_migrations 7`、`pytest 124 项`；演示路径 9 步缺 r009/r010 | 状态段改为「r005~r010 + r009.5 已合入 main、round tag 齐」；数字改 `schema_migrations 10`、`pytest 156 项`（或改为不带数字只给命令）；演示路径补「焦点系统（举手→给焦点→退出焦点）」「语音转写（先起 agents.bat，控制坞 13 秒内显示『转写：开启』）」「邀请码入口（顶栏）」三步 | r010 review §5b 实测 156/46/迁移 10；本轮 E8 |
+| `README.md` | 状态段写「r002 已完成并合入 main」；`schema_migrations 7`、`pytest 124 项`；演示路径 9 步缺 r009/r010 | 状态段改为「r005~r010 + r009.5 已合入 main、round tag 齐」；数字改 `schema_migrations 10`、`pytest 156 项`（或改为不带数字只给命令）；演示路径补「焦点系统（举手→给焦点→退出焦点）」「语音转写（先起 agents.bat，控制坞 13 秒内显示『转写：开启』）」「邀请码入口（**侧边栏**）」三步 | r010 review §5b 实测 156/46/迁移 10；本轮 E8 |
 | `AGENTS.md` | §「r002 起新增的验证命令」硬编码 `95 项` / `PASS 22/22`；§现状口径写「容量按**在场人数**在**取票时**校验」 | 数字改为命令 + 括号内实测值（156 / 46-46）；容量口径改为「**本库在册成员**（ADR-0016 取代 ADR-0012 的 D1/D2/D3/D5）」 | ADR-0016；r010 review §5b；r004 redirect-01 已登记漂移 |
 | `docs/00-project/assignment-a-coverage.md` | 页内出现**两组** §5/§6，§7「加分项现状」与 §3 重复；结论数字停在 r008（124 / 迁移 7） | 整页重写：单一 §1 结论（必做 15/15、加分 0/5 全绿但录制经你决定不做、交付物 3/4 待你填两格）、§2 必做逐条（README 一条改判「部分」并写清缺什么）、§3 加分、§4 交付物、§5 建议下一步、§6 变更记录；删除重复段 | 本轮审计（题目原文 81 段逐条比对） |
 | `docs/00-requirements/r002-livekit-room.md` §4 | **36 条** `- [ ]` 全未勾 | 逐条改为 `- [x]`（附依据：文件:行 / 用例名 / 命令输出）或改为 `- [~]` 并注明「转 MV-x（人工剧本）」/「口径已变：见 r005/ADR-0016」 | 本仓习惯：验收清单必须逐条给实现位置 + 证据（AGENTS.md 硬规矩 7） |
@@ -67,7 +67,7 @@ def _auto_reject_pending(conn: Connection, room: RoomRow, actor: UserVO) -> int:
 
 1. `frontend/src/components/NavBar.tsx`：`top-actions` 区内（`user ? 显示名 : 登录/注册` 之前）新增常驻入口：
 ```tsx
-<Link className="link-plain" to="/join">邀请码加入</Link>
+<Item to="/join" label="邀请码加入" icon={<Ticket {...ICON} />} collapsed={collapsed} active={isActive('/join')} />
 ```
 （`CRUMBS` 保持只做面包屑；入口对未登录也可见 —— 这是作业必做「邀请」项的界面补漏。）
 2. `frontend/src/pages/JoinByCodePage.tsx`：
@@ -126,7 +126,8 @@ async def _heartbeat_loop(room_id: str, worker_id: str) -> None:
 | 日期 | 级别 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | L2 | 满员时自动拒绝该房待批申请（原为房主点批准才被挡回） | 你 2026-09-20「在等待的自动拒绝」 |
-| 2026-09-20 | L1 | 顶栏加「邀请码加入」常驻入口；未登录点「加入房间」跳登录并 `returnTo` 回原码 | 你 2026-09-20 授权原话「r011」（破补正轮纪律） |
+| 2026-09-20 | L1 | 加「邀请码加入」常驻入口；未登录点「加入房间」跳登录并 `returnTo` 回原码 | 你 2026-09-20 授权原话「r011」（破补正轮纪律） |
+| 2026-09-20 | L1 | **入口位置由顶栏改到侧边栏**（与「返回主页 / 我的房间 / 创建房间」同列，未登录也可见）；顶栏只留登录 / 注册 / 用户名 | 你 2026-09-20「**邀请码加入的位置换到侧边栏**」 |
 | 2026-09-20 | L3 | 新增 `POST /api/stt/heartbeat` + `/rooms/{id}/stt-status` 字段 `lastHeartbeatAt` | 同上 |
 | 2026-09-20 | L0 | 文档回填与验收清单回勾（不改行为） | 本轮审计报告 |
 
