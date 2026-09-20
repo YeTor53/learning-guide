@@ -47,4 +47,5 @@ python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # PASS 46/46�
 
 - 实时凭据只在 `.env`（`LIVEKIT_MODE` / `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`）；**不得写进代码、文档、提交信息或聊天**。
 - 禁区不变：装依赖需先问；helper 不接触明文密钥；不用 `git commit --amend`。
+- **本机地址口径（r011 redirect-03）**：后端 `127.0.0.1:8000`（用 `localhost:8000` 每次多等约 2 秒，实测 2070ms vs 6ms）；前端 `localhost:5173`（安全上下文 + Vite 只绑 `::1`）。
 - 现状口径（改动前必读）：房间 = **一次性讨论**（ADR-0012）；治理动作**只在交流页抽屉**（房间管理页已删除，redirect-06）；容量按**本库在册成员**（ADR-0016 取代 ADR-0012 的 D1/D2/D3/D5）：满员时**申请与批准都被挡**（`POST /join-requests` 与 `/approve` 均 409 `ROOM_FULL`）；取票不再查 LiveKit（r005，1650ms → 3.2ms）。

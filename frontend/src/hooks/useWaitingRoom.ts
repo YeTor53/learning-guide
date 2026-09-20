@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { roomsApi, type Room } from '../api/rooms'
 
-const POLL_INTERVAL_MS = 5_000
+const POLL_INTERVAL_MS = 2_000  // r011 redirect-03：获批→进房的感知延迟收到 ≤2 秒 + 1.5 秒跳转
 
 export type WaitingState = 'loading' | 'error' | 'ended' | 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'none'
 
