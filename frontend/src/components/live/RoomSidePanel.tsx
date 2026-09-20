@@ -13,6 +13,7 @@ import JoinRequestList from '../JoinRequestList'
 import type { JoinRequest, Member, Room, Role } from '../../api/rooms'
 import { EXIT_REASON_LABEL, ROLE_LABEL } from '../../api/rooms'
 import type { ChatState } from '../../hooks/useChatMessages'
+import type { SpeechLine } from '../../hooks/useTranscription'
 import type { FocusState } from '../../hooks/useRoomFocus'
 import type { HandState } from '../../hooks/useHandRaise'
 import type { ScreenShareState } from '../../hooks/useScreenShare'
@@ -39,6 +40,9 @@ interface Props {
   /** r004：讨论（群聊）状态与我的 user id。 */
   chat: ChatState
   myUserId: string | null
+  /** r010：语音转写（定稿 + 渐进），透传给讨论面板。 */
+  speech?: SpeechLine[]
+  live?: SpeechLine[]
   /** r004：举手 / 焦点 / 共享。 */
   hands: HandState
   focus: FocusState
@@ -68,6 +72,8 @@ export default function RoomSidePanel({
   busyId,
   chat,
   myUserId,
+  speech = [],
+  live = [],
   hands,
   focus,
   screen,
@@ -278,7 +284,7 @@ export default function RoomSidePanel({
               )}
             </div>
           )}
-          <ChatPanel chat={chat} myUserId={myUserId} onChanged={onChatChanged} />
+          <ChatPanel chat={chat} myUserId={myUserId} onChanged={onChatChanged} speech={speech} live={live} />
         </section>
       )}
 

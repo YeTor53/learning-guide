@@ -48,7 +48,7 @@ updated: 2026-09-19
 | `frontend/src/App.tsx` + `components/SideBar.tsx` + `hooks/useNarrowStrip.ts`（新） | 前端 | 窄屏忽略折叠 + 隐藏折叠按钮 | ADR-0015 §3/§4 | landed（cp-3） |
 | `frontend/src/styles/global.css` | 风格 | **cp-6**：§8.9 令牌全表（14 项）+ `.chip-focus`/`.chip-share` + 缩格固定尺寸与四种模式 + 聊天/举手样式 + `::before` 上缘线（2px/共享 3px）+ reduced-motion 扩展 | 风格指南 §12.3 | landed（cp-6） |
 | `backend/scripts/smoke.py` | 脚本 | r002 四步**已补**（实测 29/29）；r004 三步待 cp-7 | README / AGENTS `<check>`；证据见本表 cp-r004-2 行 | landed（cp-2） |
-| `docs/tutorials/r004-room-extras.md` + `r002-livekit-dev-guide.md` 补节 | 教学 | 使用者 + 开发者 | 自身 | planned（cp-7） |
+| `docs/tutorials/r004-room-extras-demo.md` + `r002-livekit-dev-guide.md` 补节 | 教学 | 使用者 + 开发者 | 自身 | planned（cp-7） |
 | `README.md` / `AGENTS.md` / `global-roadmap.md` / `00-requirements/README.md` / `glossary.md` | 项目级 | 状态、命令、台账、术语 | 自身 | planned（散在 cp-2/6/7） |
 
 ## 2.1 cp-3 证据（两项界面缺陷）

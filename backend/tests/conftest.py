@@ -45,6 +45,18 @@ def db(pool):
             yield conn
 
 
+@pytest.fixture(autouse=True)
+def _no_livekit_dispatch(monkeypatch):
+    """r010：建房会派单转写 worker（`livekit.ensure_transcriber`）——用例一律桩掉，**零外部调用、零配额**。
+
+    需要验证"确实调用了派单"的用例自行 `monkeypatch` 覆盖本桩（见 `test_transcript_segments.py`）。
+    """
+    from app.services import livekit as livekit_service
+
+    monkeypatch.setattr(livekit_service, "ensure_transcriber", lambda *a, **k: "stub")
+    yield
+
+
 @pytest.fixture()
 def client(db):
     """TestClient：把 `db_conn` 依赖覆盖成测试事务里的那条连接。

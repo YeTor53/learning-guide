@@ -260,6 +260,11 @@ def create_room(conn: Connection, actor: UserVO, data: CreateRoomIn) -> RoomVO:
     created = repo.get_room(conn, room_id)
     if created is None:
         raise AppError(ERR_INTERNAL, "创建房间后无法读取", status=500)
+
+    # r010（ADR-0023）：`STT_MODE=agent` 时把转写 worker 一起派进这间房。
+    # 放在事务提交之后（ADR-0011 条 4：外部调用不进事务），失败只记日志、不影响建房。
+    livekit_service.ensure_transcriber(room_id)
+
     return _room_vo(created, member_count=1, pending_count=0, my_role="host")
 
 

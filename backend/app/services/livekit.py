@@ -109,6 +109,39 @@ def delete_room(room_name: str, settings: Optional[Settings] = None) -> bool:
     return _run(call, settings) is not None
 
 
+def ensure_transcriber(room_id: str, settings: Optional[Settings] = None) -> str:
+    """确保转写 worker 会被派进该房间；返回 `"created"` / `"dispatched"` / `""`（失败）。
+
+    口径（ADR-0023）：`STT_MODE=agent` 时，建房即把 agent 一起建进去（`CreateRoomRequest.agents`）；
+    房间已存在（比如建房后 LiveKit 侧已建）则退回**显式派单**。失败只记日志、不影响建房与取票
+    （与 `_run` 的中性值纪律一致：外部调用失败不改业务真相）。
+    """
+    s = _settings(settings)
+    if s.stt_mode != "agent":
+        return ""
+
+    async def call(lk: api.LiveKitAPI) -> str:
+        try:
+            await lk.room.create_room(
+                proto_room.CreateRoomRequest(
+                    name=room_id,
+                    empty_timeout=600,
+                    agents=[proto_room.RoomAgentDispatch(agent_name=s.stt_agent_name)],
+                )
+            )
+            return "created"
+        except Exception:  # noqa: BLE001 —— 房间已存在等：退回显式派单
+            await lk.agent_dispatch.create_dispatch(
+                api.CreateAgentDispatchRequest(room=room_id, agent_name=s.stt_agent_name)
+            )
+            return "dispatched"
+
+    out = _run(call, s)
+    if not out:
+        logger.warning("转写 worker 派单失败（不影响建房）：room=%s agent=%s", room_id, s.stt_agent_name)
+    return out or ""
+
+
 def list_participant_identities(room_name: str, settings: Optional[Settings] = None) -> list[str]:
     """房间内在场的 identity 列表（取证与排障用；前端在场由 SDK 事件驱动，不走这里）。"""
 

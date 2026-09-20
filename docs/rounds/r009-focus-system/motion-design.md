@@ -4,11 +4,11 @@ description: 八类布局变化的过渡策略、防抖动与稳定排序规则�
 type: reference
 status: draft
 owner: 陀梓皓
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 <!-- overview -->
-你的要求：**变化时要保证动态效果，并且不反直觉**。本页回答「怎么设计」，几何规则见 `design.md`（`computeStageLayout` 是纯函数，只算位置），动画在组件层用 FLIP 实现。参数全部做成令牌，改一处即生效。
+你的要求：**变化时要保证动态效果，并且不反直觉**。本页回答「怎么设计」，几何规则见 `design.md`（`computeStageGeometry` 是纯函数，只算位置；r009 cp-1b 起取代 r004 的 `computeStageLayout`），动画在组件层用 FLIP 实现。参数全部做成令牌，改一处即生效。
 
 ## 1. 会「变」的八种情况（逐条给对策）
 

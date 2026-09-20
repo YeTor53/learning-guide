@@ -1896,3 +1896,54 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   background: rgba(0, 0, 0, .55);
   backdrop-filter: blur(8px);
 }
+
+/* ==========================================================================
+   r010 · 转写（气泡 + 进房告知条 + 控制坞状态）
+   设计事实源：docs/rounds/r010-transcription/design.md §3.2；ADR-0023（识别在房间侧）
+   调参入口：全部令牌就在这一段，改一处即全局生效。
+   ========================================================================== */
+:root {
+  --speech-bar-color: rgba(124, 240, 196, 0.45);  /* 转写气泡左侧色条（与聊天气泡的唯一区分） */
+  --speech-icon-size: 14px;                       /* 气泡内麦克风图标尺寸 */
+  --transcribe-notice-ms: 30000;                  /* 进房告知条自动收起毫秒数（0 = 不自动收） */
+}
+
+/* 转写气泡：复用 .chat-bubble 的壳/字号/入场动画，只加色条与图标 */
+.chat-bubble-speech {
+  border-left: 3px solid var(--speech-bar-color);
+  animation: chat-enter var(--msg-enter) var(--ease) both;
+}
+.chat-bubble-speech .chat-who { display: inline-flex; align-items: center; gap: 4px; }
+.chat-bubble-speech .speech-mic { width: var(--speech-icon-size); height: var(--speech-icon-size); }
+/* 渐进文本（识别中）：压暗；定稿后恢复 —— 不假装已定稿 */
+.chat-bubble-speech-live { opacity: 0.7; }
+
+/* 进房告知条 */
+.transcribe-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: var(--s-2) 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.transcribe-notice-text { flex: 1 1 auto; }
+
+/* 控制坞转写状态（只读文案，不是按钮） */
+.live-transcribe-chip {
+  align-self: center;
+  padding: 0 6px;
+  color: var(--text-mute);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.live-transcribe-chip.on { color: var(--ok); }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble-speech { animation: none; }
+}
+

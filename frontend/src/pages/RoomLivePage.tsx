@@ -17,6 +17,7 @@ import { roomsApi, type Member, type Role } from '../api/rooms'
 import DeviceBar from '../components/live/DeviceBar'
 import LiveStage from '../components/live/LiveStage'
 import RoomSidePanel from '../components/live/RoomSidePanel'
+import TranscribeNotice from '../components/live/TranscribeNotice'
 import { useActiveSpeaker } from '../hooks/useActiveSpeaker'
 import { useChatMessages } from '../hooks/useChatMessages'
 import { useChromeIdle } from '../hooks/useChromeIdle'
@@ -31,6 +32,7 @@ import { useRoomConnection } from '../hooks/useRoomConnection'
 import { useRoomFocus } from '../hooks/useRoomFocus'
 import { useScreenShare } from '../hooks/useScreenShare'
 import { useRoomToken } from '../hooks/useRoomToken'
+import { useTranscription } from '../hooks/useTranscription'
 
 const ICON = { size: 16, strokeWidth: 1.75 } as const
 /** 静默多少秒后界面退场（单点可调，与 global.css 的 --live-chrome-idle-seconds 保持一致）。 */
@@ -82,6 +84,10 @@ export default function RoomLivePage() {
   const localIdentity = connection.room.localParticipant?.identity ?? ''
   const liveReady = connection.status === 'connected'
   const chat = useChatMessages(connection.room, id, liveReady)
+  // r010：转写（识别在房间侧；这里只监听渲染 + 回传最终稿）
+  const transcribe = useTranscription(connection.room, id, liveReady, (identity) =>
+    members.find((member) => member.userId === identity)?.displayName ?? identity,
+  )
   const hands = useHandRaise(connection.room, id, liveReady, localIdentity || null)
   const focus = useRoomFocus(connection.room, id, liveReady)
   // r009：焦点申请（协管 → 另一个非本人批准）与举手键的角色分流
@@ -449,6 +455,8 @@ export default function RoomLivePage() {
           </div>
         )}
 
+        {liveReady && transcribe.mode !== 'off' && <TranscribeNotice onMicOff={() => void devices.toggleMic()} />}
+
         {connection.reason && (
           <div className="alert alert-warn live-alert" role="status">
             {connection.reason}
@@ -505,6 +513,8 @@ export default function RoomLivePage() {
               busyId={busyId}
               chat={chat}
               myUserId={localIdentity || null}
+              speech={transcribe.lines}
+              live={transcribe.live}
               hands={hands}
               focus={focus}
               focusRequests={focusRequests}
@@ -600,6 +610,7 @@ export default function RoomLivePage() {
           sharing={screen.sharing}
           onToggleHand={onHandControl}
           onToggleShare={() => void (screen.sharing ? screen.stop() : screen.start())}
+          transcribe={{ on: transcribe.agentPresent }}
         />
       </div>
     </LiveKitRoom>

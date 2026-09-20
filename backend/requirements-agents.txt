@@ -1,0 +1,7 @@
+# r010 转写 worker 的依赖（ADR-0023）——**独立环境 `lg_agents`**，不装进后端主环境 learningguide
+# 说明：主环境（backend/requirements.txt）不含这些包；worker 与后端进程分离部署。
+# 安装（实测 37.6s，用官方源；本机阿里云镜像只有 25 KB/s）：
+#   conda create -n lg_agents python=3.11 -y
+#   pip install -r backend/requirements-agents.txt -i https://pypi.org/simple/ --trusted-host pypi.org --trusted-host files.pythonhosted.org
+livekit-agents==1.8.2
+livekit-api==1.2.1

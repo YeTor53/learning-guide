@@ -62,7 +62,7 @@ updated: 2026-09-19
 | cp-4 | 数据层 + 后端 | `db/sql/004_r004_realtime_extras.sql`、`services/messages.py`、`services/hands.py`、`services/focus.py`、`api/routers/room_extras.py`、`services/rooms.py`（连带）、`tests/test_room_extras_api.py` |
 | cp-5 | 前端实时层 | `hooks/useDataChannel.ts`、`useChatMessages.ts`、`useHandRaise.ts`、`useRoomFocus.ts`、`useScreenShare.ts`、`api/roomExtras.ts` |
 | cp-6 | 前端界面 | `components/live/ChatPanel.tsx`、`MessageBubble.tsx`、`FocusBadge.tsx`、`RoomSidePanel.tsx`、`DeviceBar.tsx`、`LiveStage.tsx`、`RoomLivePage.tsx`、`styles/global.css` |
-| cp-7 | 取证 + 教学页 + 收官 | `docs/tutorials/r004-room-extras.md`、`docs/rounds/r004-room-extras/{review.md,changes.md}`、README/AGENTS/roadmap/术语表 |
+| cp-7 | 取证 + 教学页 + 收官 | `docs/tutorials/r004-room-extras-demo.md`、`docs/rounds/r004-room-extras/{review.md,changes.md}`、README/AGENTS/roadmap/术语表 |
 
 ## 3. 数据模型与迁移（`004_r004_realtime_extras.sql`）
 
