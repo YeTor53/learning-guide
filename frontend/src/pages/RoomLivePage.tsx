@@ -201,6 +201,42 @@ export default function RoomLivePage() {
     void connection.connect(tokenQuery.data.url, tokenQuery.data.token).catch(() => undefined)
   }, [tokenQuery.data, connection])
 
+  // r013 cp-11：浏览器把隐藏/离屏窗口冻结时，LiveKit SDK 会主动断开（见 useRoomConnection 注释）。
+  // 页面回到可见时自动重连（最多 3 次 × 退避），失败则由下面的「重新连接」banner 兜底。
+  const autoRejoinRef = useRef(false)
+  useEffect(() => {
+    if (!connection.autoDisconnected || autoRejoinRef.current) return
+    autoRejoinRef.current = true
+    let cancelled = false
+    const attempt = async () => {
+      for (let i = 0; i < 3 && !cancelled; i += 1) {
+        try {
+          const fresh = await tokenQuery.refetch()
+          const data = fresh.data
+          if (data?.url && data.token && connection.status !== 'connected') {
+            await connection.connect(data.url, data.token)
+            autoRejoinRef.current = false
+            return
+          }
+        } catch {
+          /* 继续重试 */
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 1200 * (i + 1)))
+      }
+      autoRejoinRef.current = false
+      setNotice('自动重连没成功。点上方「重新连接」重进这间房即可，聊天与纪要都在。')
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void attempt()
+    }
+    onVisible() // 有时冻结解除不会再派发 visibilitychange，先自己试一次
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [connection, tokenQuery])
+
   // 准入判定：403 NOT_MEMBER → 回管理页（cp-r002-4 起改送等待页）；409 ROOM_ENDED → 房间已结束
   useEffect(() => {
     const error = tokenQuery.error

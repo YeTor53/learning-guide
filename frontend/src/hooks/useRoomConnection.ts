@@ -21,6 +21,8 @@ export interface RoomConnection {
   /** 断开原因文案（我们的主动 disconnect 为 null）。 */
   reason: string | null
   error: string | null
+  /** r013 cp-11：本次断开是「页面被浏览器挂起（freeze/pagehide）」导致的，页面回到可见时应自动重连。 */
+  autoDisconnected: boolean
   connect: (url: string, token: string) => Promise<void>
   disconnect: () => Promise<void>
 }
@@ -30,11 +32,21 @@ export function useRoomConnection(): RoomConnection {
     () => new Room({ adaptiveStream: true, dynacast: true }),
     [],
   )
+  // r013 cp-11：LiveKit SDK 对 `freeze`（Chrome 冻结隐藏/离屏页面时派发）**无条件**挂 onPageLeave，
+  // 且它会走 ClientInitiated 断开（原因文案为 null）→ 表现成「隐藏就断、还没有提示、也不自愈」。
+  // 这里自己先记一笔，把它与「用户点离开」区分开。
+  const pageSuspendedRef = useRef(false)
+  const [autoDisconnected, setAutoDisconnected] = useState(false)
   const [status, setStatus] = useState<ConnectionStatus>('idle')
   const [reason, setReason] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const markSuspended = () => {
+      pageSuspendedRef.current = true
+    }
+    window.addEventListener('freeze', markSuspended)
+    window.addEventListener('pagehide', markSuspended)
     const onReconnecting = () => setStatus('reconnecting')
     // 信号级中断（WS 掉线）也要进 reconnecting：SDK 认为「用户多半察觉不到」，
     // 但 r002 §8.9 的契约是「断网 1~3 秒内状态条可见 + 控制坞禁用」，所以这里必须接。
@@ -45,6 +57,14 @@ export function useRoomConnection(): RoomConnection {
     }
     const onDisconnected = (code?: DisconnectReason) => {
       setStatus('closed')
+      connectedRef.current = false
+      if (pageSuspendedRef.current) {
+        // 浏览器冻结/隐藏导致 SDK 主动断开：给出真实原因并交给页面自动重连（不是「用户离开」）
+        pageSuspendedRef.current = false
+        setAutoDisconnected(true)
+        setReason('页面被浏览器挂起（最小化 / 切到别的标签 / 被遮挡），连接已断开')
+        return
+      }
       if (code === undefined || code === DisconnectReason.CLIENT_INITIATED) {
         setReason(null) // 自己点的「离开房间」，不提示
         return
@@ -57,6 +77,8 @@ export function useRoomConnection(): RoomConnection {
       .on(RoomEvent.Reconnected, onReconnected)
       .on(RoomEvent.Disconnected, onDisconnected)
     return () => {
+      window.removeEventListener('freeze', markSuspended)
+      window.removeEventListener('pagehide', markSuspended)
       room
         .off(RoomEvent.Reconnecting, onReconnecting)
         .off(RoomEvent.SignalReconnecting, onSignalReconnecting)
@@ -88,6 +110,7 @@ export function useRoomConnection(): RoomConnection {
         await room.connect(url, token)
         setStatus('connected')
         setReason(null)
+        setAutoDisconnected(false)
       } catch (err) {
         connectedRef.current = false
         setStatus('closed')
@@ -101,10 +124,12 @@ export function useRoomConnection(): RoomConnection {
 
   const disconnect = useCallback(async () => {
     connectedRef.current = false
+    pageSuspendedRef.current = false
+    setAutoDisconnected(false)
     await room.disconnect()
     setStatus('closed')
     setReason(null)
   }, [room])
 
-  return { room, status, reason, error, connect, disconnect }
+  return { room, status, reason, error, autoDisconnected, connect, disconnect }
 }

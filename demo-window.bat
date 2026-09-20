@@ -18,5 +18,8 @@ set URL=http://localhost:5173/login
 if not "%ROOM%"=="" set URL=http://localhost:5173/rooms/%ROOM%/live
 echo [demo-window] 角色=%ROLE%  profile=%PROFILE%  调试端口=%PORT%
 echo [demo-window] 打开 %URL%
-start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="%PROFILE%" --remote-debugging-port=%PORT% --no-first-run --no-default-browser-check --window-size=1440,900 --window-position=0,0 "%URL%"
+REM 抗冻结/抗节流（演示窗口专用）：Chrome 会把隐藏/离屏/被遮挡的窗口冻结并节流定时器，
+REM 而 LiveKit SDK 收到 freeze 就会主动断开（表现成「隐藏就掉线」）。这几个开关让它保持活跃。
+set FLAGS=--disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling
+start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" %FLAGS% --user-data-dir="%PROFILE%" --remote-debugging-port=%PORT% --no-first-run --no-default-browser-check --window-size=1440,900 --window-position=0,0 "%URL%"
 endlocal

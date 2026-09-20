@@ -195,12 +195,19 @@ e) 断前若该端持有焦点或举手，恢复后是否仍在（库里 `room_f
 代码侧：前端**没有任何失焦/可见性主动断连逻辑**——`room.disconnect()` 只在三处被调用（离开房间 `RoomLivePage:314`、结束房间 `:332`、连接清理 `:248`）；`visibilitychange` 只用在 `usePresenceBeat`（在线心跳）与 `useRosterSync`（切回窗口重拉名册）。
 后台化的其它副作用（都不是掉线）：轮询在后台不空跑（`useGlobalChat` 的 `refetchIntervalInBackground:false`，`main.tsx` 的 `refetchOnWindowFocus:true`）→ 系统消息/名册/大屏消息在你不看它时可能"看起来不动"，**切回窗口瞬间会补齐**。
 
-演示口径：两端窗口摆屏幕上、别最小化/别移出屏幕/别切标签；真掉到「已断开」就 `房间列表 → 回到讨论` 重进（3 秒）。
+**已修（r013 cp-11，你「不要这个隐藏断链」）**：
+1. **根因（SDK 源码）**：`livekit-client` 的 `roomOptionDefaults.disconnectOnPageLeave = true` 会挂 `pagehide`/`beforeunload`，而 `window.addEventListener('freeze', onPageLeave)` 是**无条件**挂的 —— Chrome 冻结隐藏/离屏页面时派发 `freeze`，SDK 就 `disconnect()`，且归因走 `ClientInitiated`（原因文案为 null，看起来像「自己离开」），自愈也没有。
+2. **应用侧修**：`useRoomConnection` 自己监听 `freeze`/`pagehide` 记一笔，把这类断开与「用户点离开」区分开（给文案「页面被浏览器挂起…」并暴露 `autoDisconnected`）；`RoomLivePage` 在页面回到可见时**自动重连**（最多 3 次退避），失败则显示已有的「重新连接」banner。实测：CDP 确定性冻结 → 解冻后 4.0 秒仍「已断开」→ 5.5 秒「正在连接…」→ **8.5 秒「已连接」（自愈成立）**。
+   （未复现项：那次「页面被浏览器挂起」的文案没出现 —— 断开可能走的不是 freeze 事件路径；文案与归因留待下一轮复看。）
+3. **演示窗口侧修**：`demo-window.bat` 加 `--disable-features=CalculateNativeWinOcclusion --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --disable-background-timer-throttling`。实测：离屏 **45 秒**全程 `visibilityState=visible`、状态条一直「已连接」。
+
+演示口径：用 `demo-window.bat` 开的窗口最稳；用你自己的窗口就摆屏幕上、别最小化/别移出屏幕/别切标签。
 
 ## 11. 变更记录
 
 | 日期 | 版本 | 变更 | 依据 |
 | --- | --- | --- | --- |
+| 2026-09-20 | v6 | §10.7 追加「隐藏断链」的根因（SDK 无条件挂 freeze）、两层修复与实测数字 | 你「不要这个隐藏断链」 |
 | 2026-09-20 | v5 | 追加 §10.7「失焦 / 遮挡对连接的影响」（你问的）：失焦不丢连接、hidden 会掉且不自愈 + 代码侧依据 | 两组实测 |
 | 2026-09-20 | v4 | §10.6 追加**防火墙法实测**（首选，观感最好）与使用前提；登记「降级客户端放弃重连」这条产品观察 | 本轮实测 |
 | 2026-09-20 | v3 | 追加 §10.6 断线道具（`demo-window.bat` / `demo-disconnect.bat`）三次实测结果与边界 | 本轮实测 |
