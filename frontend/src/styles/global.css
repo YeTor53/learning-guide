@@ -1102,8 +1102,9 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .live-ctrl {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid var(--line-soft);
   background: var(--panel-strong);
@@ -1117,7 +1118,25 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .live-ctrl-text { font-size: 13px; }
 /* 关闭态用「危险色 + 文字」双重表达：颜色不可靠，文字才可靠 */
 .live-ctrl-off { color: var(--danger); }
-.live-ctrl-state { font-size: 11px; color: var(--text-mute); }
+/* r013 cp-15：控制坞/抽屉改纯图标 —— 状态用小圆点（静音=红、举手/共享中=强调色），文案进 tooltip */
+.live-ctrl-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-mute);
+}
+.live-ctrl-dot-danger {
+  background: var(--danger);
+}
+.live-ctrl-dot-accent {
+  background: var(--accent);
+}
+.live-ctrl-state { display: inline-flex; align-items: center; font-size: 11px; color: var(--text-mute); }
+/* r013 cp-15：控制坞改纯图标 —— 状态用小圆点表示（静音=红点、举手/共享中=强调点） */
+.live-ctrl-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-mute); display: inline-block; }
+.live-ctrl-dot-danger { background: var(--danger); }
+.live-ctrl-dot-accent { background: var(--accent); }
 .live-ctrl-muted { color: var(--danger); }
 
 .live-level { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
@@ -1478,7 +1497,9 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .live-drawer-tabs { display: flex; gap: 4px; }
 .live-drawer-tab {
   position: relative;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 9px;
   border-radius: 999px;
   border: 1px solid var(--line-soft);
   background: transparent;
@@ -1936,6 +1957,9 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 /* 控制坞转写状态（只读文案，不是按钮） */
 .live-transcribe-chip {
   align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 0 6px;
   color: var(--text-mute);
   font-size: 12px;
@@ -2009,7 +2033,7 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 /* ---------- 交流页：超管只读标识 ---------- */
 .live-superadmin-chip {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 0 10px; height: 34px;
+  padding: 0 9px; height: 34px;
   border: 1px solid var(--line); border-radius: var(--r-sm);
   color: var(--accent); font-size: 13px;
 }

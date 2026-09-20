@@ -146,7 +146,8 @@ def has(probe_data: dict, text: str) -> bool:
     """文案存在性：先看结构化字段，再兜底全文（动态数值只在全文里）。"""
     blob = " | ".join(probe_data.get("buttons", []) + probe_data.get("links", [])
                       + probe_data.get("linkTitles", []) + probe_data.get("headings", [])
-                      + probe_data.get("placeholders", []) + probe_data.get("tableHeads", []))
+                      + probe_data.get("placeholders", []) + probe_data.get("tableHeads", [])
+                      + probe_data.get("titleAttrs", []))  # r013 cp-15：图标化后文案都在 title 里
     return text in blob or text in probe_data.get("bodyText", "")
 
 
@@ -177,7 +178,11 @@ async def set_drawer(page: Page, want_open: bool) -> bool:
 async def set_panel_tab(page: Page, label: str) -> None:
     """抽屉分区（讨论/成员/邀请）与后台分区（房间/用户/…）共用 .live-drawer-tab：已选中就不点。"""
     await page.js("""(async () => {
-      const tab = [...document.querySelectorAll('.live-drawer-tab')].find(x => x.textContent.includes(%s));
+      // r013 cp-15：抽屉 tab 已图标化，文字标签没了 → 按 aria-label / title 匹配
+      const want = %s;
+      const tab = [...document.querySelectorAll('.live-drawer-tab')].find(x =>
+        (x.getAttribute('aria-label') || '').includes(want) || (x.getAttribute('title') || '').includes(want)
+        || (x.textContent || '').includes(want));
       if (tab && !tab.classList.contains('on')) { tab.click(); await new Promise(r => setTimeout(r, 500)); }
       return true;
     })()""" % json.dumps(label))
@@ -360,10 +365,13 @@ async def main(argv: list[str] | None = None) -> int:
                 check("交流页·状态条「N / M 成员」",
                       seat_hit is not None,
                       "→ {!r}".format(seat_hit.group(0) if seat_hit else None))
-                chip_hit = re.search(r"转写：(开启|未开启)", r["bodyText"])
-                check("交流页·转写芯片「转写：开启 / 未开启」",
-                      chip_hit is not None,
-                      "→ 命中 {!r}".format(chip_hit.group(0) if chip_hit else None))
+                chip_el = await user.js("""JSON.stringify((() => { const el = document.querySelector('.live-transcribe-chip');
+                  return el ? { title: el.getAttribute('title') || '', svg: el.querySelectorAll('svg').length, dot: el.querySelectorAll('.live-ctrl-dot').length } : null; })())""")
+                chip = json.loads(chip_el or "null") or {}
+                # r013 cp-15：控制坞改纯图标 —— 转写不再是「转写：开启/未开启」文字，而是图标 + 状态点，文案在 title
+                check("交流页·转写芯片（图标 + 状态，r013 cp-15）",
+                      chip.get("svg") == 1 and "房间侧转写" in (chip.get("title") or ""),
+                      f"→ chip={chip}")
                 check("交流页·转写告知条与「知道了」",
                       "关掉麦克风即不参与转写" in r["bodyText"] and has(r, "知道了"),
                       "→ 告知条文案与按钮都在" if "关掉麦克风即不参与转写" in r["bodyText"] else "→ 未见到告知条")
@@ -377,7 +385,7 @@ async def main(argv: list[str] | None = None) -> int:
                 # 名册行要等名册接口/广播到位（3 秒轮询），别在加载中就断言
                 rows_ready = await wait_until(
                     user,
-                    "[...document.querySelectorAll('aside.live-drawer button')].some(b => b.textContent.includes('移出'))",
+                    "[...document.querySelectorAll('aside.live-drawer button')].some(b => (b.getAttribute('title') || b.textContent || '').includes('移出'))",
                     15)
                 if not rows_ready:
                     print("  [!] 未等到名册行，抽屉当时的文案：",

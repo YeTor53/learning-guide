@@ -7,7 +7,7 @@
  * 注意与库里的 `room_members.status` 区分：那是"成员身份是否有效"，不是"此刻在不在"。
  */
 import { useState } from 'react'
-import { Check, Copy, Crosshair, Hand, MoreHorizontal, ShieldCheck, ShieldOff, UserMinus, X } from 'lucide-react'
+import { Check, Copy, Crosshair, Hand, Megaphone, MessagesSquare, MoreHorizontal, ShieldCheck, ShieldOff, Ticket, UserMinus, Users, X } from 'lucide-react'
 
 import JoinRequestList from '../JoinRequestList'
 import type { JoinRequest, Member, Room, Role, ViewerRole } from '../../api/rooms'
@@ -207,18 +207,22 @@ export default function RoomSidePanel({
           <button
             role="tab"
             aria-selected={tab === 'chat'}
+            title="讨论（群聊与系统消息）"
+            aria-label="讨论"
             className={`live-drawer-tab${tab === 'chat' ? ' on' : ''}`}
             onClick={() => setTab('chat')}
           >
-            讨论
+            <MessagesSquare size={15} strokeWidth={1.75} aria-hidden />
           </button>
           <button
             role="tab"
             aria-selected={tab === 'members'}
+            title="成员（名册、待批申请、治理动作）"
+            aria-label="成员"
             className={`live-drawer-tab${tab === 'members' ? ' on' : ''}`}
             onClick={() => setTab('members')}
           >
-            成员
+            <Users size={15} strokeWidth={1.75} aria-hidden />
             {requests.filter((item) => item.status === 'pending').length > 0 && (
               <span className="live-toggle-badge">{requests.filter((item) => item.status === 'pending').length}</span>
             )}
@@ -227,19 +231,23 @@ export default function RoomSidePanel({
             <button
               role="tab"
               aria-selected={tab === 'invite'}
+            title="邀请（生成邀请码与链接）"
+            aria-label="邀请"
               className={`live-drawer-tab${tab === 'invite' ? ' on' : ''}`}
               onClick={() => setTab('invite')}
             >
-              邀请
+              <Ticket size={15} strokeWidth={1.75} aria-hidden />
             </button>
           )}
           <button
             role="tab"
             aria-selected={tab === 'global'}
+            title="大屏（全服公开聊天）"
+            aria-label="大屏"
             className={`live-drawer-tab${tab === 'global' ? ' on' : ''}`}
             onClick={() => setTab('global')}
           >
-            大屏
+            <Megaphone size={15} strokeWidth={1.75} aria-hidden />
           </button>
         </div>
         <button className="icon-btn" onClick={onClose} title="收起（Esc）" aria-label="收起成员与管理">
