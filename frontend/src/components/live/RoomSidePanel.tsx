@@ -22,6 +22,14 @@ import InvitePanel from './InvitePanel'
 const ICON = { size: 14, strokeWidth: 1.75 } as const
 
 interface Props {
+  /** r009：协管焦点申请（待批 + 批准/拒绝）。 */
+  focusRequests?: {
+    requests: import('../../hooks/useFocusRequests').FocusRequest[]
+    mine: import('../../hooks/useFocusRequests').FocusRequest | null
+    approve: (id: string) => Promise<void>
+    reject: (id: string) => Promise<void>
+  }
+
   room: Room
   members: Member[]
   myRole: Role | null
@@ -70,6 +78,7 @@ export default function RoomSidePanel({
   onTransferHost,
   onApprove,
   onReject,
+  focusRequests,
 }: Props) {
   const isHost = myRole === 'host'
   const isManager = myRole === 'host' || myRole === 'moderator'
@@ -221,6 +230,40 @@ export default function RoomSidePanel({
           <X {...ICON} />
         </button>
       </div>
+
+      {tab === 'members' && focusRequests && focusRequests.requests.length > 0 && (
+        <section className="panel focus-requests">
+          <h2 className="panel-title">焦点申请</h2>
+          {focusRequests.requests.map((item) => {
+            const isMine = focusRequests.mine?.id === item.id
+            return (
+              <div key={item.id} className="focus-request-row">
+                <span className="focus-request-name">{item.requesterName}</span>
+                <span className="muted" style={{ fontSize: 12 }}>申请取得焦点</span>
+                {isMine ? (
+                  <span className="dim" style={{ fontSize: 12 }}>需另一位管理身份批准</span>
+                ) : (
+                  <span className="focus-request-actions">
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => {
+                        void focusRequests.approve(item.id)
+                        // 批准后由**批准人**的客户端补一次焦点广播，保证全场（尤其申请人）立刻看到焦点变化
+                        void focus.setFocus(item.requesterId)
+                      }}
+                    >
+                      批准
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => void focusRequests.reject(item.id)}>
+                      拒绝
+                    </button>
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </section>
+      )}
 
       {tab === 'chat' && (
         <section className="panel">

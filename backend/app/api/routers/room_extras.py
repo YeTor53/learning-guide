@@ -14,6 +14,7 @@ from app.api.envelope import ok
 from app.schemas.auth import UserVO
 from app.schemas.rooms import FocusIn, MessageIn
 from app.services import focus as focus_service
+from app.services import focus_requests as focus_requests_service
 from app.services import hands as hands_service
 from app.services import messages as messages_service
 
@@ -119,3 +120,61 @@ def set_focus(
 ):
     """房主/协管指定或取消焦点（`userId: null` 表示取消）。"""
     return ok({"focus": _dump(focus_service.set_focus(conn, actor, room_id, payload.user_id))}, status=200)
+
+
+# ---------------- r009：协管焦点申请（ADR-0021 D2）----------------
+
+@router.post("/rooms/{room_id}/focus-requests", status_code=201)
+def create_focus_request(
+    room_id: str,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """协管发起焦点申请（已在批时幂等返回同一条）；房主直接走 `POST /rooms/{id}/focus`。"""
+    item = focus_requests_service.request_focus(conn, actor, room_id)
+    return ok(_dump(item), status=201)
+
+
+@router.get("/rooms/{room_id}/focus-requests", status_code=200)
+def list_focus_requests(
+    room_id: str,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """待批的焦点申请（Host/Moderator 可见）。"""
+    items = focus_requests_service.list_focus_requests(conn, actor, room_id)
+    return ok({"requests": [_dump(item) for item in items]}, status=200)
+
+
+@router.post("/focus-requests/{request_id}/approve", status_code=200)
+def approve_focus_request(
+    request_id: str,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """批准焦点申请（**必须由另一位管理身份**操作，本人批准 → 403 `SELF_APPROVAL`）。"""
+    item = focus_requests_service.decide_focus_request(conn, actor, request_id, approve=True)
+    return ok(_dump(item), status=200)
+
+
+@router.post("/focus-requests/{request_id}/reject", status_code=200)
+def reject_focus_request(
+    request_id: str,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """拒绝焦点申请（同样不能由本人操作）。"""
+    item = focus_requests_service.decide_focus_request(conn, actor, request_id, approve=False)
+    return ok(_dump(item), status=200)
+
+
+@router.post("/rooms/{room_id}/focus/from-hand", status_code=200)
+def grant_focus_from_hand(
+    room_id: str,
+    payload: FocusIn,
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """管理在举手者格上点「给焦点」：设焦点 + 清该人举手（r009）。"""
+    item = focus_service.grant_focus_from_hand(conn, actor, room_id, payload.user_id)
+    return ok(_dump(item), status=200)

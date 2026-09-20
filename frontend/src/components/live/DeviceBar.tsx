@@ -36,6 +36,12 @@ interface Props {
   onCancelEnd: () => void
   /** r004：是否正在举手 / 是否正在共享屏幕。 */
   handRaised: boolean
+  /** r009：按钮文案按角色分流（房主=取得焦点 / 协管=申请焦点 / 参与者=举手 / 处于焦点=退出焦点）。 */
+  handLabel?: string
+  /** r009：按钮是否处于「已生效」视觉态（已举手，或自己正持焦点）。 */
+  handActive?: boolean
+  /** r009：悬停说明。 */
+  handTitle?: string
   sharing: boolean
   onToggleHand: () => void
   onToggleShare: () => void
@@ -61,6 +67,9 @@ export default function DeviceBar({
   onConfirmEnd,
   onCancelEnd,
   handRaised,
+  handLabel,
+  handActive,
+  handTitle,
   sharing,
   onToggleHand,
   onToggleShare,
@@ -107,14 +116,14 @@ export default function DeviceBar({
         </button>
 
         <button
-          className={`live-ctrl live-ctrl-hand${handRaised ? ' live-ctrl-hand-on' : ''}`}
+          className={`live-ctrl live-ctrl-hand${(handActive ?? handRaised) ? ' live-ctrl-hand-on' : ''}`}
           onClick={onToggleHand}
           disabled={disabled}
-          aria-pressed={handRaised}
-          title={handRaised ? '放下手' : '举手（示意要发言）'}
+          aria-pressed={handActive ?? handRaised}
+          title={handTitle ?? (handRaised ? '放下手' : '举手（示意要发言）')}
         >
           <Hand {...ICON} />
-          <span className="live-ctrl-text">{handRaised ? '放下手' : '举手'}</span>
+          <span className="live-ctrl-text">{handLabel ?? (handRaised ? '放下手' : '举手')}</span>
           <span className="live-ctrl-state">{handRaised ? '已举手' : ''}</span>
         </button>
 

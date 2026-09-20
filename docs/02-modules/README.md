@@ -29,6 +29,7 @@ updated: 2026-09-19
 | r006 | `r006-ui-sync-polish.md` | `r006-ui-sync-polish-features.md` | 麦徽标真实状态 / 两端人数与待批同步 / 个人信息浮窗 + 名言 / 图版位置 |
 | r007 | `r007-topic-and-scrollhint.md` | `r007-topic-and-scrollhint-features.md` | 工具栏位置回退 / hero 下箭头 / 主题控件风格化与 14 项主题 / 侧边栏默认收起 |
 | r008 | `r008-assignment-gaps.md` | `r008-assignment-gaps-features.md` | **最新一轮的当前真相页**：讨论纪要（LLM）+ 限时邀请（最长 1 分钟）；作业必做 15/15 见 `docs/00-project/assignment-a-coverage.md` |
+| r009 | `r009-focus-system.md` | `r009-focus-system-features.md` | **最新一轮的当前真相页**：均分铺满 + 举手—焦点闭环 + 声波（ADR-0021 覆盖 r004 布局口径） |
 
 ## 3. 阅读顺序建议
 
