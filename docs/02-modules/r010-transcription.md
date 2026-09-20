@@ -79,6 +79,9 @@ updated: 2026-09-20
 | 幂等 | 后端日志 **56 次上报 → 201**，库里唯一 35 行 |
 | 归属 | `speakers = [房主F, 乙F, 丙F]`（每端都能看到别人的话） |
 | 截图 | `%TEMP%\lg_r010_e2e\shot-notice.png`、`shot-discussion.png`（含一次真机复看修复） |
+| **音频路径（离线语音回归）** | `frontend/scripts/verify-transcription.py`：TTS 语音当麦克风 → 本端采集 RMS **0.214 / 0.273**；对端 4 秒收 **+35~43 KB**、`totalAudioEnergy` **+0.35~1.09**（非静音）→ **PASS** |
+| 上报质量（该房） | 361 次上报全 201 → 唯一 96 行 / 4 说话人（冗余 3.76×）；该房请求全 2xx |
+| 真实网络注意 | 本机**首连偶发超时换区**，实测最慢 **24.2s** → 演示前各端先预热进房一次 |
 
 ## 7. 扩展点
 
@@ -96,3 +99,4 @@ updated: 2026-09-20
 | 日期 | 轮次 | 改了什么 | 回链 |
 | --- | --- | --- | --- |
 | 2026-09-20 | r010 | 新建：语音转文字并入讨论流（换轨 Agents 侧识别 + 前端回传落库）的首个模块页 | `docs/rounds/r010-transcription/`；ADR-0023 |
+| 2026-09-20 | r010 cp-6 | 补「音频路径」实测行与两点测量教训（WebRTC 统计代替 AudioContext；先等 connected 再测）+ 回归脚本入库 | `frontend/scripts/verify-transcription.py`；`changes.md` §3.6 |

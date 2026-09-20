@@ -24,6 +24,7 @@ updated: 2026-09-20
 | cp-r010-3a | **三源合一**：`build_conversation` + `GET /rooms/{id}/conversation` + 用例（聊天 / 系统事件 / 语音同一条流） | **完成 2026-09-20** | 见 cp-3a 提交 | E4（3 条用例） |
 | cp-r010-3b | 前端：监听 `TranscriptionReceived` 渲染（渐进 + 定稿）+ **回传 final 段** + 转写气泡 + 进房告知条 + 控制坞「转写：开启/未开启」 | **完成 2026-09-20**（tsc exit 0 / build exit 0） | 见 cp-3b 提交 | E5/E13 |
 | cp-r010-4 | 纪要接上转写素材（`build_summary_input` 加语音转写段 + `speech=` 计数） | **完成 2026-09-20** | 见 cp-4 提交 | E7（用例捕获 LLM 素材断言） |
+| cp-r010-6 | **离线语音回归脚本入库**（`frontend/scripts/verify-transcription.py`）：TTS 真语音当麦克风 + 本端采集 RMS + **对端 WebRTC 收音频统计** + 转写链路断言 | **完成 2026-09-20** | 见 cp-6 提交 | 「音频路径是真的」有硬数字（见 §3.6） |
 | cp-r010-5 | 收官：零配额真机 E2E（3 人）+ 门禁 + 教学页 + review + 索引回填 + **真机发现并修复：agent 占用舞台格子** + worker 自动重启 | **完成 2026-09-20** | 见 cp-5 提交 | E8/E11/E12/E13/E14 |
 
 ## 2. 用户消息台账（首行回执对账用）
@@ -124,6 +125,24 @@ updated: 2026-09-20
 **如实记录的两个问题**
 1. **worker 崩过一次**：`FFI Panic: invalid request: timed out waiting for ReadyForRoomEventRequest after ConnectCallback`（LiveKit 侧 FFI，日志在 `%TEMP%\lg_r010_e2e\worker.log`）→ 截图轮因此无 agent；已给 `agents.bat` 加自动重启，并在控制坞如实显示「未开启」（**未闭合 ①**）。
 2. **Vite dev 服务挂过一次**（代理返回 000）→ 重启后恢复；与 dev 服务相关的既有已知问题同类（uvicorn `--reload` 在 Windows 自崩也在列）。
+
+### 3.6 cp-6 离线语音回归（2026-09-20 实测，**零配额**）
+
+脚本：`frontend/scripts/verify-transcription.py`（**入库**，与 r009.5 的 `verify-stage-motion.py` 同规格）；素材：Windows 内置 TTS 离线合成 `line_a.wav`（「今天我们先讲线性回归，最小二乘法是它的基础。」）、`line_b.wav`（「请大家打开第三章，看看梯度下降的示意图。」），用 Chromium `--use-file-for-fake-audio-capture` 当麦克风喂进房。
+
+| 项 | 实测（房间 `room_2fb30e699ac66015`，worker `AGENT_STT=fake`） |
+| --- | --- |
+| 本端采集（证明 TTS 语音真进了麦克风） | 甲VT RMS 峰值 **0.214**（均 0.050）｜乙VT 峰值 **0.273**（均 0.061） |
+| **对端收到音频**（证明音频真经 LiveKit 在流） | 观察端订阅 **3 条音频轨**；4 秒增量：+35,609 B / energy **+1.086**、+42,970 B / +0.449、+37,789 B / +0.347（**energy 增长 = 收到的不是静音**） |
+| 连接等待（真实网络） | 房主首连 **24.2s**（先超时后换区）；后进入的客户端 0~2s |
+| 转写链路 | 4 人在场、各端 48~53 条转写、控制坞全「转写：开启」、worker 为本房开 **4 个会话** |
+| 幂等 | 该房前端上报 **361 次全部 201** → 库内唯一 **96 行 / 4 说话人 / `external_id` 全非空**（冗余 3.76×） |
+| 该房请求质量 | 所有请求 2xx（无 4xx/5xx） |
+| 结论 | **PASS**（脚本退出码 0） |
+
+**两个由这次测试暴露/确认的事实**（已写进模块页与教学页口径）：
+1. **对端音频不能靠浏览器 AudioContext 量**（本机无音频输出设备时 `createMediaElementSource`/`MediaStreamSource` 恒 0）→ 应读 **WebRTC 接收统计**（`window.__lgRoom` + `bytesReceived`/`totalAudioEnergy` 增量）。
+2. **不能连上就测**：本机首连常先超时再换区（实测最慢 **24.2s**），脚本已加「等 `room.state === 'connected'` 且远端人数达标」的门——否则会误判「音频没到对端」。
 
 ### 3.5b cp-4 纪要接线（2026-09-20 实测）
 
