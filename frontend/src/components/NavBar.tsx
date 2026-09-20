@@ -48,10 +48,7 @@ export default function NavBar({ onToggleCollapsed }: Props) {
       </div>
 
       <div className="top-actions">
-        {/* r011：常驻入口 —— 作业必做的「邀请」项此前只有房主复制的链接能到，手上有码的人无处输入 */}
-        <Link className="link-plain" to="/join">
-          邀请码加入
-        </Link>
+        {/* r011：入口按你的口径放在**侧边栏**（见 SideBar.tsx 的「邀请码加入」）—— 顶栏只留登录 / 注册 / 用户名 */}
         {isLoading ? (
           <span className="dim" style={{ fontSize: 13 }}>
             ·
