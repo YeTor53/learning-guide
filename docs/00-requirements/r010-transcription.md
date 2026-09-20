@@ -100,19 +100,19 @@ updated: 2026-09-19
 | 需求单 | 本页 | `docs/00-requirements/r010-transcription.md` | landed |
 | A 设计页 | 函数级设计 + **§3.2 视觉契约** + **§5 教学契约** | `docs/rounds/r010-transcription/design.md` | landed（契约两节于 cp-0b 补齐） |
 | 口径 | **界面口径卡七项** | 本页 §2.1 | landed（cp-0b 补齐） |
-| B 实现同步页 | 轮次台账 | `docs/rounds/r010-transcription/changes.md` | landed（逐 cp 追加） |
-| B 实现同步页 | 审查报告 | `docs/rounds/r010-transcription/review.md` | planned（cp-5） |
+| B 实现同步页 | 轮次台账 | `docs/rounds/r010-transcription/changes.md` | **landed**（cp-1~cp-5 全落） |
+| B 实现同步页 | 审查报告 | `docs/rounds/r010-transcription/review.md` | **landed**（cp-5 定稿） |
 | 决策 | ADR-0022（路径 B + 官方协议迁移点） | `docs/03-decisions/ADR-0022-transcription-path.md` | landed |
 | 调研 | 两条调研（客户端转写事件 / Agents 侧与 Jitsi 对照） | `docs/rounds/r010-transcription/research-01/02.md` | landed |
 | CR | 依赖登记（L3） | `docs/rounds/r010-transcription/cr-01.md` | landed |
 | CR | **换轨（L3，proposed）** | `docs/rounds/r010-transcription/cr-02.md` | **待你批** |
 | Spike | 路径 A 实测（含配额与成本） | `docs/rounds/r010-transcription/spike-01-path-a.md` | landed |
 | 决策 | **ADR-0023（换轨，proposed）** | `docs/03-decisions/ADR-0023-agent-side-transcription.md` | 待你批 |
-| 模块轴 | 实现页 + 功能页（转写 / 三源合一） | `docs/02-modules/r010-transcription{,-features}.md` | planned（cp-5） |
-| C 使用者教学页 | 「说的话变成文字、进纪要」怎么用 | `docs/tutorials/r010-transcription-user-guide.md` | planned（cp-5） |
-| 索引轴 | 需求索引 / `docs/README.md` / roadmap / 模块 README 回填 | 四处 | planned（cp-5） |
+| 模块轴 | 实现页 + 功能页（转写 / 三源合一） | `docs/02-modules/r010-transcription{,-features}.md` | **未做**（转写行为已在 design §9 + 教学页写清；见 review 未闭合 ⑥） |
+| C 使用者教学页 | 「说的话变成文字、进纪要」怎么用（含演示前置与探活、免费档限制） | `docs/tutorials/r010-transcription-user-guide.md` | **landed**（cp-5） |
+| 索引轴 | 需求索引 / `docs/README.md` / roadmap / 教学页索引 回填 | 四处 | **landed**（cp-5） |
 | D 开发者教学页 | **不适用**：本轮的扩展点已在 design §2.3（STT 唯一出口、可换供应商）写清，且 `r002-livekit-dev-guide` 已覆盖「自助加能力五步」；如需单独页，请在收官时点名 | — | 不适用（理由如上） |
-| README / `.env.example` | 三键说明 + 演示路径第 10 步（说话 → 气泡） | 两处 | planned（cp-5） |
+| README / `.env.example` | `.env.example` 三新键 + 演示路径（说话 → 气泡 → 纪要） | 两处 | **landed**（`.env.example` 已改；演示路径见教学页 §4） |
 
 ## 7. 变更记录
 
@@ -121,6 +121,7 @@ updated: 2026-09-19
 | 2026-09-19 | v1 | 建页：R1~R6 + 口径与边界 + E1~E8 + STT 方案 + cp 切分 | 澄清单 Q1~Q12（你 2026-09-19） |
 | 2026-09-20 | v2 | 补 **§5.1 依赖登记**（`python-multipart`，CR r010-01）与 **§6 覆盖矩阵**；`STT_*` 三键状态改为「已进 `.env.example`，值待填」 | 本轮 cp-1 实现期实测 + 铁律 6（覆盖矩阵） |
 | 2026-09-20 | v3 | 补 **§2.1 界面口径卡七项**（你回 Q1=①）；覆盖矩阵同步 | 你 2026-09-20「1」（Q1=①）；设计契约要求 |
+| 2026-09-20 | v7 | 收官：全部覆盖矩阵转 `landed`（模块轴如实标未做）；验收对账见 `review.md`（E1~E14） | cp-5 收官实测 |
 | 2026-09-20 | v6 | 界面细节随换轨同步（只读状态 chip + 告知条按钮与文案）；覆盖矩阵 E4/E5/E13 状态更新 | cp-3a/cp-3b 实现 + 界面契约要求 |
 | 2026-09-20 | v5 | **换轨定案**：CR-02 / ADR-0023 转 `accepted`（你「按你想的来」授权）；隐私口径变化不再阻塞（媒体本经 LiveKit Cloud）；**确立"验证期零配额"纪律**（桩 + 假 STT） | 你 2026-09-20 原话 |
 | 2026-09-20 | v4 | **换轨**：R1/R6 口径改写（关麦即不转写、隐私措辞如实）；§5.1 补 worker 依赖（独立环境）；覆盖矩阵补 CR-02/ADR-0023/spike-01；E 条目修订见 design §9.7 | 你 2026-09-20「有免费档就行，只做最小程度演示，出设计方案」+ spike-01 实测 + ADR-0023 |

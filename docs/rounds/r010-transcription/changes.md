@@ -23,8 +23,8 @@ updated: 2026-09-20
 | cp-r010-2w | 转写 worker：`backend/agents/transcriber.py` + `requirements-agents.txt` + `agents.bat` + `backend/scripts/dispatch_agent.py` | **完成 2026-09-20**（离线自检通过；真机联调见 cp-5，默认用假 STT 零配额） | 见 cp-2w 提交 | 离线自检：FakeSTT 1.3s 出 3 条 |
 | cp-r010-3a | **三源合一**：`build_conversation` + `GET /rooms/{id}/conversation` + 用例（聊天 / 系统事件 / 语音同一条流） | **完成 2026-09-20** | 见 cp-3a 提交 | E4（3 条用例） |
 | cp-r010-3b | 前端：监听 `TranscriptionReceived` 渲染（渐进 + 定稿）+ **回传 final 段** + 转写气泡 + 进房告知条 + 控制坞「转写：开启/未开启」 | **完成 2026-09-20**（tsc exit 0 / build exit 0） | 见 cp-3b 提交 | E5/E13 |
-| cp-r010-4 | 纪要接上转写素材 | planned | — | E7 |
-| cp-r010-5 | 收官（真机取证、门禁、文档、review） | planned | — | E8 |
+| cp-r010-4 | 纪要接上转写素材（`build_summary_input` 加语音转写段 + `speech=` 计数） | **完成 2026-09-20** | 见 cp-4 提交 | E7（用例捕获 LLM 素材断言） |
+| cp-r010-5 | 收官：零配额真机 E2E（3 人）+ 门禁 + 教学页 + review + 索引回填 + **真机发现并修复：agent 占用舞台格子** + worker 自动重启 | **完成 2026-09-20** | 见 cp-5 提交 | E8/E11/E12/E13/E14 |
 
 ## 2. 用户消息台账（首行回执对账用）
 
@@ -99,7 +99,35 @@ updated: 2026-09-20
 
 ### 3.4 cp-4 纪要素材（待填）
 
-### 3.5 cp-5 收官（待填）
+### 3.5 cp-5 收官（2026-09-20 实测，**零配额**）
+
+**真机 E2E（3 人房，假 STT worker；`%TEMP%\lg_r010_e2e\e2e_final.py`）**
+
+| 项 | 实测 |
+| --- | --- |
+| 服务 | 后端 :8000 + 前端 :5173 + worker（`AGENT_STT=fake`，零配额） |
+| 建/进房 | 3 个账号注册 201；建房 201；两人走真实等候室（申请 201 / 批准 200） |
+| worker 入场 | **13.4 秒**（建房后派单 → 控制坞变「转写：开启」） |
+| 三端状态 | host / p2 / p3 最终**全部**「转写：开启」（p3 因建连早于 agent 入场，35.6s 才刷新 → 已加 5 秒轮询兜底） |
+| 三端气泡 | 32 / 33 / 35 条 `chat-bubble-speech` |
+| 三源同流 | `/conversation` `kinds=[speech, system]`，`speakers=[房主F, 乙F, 丙F]`；界面见截图（转写气泡 + 「乙F 加入了房间」同一列） |
+| 异常 | `errors: []`（无未捕获异常） |
+| 截图 | `%TEMP%\lg_r010_e2e\shot-notice.png`（告知条）、`shot-discussion.png`（讨论流） |
+
+**库内取证（同一房间）**：`transcripts` **35 行**、说话人 **3**、`external_id` 全非空、`segment_index` 全空、`provider=livekit`、`model=learning-guide-transcriber`；`duration_ms` 兜底为 1（假 STT 无起止时间，真 STT 由 segment 提供 → 未闭合 ④）。
+**冗余上报**：后端日志 **56 次 POST → 201**，库里唯一 35 行（幂等生效）。
+
+**门禁**：`pytest backend/tests -q` → **156 passed**；`smoke.py` → **PASS 46/46**；`tsc --noEmit` → exit 0；`npm run build` → exit 0（2010 modules / 3.83s）。
+
+**真机发现并修复（本轮最重要的质量项）**：第一轮截图里，转写 agent 被 `useTracks(withPlaceholder: true)` 当成普通参与者，在舞台上**多占一格**（画面显示 `agent-AJ_swWMGfsZzzUF`）。修法：新增 `isAgentParticipant`（identity 前缀 + SDK kind 双判据），在 `useOnlineIdentities` 与 `LiveStage` 两处过滤；复看第二轮截图舞台只剩 2 个真人格子 ✓（见 review 未闭合 ⑤）。
+
+**如实记录的两个问题**
+1. **worker 崩过一次**：`FFI Panic: invalid request: timed out waiting for ReadyForRoomEventRequest after ConnectCallback`（LiveKit 侧 FFI，日志在 `%TEMP%\lg_r010_e2e\worker.log`）→ 截图轮因此无 agent；已给 `agents.bat` 加自动重启，并在控制坞如实显示「未开启」（**未闭合 ①**）。
+2. **Vite dev 服务挂过一次**（代理返回 000）→ 重启后恢复；与 dev 服务相关的既有已知问题同类（uvicorn `--reload` 在 Windows 自崩也在列）。
+
+### 3.5b cp-4 纪要接线（2026-09-20 实测）
+
+`pytest backend/tests/test_conversation.py::test_transcription_feeds_summary_material` → 通过：桩捕获给 LLM 的 messages，断言转写文本「线性回归的关键是最小二乘」与「语音转写」段都在素材里，`inputDigest` 含 `speech=1`；全量 **156 passed**（原 155 + 1）。
 
 ## 3.6 分支与交接（如实记录一次操作失误与归位）
 

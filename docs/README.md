@@ -61,6 +61,7 @@ updated: 2026-09-20
 | r008-assignment-gaps | `r008-assignment-gaps.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿；r009.5 纠错 4 处） | — | 分支 `req/r008-assignment-gaps`，cp tag `cp-r008-0..4` |
 | r009-focus-system | `r009-focus-system.md`（实现完成，待合并） | ✅ | ✅（r009.5 回填） | ✅（定稿；r009.5 补 E0 并回填 E1/E2/E7/E12） | redirect-01 | 分支 `req/r009-focus-system`，cp tag `0/1a/1b/2a/2b/3a/3b/5`（4 无独立提交） |
 | r010-transcription | `r010-transcription.md`（实现中：阶段 1 文档已落） | ✅ | 骨架待建 | —（cp-1 起未开工） | redirect-01 + research-01/02 | 分支 `req/r010-transcription`，cp tag `cp-r010-0` |
+| r010-transcription | `r010-transcription.md`（实现完成，待合并） | ✅ | ✅ | ✅（含 CR-01/02 与 spike 报告） | ✅（定稿） | 换轨后口径（Agents 侧识别）；cp tag `cp-r010-0/0b/0c/1/1b/2a/2w/3a/3b/4/5`；worker 独立环境 `lg_agents` |
 | r009.5-debt-backfill | `r009.5-debt-backfill.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r009.5-debt-backfill`，cp tag `cp-r009.5-1..5`；本轮**不改产品行为** |
 
 ## 5. backlog（`99-archive/`）

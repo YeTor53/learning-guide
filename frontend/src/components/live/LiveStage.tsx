@@ -14,6 +14,7 @@ import { useStableSpeaker } from '../../hooks/useStableSpeaker'
 import FocusBadge from './FocusBadge'
 import QuoteLine from '../QuoteLine'
 import ParticipantTile from './ParticipantTile'
+import { isAgentParticipant } from '../../hooks/useOnlineIdentities'
 import { computeStageGeometry } from './stageGeometry'
 
 interface Props {
@@ -95,10 +96,14 @@ export default function LiveStage({
   onGrantFocus,
   onLowerHand,
 }: Props) {
-  const tracks = useTracks(
+  const rawTracks = useTracks(
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }, { source: Track.Source.Camera, withPlaceholder: true }],
     { onlySubscribed: false },
   )
+  // r010：房间里的 agent（转写 worker）也是 LiveKit 参与者，但**不是房间成员**——
+  // `withPlaceholder: true` 会给每个没有摄像头的人发占位轨，agent 因此会在舞台上多占一格（实测踩到）。
+  // 这里统一剔除：舞台只渲染人。
+  const tracks = useMemo(() => rawTracks.filter((item) => !isAgentParticipant(item.participant)), [rawTracks])
   const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null)
   const stageRef = useCallbackRef(setStageEl)
   const area = useStageArea(stageEl)

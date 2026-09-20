@@ -214,6 +214,8 @@ P3′、P5、P6、P9、P10、P12 已定（见 §4）；对应旧选项表作废�
 | 好友 + 在线用户 + 定向邀请弹窗 + 邀请留言 | 你 2026-09-19 追加 | **排队 r011**：澄清单与 Q1~Q8 已批（`docs/rounds/r011-friends-and-invites/redirect-01.md`）；Q5=SSE、Q7 好友邀请无时限 | r011（未开） |
 | ~~r008/r009 收官欠账（台账未回填、cp tag 缺号、审查有 planned 残留、轮次号与死链）~~ | 收官一致性体检（2026-09-20，你让「把前面的 r008 r009 检查一遍」） | **已还（r009.5，2026-09-20）**：r009 cp 表三行回填 + 补 tag `cp-r009-0/1b/3a`、`cp-r010-0`；r008/r009 review 定稿（E0 补齐、E1/E2/E7/E12 回填、四处纠错）；轮次号与死链 9 处纠错；`.env.example` 补 `STT_*` 三键 | r009.5（`req/r009.5-debt-backfill`） |
 | ~~`frontend/src/components/live/stageLayout.ts` 零引用死代码~~ | r009 cp-1b 起被 `stageGeometry.ts` 取代，但旧文件留在树里 | **已删（r009.5，2026-09-20）**：`git grep stageLayout` 唯一命中为注释，一并改写；删后 `tsc`/`build` 复跑绿（历史见 git：`e3571be` 为删除前最后版本） | r009.5 |
+| **转写 worker 稳定性**（r010 未闭合 ①） | r010 cp-5 真机实测 | **登记待排期**：worker 曾因 LiveKit FFI panic 退出（`timed out waiting for ReadyForRoomEventRequest`）；已加自动重启脚本 + 控制坞如实显示「未开启」。建议下一轮加看门狗/健康上报 | r010 review 未闭合 ① |
+| **房主级「全房关转写」开关 / 跨端说话人分离 / B 路径前端**（r010 范围外） | r010 收官 | **登记待排期**（需求未提，属加分项） | r010 review 未闭合 ⑦ |
 | **三人档焦点同步观测**（r009.5 新登记，2026-09-20） | r009.5 真机复跑时发现 | **登记待排期**：三人档下房主点格上「给焦点」后，被给焦点的一方界面正确，**房主自己**的界面焦点未进布局（`data-stage-mode=uniform`、`.is-focus`=0）；同脚本两人档两次运行两端同步。同一流程复现 2/2（均含第三人正在加入），**未做最小复现、未归因**；本轮不修（补正轮不改行为）。证据 `%TEMP%\lg_r009.5\report-*.json`；处置见 `docs/rounds/r009-focus-system/review.md` 未闭合 ⑤ | r009.5 登记（建议独立 fix 轮或并入 r011） |
 | **r006/r007 教学页缺口**（使用者 / 开发者四件套的 C/D） | 两轮功能已落地但 `docs/tutorials/` 无对应页（教学页最新覆盖到 r005） | **登记，本轮不做**：r009.5 只补 r008/r009 两轮教学页（`docs/tutorials/r009.5-r008-r009-user-guide.md` 与 `-stage-motion-verify-dev.md`）；r006/r007 待与「测试流程全覆盖」轮一起排 | r009.5 登记（`docs/README.md` §5） |
 | 交付物（zip + GitHub + npm）细则 | P11 暂缓 | 提交阶段拍板后另开一轮 |

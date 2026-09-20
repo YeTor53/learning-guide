@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Room, RoomEvent } from 'livekit-client'
 
 import { transcriptsApi, type ConversationItem, type SttMode } from '../api/transcripts'
+import { isAgentParticipant } from './useOnlineIdentities'
 
 export interface SpeechLine {
   /** 官方 segment id（= 落库幂等键）。 */
@@ -34,7 +35,6 @@ export interface TranscriptionState {
   error: string | null
 }
 
-const AGENT_PREFIX = 'agent-'
 /** 官方 `startTime/endTime` 缺省时用这个占位时长（0 表示未知，气泡就不显示时长）。 */
 const UNKNOWN_DURATION = 0
 
@@ -103,14 +103,17 @@ export function useTranscription(
   useEffect(() => {
     if (!room) return
     const sync = () => {
-      setAgentPresent([...room.remoteParticipants.values()].some((p) => p.identity.startsWith(AGENT_PREFIX)))
+      setAgentPresent([...room.remoteParticipants.values()].some((p) => isAgentParticipant(p)))
     }
     sync()
     room.on(RoomEvent.ParticipantConnected, sync)
     room.on(RoomEvent.ParticipantDisconnected, sync)
+    // 竞态兜底（r010 实测）：本端建连早于 agent 入场时，ParticipantConnected 偶发漏刷 → 定时重算（零网络成本）
+    const timer = window.setInterval(sync, 5000)
     return () => {
       room.off(RoomEvent.ParticipantConnected, sync)
       room.off(RoomEvent.ParticipantDisconnected, sync)
+      window.clearInterval(timer)
     }
   }, [room])
 

@@ -19,6 +19,7 @@ updated: 2026-09-20
 | `r004-room-extras-demo.md` | 使用者 | r004（M3） | 房内四件事怎么用（群聊 / 举手 / 焦点 / 共享）+ 两人对练脚本 + 排查表 |
 | `r005-capacity-and-events.md` | 使用者 | r005 | 上限数的是「名额」不是在线人数、房间事件系统消息读法 |
 | `r009.5-r008-r009-user-guide.md` | 使用者 / 演示 | r008 + r009（+ r009.5 补正） | 讨论纪要怎么出、限时邀请怎么发、焦点怎么给与退（含实测数字） |
+| `r010-transcription-user-guide.md` | 使用者 / 演示 | r010 | 说的话怎么变成文字并进纪要；演示前要起哪个进程、免费档限制 |
 | `r009.5-stage-motion-verify-dev.md` | 开发者 | r009 + r009.5 | 几何/动效两个校验脚本怎么跑、令牌改哪里、判据与三条踩坑 |
 **顺序建议**：首次跑起来 → `r002-livekit-setup.md`；做演示 → `r002-livekit-demo.md`；动手改代码 → `r002-livekit-dev-guide.md`；换机器/重装数据库 → `r001-postgres-setup.md`。
 
