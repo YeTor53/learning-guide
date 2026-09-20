@@ -116,7 +116,7 @@ export default function WaitingPage() {
             : pending
               ? '你已经在门口了，房主看到就会开门'
               : state === 'rejected'
-                ? '这次没能加入：房主没有批准'
+                ? '这次没能加入：房主没有批准，或房间已满被系统自动拒绝'
                 : '这个房间还需要先申请'}
         </p>
 
