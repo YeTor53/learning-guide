@@ -21,7 +21,10 @@ rounds: [r013]
 | E4 | 强停边界如实 | 同上 | 脚本结论行写明：手段=WS 正常关闭（非网络级硬断，硬断见 §10.5 断线方案，本轮未测）；「画面冻结」在无头静态源下**判定不了**，故不作结论 | **通过（如实）** |
 | E5 | worker 连接重试 | `backend/agents/retry.py::retry_async` + `transcriber._connect_with_retry` | 用例 5 条（`test_connect_retry.py`）：三次失败后成功（退避 `[2.0, 4.0]`）、全失败抛**最后一次**异常且 `on_error` 收到 1/2/3、退避复用末值、`CancelledError` 不重试、`attempts<1` 报错 | **通过** |
 | E6 | worker 错误可见 | `SttHeartbeatIn.last_error` → `stt_service.record_heartbeat` → `/rooms/{id}/stt-status.lastError` → 芯片 `title` | 用例 1 条（带 `lastError` 的心跳读得回、不带则清除）；**真机**：假心跳造错 → 芯片 title = 「…；最后错误：连接失败（3 次）：APIConnectionError: timed out waiting for ReadyForRoomEventRequest」，清掉后 title 不含该段 | **通过** |
-| 待填 | E7~E12 | | | 见对应 cp |
+| E7 | 回看页内容齐 | `frontend/src/pages/ReplayPage.tsx` + `hooks/useReplay.ts`（复用 `/rooms/{id}`、`/rooms/{id}/conversation`、`/rooms/{id}/summary`） | 真机（`room_3b167f0d4f0e1e22`）：标题/踢线**回看（只读）**、时间线 **2 行**（系统消息）、成员 **2 行**、纪要段与「回房间列表」都在；截图 `%TEMP%\lg_r013_shots\replay-host.png` | **通过** |
+| E8 | 回看页权限 | 复用既有后端口径（**无需改码**）：`transcripts._assert_can_read`、`summary.get_summary` 本就是「成员/历史成员/房主/协管可读」 | 用例 4 条（`test_replay_access.py`）：在册成员 200、房主 200、超管 200、非成员 **403（conversation + summary）**、未登录 **401**；真机：新注册账号打开回看页 → 提示「这间房的历史只对当时在册的成员与管理身份开放」且时间线 0 行 | **通过** |
+| E9 | 回看入口 | `components/RoomCard.tsx`（ended 房卡新增「回看」；保留原「讨论纪要」以不动 r008 验收链） | 真机：列表页切「已结束」→ 该房卡按钮 `['回看','讨论纪要']` → 点「回看」→ 路径 `/rooms/room_3b167f0d4f0e1e22/replay` | **通过** |
+| 待填 | E10~E12 | | | 见对应 cp |
 
 ## 6. 未闭合清单（交你复核）
 
@@ -31,6 +34,7 @@ rounds: [r013]
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
+| 2026-09-20 | cp-5 | E7/E8/E9 对账：回看页三段 + 权限 + 入口（后端零改动，既有可见性口径已满足 Q1=1） | `test_replay_access.py` 4 条 + 真机三条 |
 | 2026-09-20 | cp-4 | E5/E6 对账：worker 连接重试（纯函数 + 5 用例）与错误透出（用例 + 真机芯片 title）；后端按 PID 重启加载新代码 | `test_connect_retry.py`、`test_stt_heartbeat.py`、真机 |
 | 2026-09-20 | cp-3 | E3/E4 对账：强停共享 0.5 秒清格；边界（非网络级硬断、冻结判定不了）如实写明 | `verify-screen-force-stop.py` 实测 |
 | 2026-09-20 | cp-2 | E1/E2 对账：三人档焦点**不复现**，脚本三次全绿；登记脚本三条踩坑 | `verify-focus-three-way.py` 实测 |
