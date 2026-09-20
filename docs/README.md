@@ -31,10 +31,10 @@ updated: 2026-09-20
 | 你的目的 | 打开 |
 | --- | --- |
 | 现在做到哪、下一步是什么 | `00-project/global-roadmap.md` §3、§7；`00-requirements/README.md` |
-| **当前轮（r009.5 补正）**要做什么、怎么算做完 | `00-requirements/r009.5-debt-backfill.md` |
-| 当前轮怎么实现（逐文件改动清单） | `rounds/r009.5-debt-backfill/design.md` |
-| 下一轮（r010 转写）要做什么 | `00-requirements/r010-transcription.md` + `rounds/r010-transcription/design.md` |
-| 房间/实时模块的当前实现事实 | `02-modules/r002-livekit.md`（实现）+ `r002-livekit-features.md`（功能）；**M3 能力（群聊/举手/焦点/共享）见 `02-modules/r004-room-extras.md`（实现）+ `r004-room-extras-features.md`（功能）；人数上限与房间事件见 `r005-fix-capacity{,-features}.md`；界面同步与优化见 `r006-ui-sync-polish{,-features}.md`；主题与首屏引导见 `r007-topic-and-scrollhint{,-features}.md`** |
+| **当前轮（r010 转写）**要做什么、怎么算做完 | `00-requirements/r010-transcription.md` §4（E1~E14）；实现完成，**待合并** |
+| 当前轮怎么实现（逐文件改动清单） | `rounds/r010-transcription/design.md` §9（换轨后口径）；模块事实源 `02-modules/r010-transcription.md` |
+| 说话怎么变成文字、演示前起什么 | `tutorials/r010-transcription-user-guide.md` |
+| 房间/实时模块的当前实现事实 | `02-modules/r002-livekit.md`（实现）+ `r002-livekit-features.md`（功能）；**M3 能力（群聊/举手/焦点/共享）见 `02-modules/r004-room-extras.md`（实现）+ `r004-room-extras-features.md`（功能）；**语音转写见 `02-modules/r010-transcription.md`（实现）+ `r010-transcription-features.md`（功能）；人数上限与房间事件见 `r005-fix-capacity{,-features}.md`；界面同步与优化见 `r006-ui-sync-polish{,-features}.md`；主题与首屏引导见 `r007-topic-and-scrollhint{,-features}.md`** |
 | 账号/首页模块 | `02-modules/r001-accounts.md` + `r001-accounts-features.md` |
 | 为什么这么决定 | `03-decisions/` 下对应 ADR（跨轮的以 `global-` 开头） |
 | 怎么跑起来 / 怎么演示 | `tutorials/r002-livekit-setup.md`、`tutorials/r002-livekit-demo.md`；房内四件事（群聊/举手/焦点/共享）见 `tutorials/r004-room-extras-demo.md` |
@@ -60,8 +60,7 @@ updated: 2026-09-20
 | r007-topic-and-scrollhint | `r007-topic-and-scrollhint.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | redirect-01 | 分支 `req/r007-topic-and-scrollhint`，cp tag `cp-r007-0..8` |
 | r008-assignment-gaps | `r008-assignment-gaps.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿；r009.5 纠错 4 处） | — | 分支 `req/r008-assignment-gaps`，cp tag `cp-r008-0..4` |
 | r009-focus-system | `r009-focus-system.md`（实现完成，待合并） | ✅ | ✅（r009.5 回填） | ✅（定稿；r009.5 补 E0 并回填 E1/E2/E7/E12） | redirect-01 | 分支 `req/r009-focus-system`，cp tag `0/1a/1b/2a/2b/3a/3b/5`（4 无独立提交） |
-| r010-transcription | `r010-transcription.md`（实现中：阶段 1 文档已落） | ✅ | 骨架待建 | —（cp-1 起未开工） | redirect-01 + research-01/02 | 分支 `req/r010-transcription`，cp tag `cp-r010-0` |
-| r010-transcription | `r010-transcription.md`（实现完成，待合并） | ✅ | ✅ | ✅（含 CR-01/02 与 spike 报告） | ✅（定稿） | 换轨后口径（Agents 侧识别）；cp tag `cp-r010-0/0b/0c/1/1b/2a/2w/3a/3b/4/5`；worker 独立环境 `lg_agents` |
+| r010-transcription | `r010-transcription.md`（实现完成，待合并；覆盖矩阵全 `landed`） | ✅（§9 换轨后口径） | ✅（cp-1~cp-5 + cp-5b 补正） | ✅（定稿；含 §5b 复核补正） | redirect-01 + research-01/02 + cr-01/02 + spike-01 | 分支 `req/r010-transcription` @ `b32656f`；换轨口径＝Agents 侧识别（ADR-0023）；cp tag `cp-r010-0/0b/0c/1/1b/2a/2w/3a/3b/4/5/5b`；worker 走独立环境 `lg_agents` |
 | r009.5-debt-backfill | `r009.5-debt-backfill.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r009.5-debt-backfill`，cp tag `cp-r009.5-1..5`；本轮**不改产品行为** |
 
 ## 5. backlog（`99-archive/`）
@@ -85,6 +84,14 @@ updated: 2026-09-20
 **目录分布**：`rounds/` 51 · `03-decisions/` 23 · `02-modules/` 19 · `00-requirements/` 12 · `tutorials/` 9 · `99-archive/` 5 · `00-project/` 3 · `01-architecture/` 3 · 根 2 · `04-style/` 1。
 
 **断链检查**：真死链 **0** 处。本轮（r009.5）修掉 4 处真死链——`docs/rounds/r006-fix-mic-badge/redirect-01.md` ×2（roadmap §9，目录名实为 `r006-ui-sync-polish`）、`docs/tutorials/r004-room-extras.md` ×3（实际文件名带 `-demo`）。剩余 4 处命中均为**非死链**：① r009.5 文档里 3 处**引用错误路径作为待修示例**（本轮 E5 口径已排除）② `ADR-0022` 里的通配简写 `research-01/02.md`。
+
+### r010 收官快照（2026-09-20，137 个 .md）
+
+> 口径同上（`docs/**/*.md`）。相比上一条 128 页快照：+2 模块页（`02-modules/r010-transcription{,-features}.md`）、+7 轮次页（`rounds/r010-transcription/`：design/changes/review/cr-01/cr-02/spike-01/research 补充）。
+
+**目录分布**（合计 137）：`rounds/` **56** · `03-decisions/` 24（+ADR-0023） · `02-modules/` 21 · `00-requirements/` 12 · `tutorials/` 10（+r010 使用者页） · `99-archive/` 5 · `00-project/` 3 · `01-architecture/` 3 · 根 2 · `04-style/` 1。
+
+**断链检查**：真死链 **1** 处——`rounds/r002-livekit/redirect-03.md` 里的 `](alert｜confirm｜prompt)`（正文竖线被当成链接目标，r002 遗留，非 r010 引入，见 r010 review 未闭合 ⑩）；其余 136 页 0 死链。
 
 **已知不一致（2026-09-20 复核；上一条清单里的 1/3/6 已闭合）**
 

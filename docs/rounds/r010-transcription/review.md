@@ -80,7 +80,7 @@ updated: 2026-09-20
 | ③ | 渐进字幕在假 STT 下未采到样本 | 真 STT 下已由 spike 证实 | 真 STT 对齐时补采样 |
 | ④ | `duration_ms` 在假 STT 下恒为 1（真 STT 应由 segment 提供） | 兜底逻辑已写（0 → 1），界面在 ≤1s 时不显示时长 | 真 STT 对齐时复核 |
 | ⑤ | 真机发现并修复：转写 agent 曾占用舞台格子 | **已修**（`isAgentParticipant` + 两处过滤，tsc/build 绿 + 复看截图） | 无需再动 |
-| ⑥ | 模块轴实现页/功能页未建 | 未做 | 下一轮补，或按 r009 先例在收官附加 |
+| ⑥ | 模块轴实现页/功能页未建 | **已补（2026-09-20）**：`docs/02-modules/r010-transcription.md`（实现页，含 §7 扩展点）+ `r010-transcription-features.md`（功能页 F-44~F-47）；模块索引与 `docs/README` 指针已回填 | 闭合 |
 | ⑦ | 房主级「全房关转写」、跨端说话人分离、B 路径前端 | 范围外 | 记入 roadmap §9 |
 | ⑧ | 免费档额度/并发（3 人演示内安全） | 已查证写入 `spike-01-path-a.md` §8 | 演示 ≤3 人 |
 | ⑨ | `/api/stt/status` 仍返回 `segmentSeconds = 8`（B 路径的「8 秒分段」残留字段）——A 路径下分段由官方 synchronizer 决定，字段易误读 | 前端**未使用**该字段（只读 `mode`），无界面误导 | 改契约（重命名/移除）属 L3 → **登记待批**，不擅自改 |
