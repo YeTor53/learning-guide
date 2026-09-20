@@ -15,6 +15,20 @@ from app.services import global_chat as global_chat_service
 from helpers import register_user, session_cookie
 
 
+
+@pytest.fixture(autouse=True)
+def _isolated_global_chat(db):
+    """全站大屏表**没有「房」维度**，用例之间、以及你真机上发的演示消息都会互相污染。
+
+    2026-09-20 真机取证后实测：不清表时 `test_visitor_can_read_but_not_post` 等 4 条用例
+    会因为库里已有的真机消息而失败（`['r012 真机取证…', '大家好'] != ['大家好']`）。
+    口径：每个用例前**在测试事务里**清空一次（`db` 夹具是 `force_rollback`，不 commit、不外泄），
+    断言即可判定；清理的只是大屏消息，不动其它表。
+    """
+    db.execute("DELETE FROM global_messages")
+    yield
+
+
 def login(client, user) -> None:
     name, value = session_cookie(user.id)
     client.cookies.set(name, value)
@@ -185,3 +199,39 @@ def test_subscriber_cap_returns_503(client, db, monkeypatch) -> None:
         events_service.reset()
         monkeypatch.delenv("SSE_MAX_SUBSCRIBERS", raising=False)
         reset_settings_cache()
+
+def test_publish_from_sync_endpoint_thread_wakes_waiting_subscriber(client, db) -> None:
+    """r012 真机回归（2026-09-20）：同步端点在**线程池**里 publish 也必须安全。
+
+    复现路径：订阅者已经 `await queue.get()` 挂起时，从**非循环线程**直接 `put_nowait`
+    会跨线程唤醒等待者（`asyncio` 明确不支持），实测把 uvicorn 的事件循环卡死——
+    8000 端口整机不再响应（`/api/auth/me` 8 秒超时），而进程 CPU 为 0。
+    修法：订阅时记住自己的循环，投递一律 `loop.call_soon_threadsafe`。
+    本用例订阅发生在循环内（与 SSE 处理器一致），再从独立线程发布，事件须 2 秒内到达。
+    """
+    import threading
+
+    events_service.reset()
+
+    async def scenario() -> dict:
+        subscriber = events_service.subscribe()          # 与 routers/events.py 一样：循环内订阅
+        waiter = asyncio.ensure_future(subscriber.queue.get())
+        await asyncio.sleep(0)                           # 让 get() 真正挂到等待队列上
+        thread = threading.Thread(target=events_service.publish, args=("global_message", {"id": "gmsg_thread"}))
+        thread.start()
+        thread.join(timeout=2)
+        try:
+            return await asyncio.wait_for(waiter, timeout=2)
+        finally:
+            waiter.cancel()
+            events_service.unsubscribe(subscriber)
+
+    try:
+        event = asyncio.run(scenario())
+    finally:
+        events_service.reset()
+
+    assert event["type"] == "global_message"
+    assert event["payload"] == {"id": "gmsg_thread"}
+    # 事件 id 由 publish 分配，说明投递走的是同一条编码出口
+    assert isinstance(event["id"], int) and event["id"] >= 1

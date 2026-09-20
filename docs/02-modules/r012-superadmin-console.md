@@ -102,24 +102,38 @@ updated: 2026-09-20
 | POST | `/api/global-messages` | 登录 | 发言（1~500 字；超限 429 `RATE_LIMITED`） |
 | GET | `/api/events` | 任意（含未登录） | SSE 通知流（`text/event-stream`，只推通知） |
 
+### 5.1 广播的线程安全（cp-7 真机踩到后修，必读）
+
+同步端点（FastAPI 的 `def` 路由，例如 `POST /api/global-messages`）跑在**线程池**里，而订阅者的
+`asyncio.Queue` 属于事件循环线程。因此 `services/events.py::publish` **不能**直接 `queue.put_nowait`：
+当订阅者正 `await queue.get()` 挂起时，跨线程唤醒等待者会破坏事件循环 → **8000 端口整机不再响应**
+（2026-09-20 实测：进程还在、CPU 0%、`/api/auth/me` 8 秒超时）。
+
+口径：`Subscriber` 在订阅时记住自己的循环（`asyncio.get_running_loop()`），`publish` 一律
+`loop.call_soon_threadsafe(_offer, subscriber, event)`；队列满时的丢最旧策略在 `_offer` 里（循环线程）执行。
+回归用例：`backend/tests/test_global_chat.py::test_publish_from_sync_endpoint_thread_wakes_waiting_subscriber`。
+
 ## 8. 用例与实测
 
 | 项 | 命令 / 用例 | 实测 |
 | --- | --- | --- |
 | 迁移 | `python backend/scripts/db_init.py --seed` | `[migrate] 011_r012_superadmin_global_chat, 012_r012_seed_superadmin`；`schema_migrations 12`（2026-09-20 实测） |
 | 身份 | `pytest backend/tests -q -k "superadmin or presence"` | 见 `rounds/r012-superadmin-console/changes.md` §3（实测数字） |
+| 全量用例 | `pytest backend/tests -q` | **201 passed**（cp-7 实测；含跨线程广播回归用例） |
+| 冒烟 | `python backend/scripts/smoke.py --base-url http://127.0.0.1:8000` | **PASS 58/58**（cp-7 新增 11 步：超管登录 / 普通账号 403 / 四列表 / 超管取票 claims / 大屏发与读 / 未登录 401 / 未登录可读 / 心跳） |
 | 提权脚本 | `grant_superadmin.py --email host@example.com` → `--revoke`；`--email nobody@example.com` | `user → superadmin（影响 1 行）` / `superadmin → user（影响 1 行）` / 退出码 2「找不到账号」（实测原样） |
 | 前端 | `npx tsc --noEmit` | exit 0 |
 
 ## 9. 本页尚缺（随增量补齐，见需求单 §9 cp 切分）
 
-- cp-7：门禁复跑、2 浏览器真机取证（隐身 / 大屏实时到达）、视觉对账五组、review 定稿。
+- 无代码侧欠账。未闭合项（双浏览器隐身交叉验证、`prefers-reduced-motion` 强制模拟）登记在 `rounds/r012-superadmin-console/review.md` §6。
 
 ## 10. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1（cp-2） | 建页：身份（`users.role` + 提权脚本 + 演示超管 + 迁移 011/012 对象）与在线口径（`POST /api/presence` + 前端心跳 + 判据窗口） | 需求单 §10.1（Q1/Q14/Q15）、design §1/§2.6、ADR-0024 |
+| 2026-09-20 | v6（cp-7） | 追加 §5.1 广播线程安全（真机踩到后修 + 回归用例）；§8 补全量与冒烟实测（201 passed / PASS 58/58）；§9 欠账清空 | cp-7 实测、ADR-0025 D6 |
 | 2026-09-20 | v5（cp-6） | 追加 §6 前端逐文件（管理页 / 右侧大屏抽屉 / 入口 / 超管视角 / ViewerRole 类型）；补 §5 大屏与 SSE 的前端调用点 | 需求单 §10.1（Q11/Q12）、design §5 |
 | 2026-09-20 | v4（cp-5） | 追加 §5 大屏聊天与 SSE：存储与可见性、在线点、限流（库计数）、落库→通知顺序、SSE 帧协议、进程内 pub/sub 与单进程限制；ADR-0025 落地 | 需求单 §10.1（Q13/Q11/Q14）、design §4、ADR-0025 |
 | 2026-09-20 | v3（cp-4） | 追加 §4 管理后台：三列表（房间/用户/纪要 + 审计）、三动作（结束/硬删/重生纪要）、`current_superadmin` 鉴权、审计词表与删房快照、查询参数口径 | 需求单 §10.1（Q5/Q6/Q7/Q16）、design §3、ADR-0024 D6 |

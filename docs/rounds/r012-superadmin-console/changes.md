@@ -26,7 +26,7 @@ updated: 2026-09-20
 | cp-r012-5 | 本次提交 | 全服大屏聊天（`global_messages` + 服务/仓储/路由 + 限流 429`RATE_LIMITED`）+ SSE 通知通道（`GET /api/events` + 进程内 pub/sub + 6 项可调配置）+ ADR-0025 + 用例 9 条 | pytest **200 passed** / tsc 未跑（未动前端） | E7/E8 |
 | cp-r012-6 | | 前端 `/admin` + 大屏面板 + 入口 + 超管视角 + 视觉参数区 + 教学两页 + 模块功能页 | | E5/E9/E12 |
 | cp-r012-6 | 本次提交 | 前端落地：`api/{admin,globalChat}.ts`、`hooks/{useAdmin,useGlobalChat,useEventStream}.ts`、`GlobalChatDrawer`、`components/admin/` 四表、`AdminPage`、`/admin` 路由、顶栏「大屏」开关、侧栏「管理后台」（仅超管）、超管交流页视角（无设备控件 / `publishDevices=false` / `excludeIdentity`）、`ViewerRole` 类型、`global.css` r012 参数区 + 教学两页 + 功能页 + 04-style 条目 | `tsc --noEmit` exit 0；`npm run build` exit 0（2022 modules，`dist/assets/index-C8HitVdF.js` 984.19 kB / gzip 278.09 kB）；令牌扫描 0 命中 / emoji 0 / 单一图标库 0 违规 | E5/E9/E12/E13（界面侧） |
-| cp-r012-7 | | 门禁复跑 + 真机取证 + 视觉对账 + 文档回填 + review 定稿 | | E11/E12 |
+| cp-r012-7 | 本次提交 | 门禁复跑（`pytest` 200 / `tsc` 0 / `build` 0）+ 真机取证 5 项 + 三张截图入档 + 视觉对账五组 + review 定稿 + 索引/需求单/roadmap 回填 | 见 §3 实测 | E11/E12 |
 
 ## 2. 用户消息台账（vibecoding 8.1 判据：每条用户消息一行回执）
 
@@ -43,6 +43,15 @@ updated: 2026-09-20
 | 迁移应用 | `python backend/scripts/db_init.py --seed`（**不 reset**，沿用 r011 口径「演示库开发结束后统一清」） | `[migrate] 本次应用版本：011_r012_superadmin_global_chat, 012_r012_seed_superadmin`；`schema_migrations 12`；新表 `room_visits / global_messages / admin_audit` 各 0 行 | 2026-09-20 |
 | 演示超管 | `db_init.py --seed` 后查库 | `usr_demo_admin / admin@example.com / 平台管理员 / role=superadmin`（last_seen_at 初始 NULL） | 2026-09-20 |
 | 提权脚本 | `python backend/scripts/grant_superadmin.py --email host@example.com` → `--revoke`；再试不存在的邮箱 | `user → superadmin（影响 1 行；id=usr_demo_host）` / `superadmin → user（影响 1 行；id=usr_demo_host）` / 退出码 2 `找不到账号：nobody@example.com` | 2026-09-20 |
+| 门禁四项（cp-7） | `pytest backend/tests -q` / `npx tsc --noEmit` / `npm run build` / `smoke.py --base-url http://127.0.0.1:8000` | **201 passed**（49.17s）/ `tsc` exit 0 / `build` exit 0（2022 modules，`dist/assets/index-C8HitVdF.js` 984.19 kB / gzip 278.09 kB）/ smoke **PASS 58/58**（r011 时 47/47，本轮 +11 步：超管登录、普通账号 403、四列表、超管取票 claims、大屏发与读、未登录 401、未登录可读、心跳） | 2026-09-20 |
+| 缺陷 · SSE 广播跨线程 | 真机取证时把 8000 卡死（进程在、CPU 0%、`/api/auth/me` 8s 超时）；定位到同步端点在线程池里直接 `queue.put_nowait`，订阅者正 `await queue.get()` 时跨线程唤醒等待者会破坏事件循环 | 修法：`Subscriber` 记住订阅时的循环 + `publish` 走 `loop.call_soon_threadsafe(_offer, …)`；新增回归用例 1 条；真机复验：SSE 挂起中连发 3 条 → 3 帧到达且服务端 0.02s 仍响应。卡死的后端进程由助手精确按 PID 停掉并以**无窗口且不带 `--reload`**的方式重启（PID 10404），前端 5173 未动 | 2026-09-20 |
+| 用例 · 数据隔离 | 真机消息落库后 `test_global_chat.py` 有 4 条用例失败（断言全表内容） | 加 autouse 夹具：每个用例前**在测试事务里**清空 `global_messages`（`db` 是 `force_rollback`，不外泄）；修后单文件 10 passed / 全量 201 passed | 2026-09-20 |
+| 真机 · 管理后台 | 浏览器打 `http://localhost:5173/admin`（超管登录） | 房间分区「共 136 条」、8 列表头、四分区 tab、动作按钮与分页正常；截图 `%TEMP%\lg_r012\cp7-admin-rooms.png` | 2026-09-20 |
+| 真机 · 右侧大屏面板 | 顶栏「大屏」开合 + `getComputedStyle` | 展开态 `transform: matrix(1,0,0,1,0,0)`、宽 **360px**（= `--gc-w`）、`left=867/1243`；收起态 `matrix(1,0,0,1,376,0)`（= 360 + `--gc-offset` 16）与 `transition-duration: 0.24s`；收起时 `aria-hidden=true` + `visibility:hidden`；页面 `scrollWidth == clientWidth == 1243`（无横向溢出） | 2026-09-20 |
+| 真机 · 跨客户端 SSE | host@example.com 经 HTTP 发一条 → 浏览器面板**未刷新**即出现 | 面板行：`林泽宇 17:04 来自另一个客户端（host）的消息`；面板标题「1 人在线」+ 1 个绿点 | 2026-09-20 |
+| 真机 · 超管只读视角 | 超管进**他人房间**（非成员）`/rooms/room_beb67510a8d00b64/live` | 顶部提示「管理视角：你以隐身方式在场…不发布音视频，只做管理。」；控制坞仅 `管理视角 · 隐身` + `离开` + `结束房间`，**无**麦克风/摄像头/共享/举手控件；舞台 0 格；截图 `%TEMP%\lg_r012\cp7-superadmin-room.png` | 2026-09-20 |
+| 真机 · 应用内取票 claims | 浏览器内 `POST /api/rooms/{id}/token` | `status 200`；JWT：`hidden=true`、`canPublish=false`、`canPublishData=false`、`roomAdmin` 非真、`attributes={'lg-role':'superadmin'}`、`room` = 目标房、`url` = 项目 LiveKit Cloud 地址 | 2026-09-20 |
+| 已知环境限制 | 工具浏览器内 LiveKit 媒体连接未建立（徽标「未连接」，控制台 0 个 JS 错误） | 故「双浏览器交叉验证隐身」与「reduced-motion 强制模拟」未做，登记在 review §6 未闭合 ①/② | 2026-09-20 |
 | 用例（cp-2） | `pytest backend/tests -q` | **174 passed**（r011 基线 164；新增 10 条：`test_presence_api.py` 4 + `test_superadmin_identity.py` 6）42.83s | 2026-09-20 |
 | 用例（cp-3） | `pytest backend/tests -q` | **182 passed**（新增 8 条：`test_superadmin_room_access.py`）45.03s | 2026-09-20 |
 | 用例（cp-4） | `pytest backend/tests -q` | **191 passed**（新增 9 条：`test_admin_api.py`）48.57s | 2026-09-20 |
@@ -74,4 +83,5 @@ updated: 2026-09-20
 | 2026-09-20 | cp-5 | 大屏聊天 + SSE 通知通道 + 限流 + ADR-0025；用例 200 passed；SSE 载荷口径定案（`type`+`payload` 同帧） | 需求单 §9 cp-5、§10.1（Q11/Q13/Q14）、ADR-0025 |
 | 2026-09-20 | 交接 | 另一会话在 `NavBar.tsx` / `SideBar.tsx` 的未提交改动（邀请码入口移入侧边栏，属 r011）由本分支先落盘为独立提交，再在其上做 cp-6，避免两份改动混进同一个提交 | 用户 2026-09-20 选择「现在就一并改」 |
 | 2026-09-20 | cp-6 | 前端落地（见 cp 台账行）+ 教学两页 + 功能页 + 04-style §12.4；`tsc`/`build` 绿、令牌与 emoji 扫描 0 命中 | 需求单 §9 cp-6、§10.1（Q11/Q12/Q13/Q14）、design §5/§9 |
+| 2026-09-20 | cp-7 | 门禁复跑（pytest 200）+ 真机取证（后台 136 条 / 面板开合实测 / 跨客户端 SSE / 超管只读视角 / 应用内取票 claims）+ 三张截图 + 视觉五组 + review 定稿 + 索引与 roadmap 回填 | 需求单 §9 cp-7；review §1/§4 |
 | 2026-09-20 | cp-4b | **补交**：`services/presence.py::online_since()`——cp-4 提交时漏登记该文件，导致 `GET /api/admin/users?online_only=1` 在 cp-4 树里引用了不存在的函数（本地工作区有、提交里没有）。教训记在此：**冷启动核对**（提交后 `git status` 必须为空，本轮 cp-4 曾遗留一个未登记的已改文件） | cp-4 自审发现 |

@@ -49,3 +49,16 @@ updated: 2026-09-20
 - 代码：`services/events.py`（新）、`services/global_chat.py`（新）、`repositories/global_chat.py`（新）、`api/routers/{global_chat,events}.py`（新）、`config.py`（6 项可调）、`api/errors.py`（+`RATE_LIMITED`）。
 - 前端（cp-6）：`api/globalChat.ts`、`hooks/useGlobalChat.ts`、`hooks/useEventStream.ts`、`components/GlobalChatDrawer.tsx`。
 - 部署：单进程限制见 D4；若上 Docker Compose 多副本需先解决广播（登记）。
+
+### D6 `publish` 必须**线程安全**（cp-7 真机踩到后补）
+同步端点（FastAPI 的 `def` 路由）在线程池里执行，订阅者的 `asyncio.Queue` 属于事件循环线程，
+所以 `publish` 不能直接 `put_nowait`：订阅者正 `await queue.get()` 时，跨线程唤醒等待者会破坏事件循环
+（2026-09-20 实测：进程还在、CPU 0%、8000 端口整机不再响应）。
+口径：订阅时记住自己的循环，投递一律 `loop.call_soon_threadsafe(_offer, …)`。
+
+## 变更记录
+
+| 日期 | 改了什么 | 依据 |
+| --- | --- | --- |
+| 2026-09-20 | 初版：D1~D5（独立表 / SSE + 固定 `notify` / 只推通知 / 进程内广播的已知限制 / 未登录可看登录可发）；Q11/Q12 批复记账 | 需求单 §10.1、design §4 |
+| 2026-09-20 | 补 D6：`publish` 线程安全（`call_soon_threadsafe`）——真机取证时把 8000 卡死后修，附回归用例 | cp-7 实测 |

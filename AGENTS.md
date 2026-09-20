@@ -40,9 +40,9 @@
 ## r002 起新增的验证命令（实时房间）
 
 ```bash
-pytest backend/tests -q                                  # 200 项（2026-09-20 实测；数字会漂，以命令输出为准）
+pytest backend/tests -q                                  # 201 项（2026-09-20 cp-7 实测；数字会漂，以命令输出为准）
 npx tsc --noEmit --project frontend                      # 前端类型
-python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # PASS 46/46（2026-09-20 实测）
+python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # PASS 58/58（2026-09-20 cp-7 实测，含 r012 超管/后台/大屏 11 步）
 ```
 
 - 实时凭据只在 `.env`（`LIVEKIT_MODE` / `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`）；**不得写进代码、文档、提交信息或聊天**。

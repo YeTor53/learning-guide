@@ -8,6 +8,7 @@
 设计事实源：docs/01-architecture/r001-app-architecture.md §9.6；docs/02-modules/r001-rooms.md §6.8
 判据：每步状态码与关键字段符合预期，末尾打印 `PASS n/n`；任一步不符即以非 0 退出。
  r002 补步（2026-09-19）：成员取 Token 200 / 非成员取 Token 403 / 踢人后取 Token 403 / 结束后取 Token 409。
+ r012 补步（2026-09-20）：演示超管登录 → 普通账号调管理后台 403 → 超管三列表 200 → 超管取票（隐身/禁发布 claims）→ 大屏发言与读取 → 心跳上报。
 注意：① 脚本会向库里写入两个账号与一个房间（每次邮箱随机），跑完可用 db_init --reset --seed 恢复演示数据；
       ② 本脚本要求后端以 `APP_ENV=dev`（默认）运行：`APP_ENV=demo` 时会话 Cookie 带 Secure，脚本客户端不会回传，
          会出现「注册成功但下一步 401」——这是设计如此（演示形态用浏览器访问不受影响）。
@@ -15,6 +16,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import json
 import sys
 import uuid
 from typing import Any
@@ -305,6 +308,91 @@ def main(argv: list[str] | None = None) -> int:
             summary_view.status_code == 200 and "summary" in body(summary_view).get("data", {}),
             f"→ {summary_view.status_code} 有纪要={body(summary_view).get('data', {}).get('summary') is not None}",
         )
+
+        # 12) r012：超管身份 / 管理后台 / 全服大屏（真机 HTTP，不打桩）
+        admin = httpx.Client(base_url=base, timeout=15.0)
+        try:
+            login = admin.post("/api/auth/login", json={"email": "admin@example.com", "password": "demo1234"})
+            if login.status_code == 200:
+                check(
+                    "演示超管登录 → role=superadmin",
+                    body(login).get("data", {}).get("user", {}).get("role") == "superadmin",
+                    f"→ {login.status_code} role={body(login).get('data', {}).get('user', {}).get('role')}",
+                )
+                forbidden = host.get("/api/admin/rooms")
+                check(
+                    "普通账号调管理后台 → 403",
+                    forbidden.status_code == 403,
+                    f"→ {forbidden.status_code} {body(forbidden).get('error', {}).get('code')}",
+                )
+                listed = admin.get("/api/admin/rooms?limit=5")
+                check(
+                    "超管看房间列表 → 200 且有数据",
+                    listed.status_code == 200 and len(body(listed).get("data", {}).get("items", [])) >= 1,
+                    f"→ {listed.status_code} 本页 {len(body(listed).get('data', {}).get('items', []))} 条 / 共 {body(listed).get('data', {}).get('total')}",
+                )
+                for endpoint in ("users", "summaries", "audit"):
+                    one = admin.get(f"/api/admin/{endpoint}?limit=1")
+                    check(f"超管看{endpoint}列表 → 200", one.status_code == 200, f"→ {one.status_code}")
+
+                # 取票必须挑**进行中**的房：前面两个房都已结束（结束房对谁都是 409，超管也不例外）
+                live_room = body(host.post("/api/rooms", json={"topic": "custom", "topicLabel": "冒烟主题", "title": f"冒烟超管房 {suffix}", "description": "由 smoke.py 创建（超管取票用）"})).get("data", {})
+                token_resp = admin.post(f"/api/rooms/{live_room.get('id')}/token")
+                claims = {}
+                if token_resp.status_code == 200:
+                    payload = body(token_resp).get("data", {}).get("token", "").split(".")[1]
+                    payload += "=" * (-len(payload) % 4)
+                    claims = json.loads(base64.urlsafe_b64decode(payload))
+                check(
+                    "超管对他人房取票 → 隐身且禁止发布",
+                    token_resp.status_code == 200
+                    and claims.get("video", {}).get("hidden") is True
+                    and claims.get("video", {}).get("canPublish") is False
+                    and claims.get("video", {}).get("canPublishData") is False
+                    and claims.get("attributes", {}).get("lg-role") == "superadmin",
+                    f"→ {token_resp.status_code} hidden={claims.get('video', {}).get('hidden')} "
+                    f"canPublish={claims.get('video', {}).get('canPublish')} lg-role={claims.get('attributes', {}).get('lg-role')}",
+                )
+
+                said = admin.post("/api/global-messages", json={"body": f"冒烟大屏 {suffix}"})
+                messages = admin.get("/api/global-messages?limit=20")
+                bodies = [item.get("body") for item in body(messages).get("data", {}).get("items", [])]
+                check(
+                    "大屏发言并读回 → 201 且列表含该条",
+                    said.status_code == 201 and f"冒烟大屏 {suffix}" in bodies,
+                    f"→ {said.status_code} 列表 {len(bodies)} 条",
+                )
+                # 真的「没带会话」的客户端（脚本里的 guest 客户端在第 1 步就注册登录了）
+                anon = httpx.Client(base_url=base, timeout=15.0)
+                try:
+                    guest_try = anon.post("/api/global-messages", json={"body": "游客不该能发"})
+                    check(
+                        "未登录发大屏 → 401",
+                        guest_try.status_code == 401,
+                        f"→ {guest_try.status_code} {body(guest_try).get('error', {}).get('code')}",
+                    )
+                    anon_read = anon.get("/api/global-messages")
+                    check(
+                        "未登录读大屏 → 200（公开面）",
+                        anon_read.status_code == 200,
+                        f"→ {anon_read.status_code} 可见 {len(body(anon_read).get('data', {}).get('items', []))} 条",
+                    )
+                finally:
+                    anon.close()
+                beat = admin.post("/api/presence")
+                check(
+                    "在线心跳 → 200 带 lastSeenAt",
+                    beat.status_code == 200 and bool(body(beat).get("data", {}).get("lastSeenAt")),
+                    f"→ {beat.status_code} lastSeenAt={str(body(beat).get('data', {}).get('lastSeenAt'))[:19]}",
+                )
+            else:
+                check(
+                    "演示超管登录（需先 db_init --seed 写入 admin@example.com）",
+                    False,
+                    f"→ {login.status_code}（先执行 python backend/scripts/db_init.py --seed）",
+                )
+        finally:
+            admin.close()
 
     except httpx.HTTPError as exc:
         print(f"[FAIL] 网络错误：{type(exc).__name__}: {exc}")
