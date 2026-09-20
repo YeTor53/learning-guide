@@ -8,7 +8,8 @@ import './styles/global.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 3_000 },
+    // r011 redirect-03：切回窗口立刻刷新（原来 false，从别的窗口回来会停在旧状态，观感「没反应」）
+    queries: { retry: 1, refetchOnWindowFocus: true, staleTime: 3_000 },
   },
 })
 

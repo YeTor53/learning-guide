@@ -118,6 +118,7 @@ echo.
 echo ==== 就绪 ====
 echo   前端（用它演示）：http://localhost:%FRONTPORT%
 echo   后端（Vite 已代理 /api）：http://127.0.0.1:%BACKPORT%/api/auth/me
+echo   [note] Use 127.0.0.1 for the backend (localhost:8000 costs ~2s per request: Windows IPv6 fallback).
 echo   演示账号（种子数据，口令 demo1234）：host@example.com / mod@example.com / part@example.com
 echo   停止服务：dev.bat stop
 exit /b 0

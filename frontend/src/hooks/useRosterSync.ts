@@ -3,7 +3,7 @@
  * 三条路，缺一不可：
  *   ① 收到别端的 `lg.roster` 广播 → 立刻重取（秒级一致）；
  *   ② 关键时刻：进房 / 重连成功、窗口聚焦、页面重新可见 → 重取；
- *   ③ 兜底：30 秒轮询（仅页面可见时真取）—— 广播丢了也能自己拉平。
+ *   ③ 兜底：10 秒轮询（仅页面可见时真取，r011 redirect-03 从 30 秒收敛）—— 广播丢了也能自己拉平。
  *
  * 口径：HTTP 落库是唯一真相，广播只是加速层（ADR-0013 的沿用）。返回值 = 本端动作后要调的广播函数。
  */
@@ -13,7 +13,7 @@ import { Room } from 'livekit-client'
 import { CHANNEL_TOPIC, publishSnapshot, useDataChannel } from './useDataChannel'
 
 /** 兜底轮询周期（毫秒）：单点可调。 */
-export const ROSTER_POLL_MS = 30_000
+export const ROSTER_POLL_MS = 10_000
 
 export interface RosterSignal {
   v: 1
