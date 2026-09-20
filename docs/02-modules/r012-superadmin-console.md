@@ -121,18 +121,20 @@ updated: 2026-09-20
 | 身份 | `pytest backend/tests -q -k "superadmin or presence"` | 见 `rounds/r012-superadmin-console/changes.md` §3（实测数字） |
 | 全量用例 | `pytest backend/tests -q` | **201 passed**（cp-7 实测；含跨线程广播回归用例） |
 | 冒烟 | `python backend/scripts/smoke.py --base-url http://127.0.0.1:8000` | **PASS 58/58**（cp-7 新增 11 步：超管登录 / 普通账号 403 / 四列表 / 超管取票 claims / 大屏发与读 / 未登录 401 / 未登录可读 / 心跳） |
+| 真机交叉验证 | `python backend/scripts/verify_r012_superadmin_invisible.py` | **PASS 17/17**（两隔离 Chrome 152 + CDP 1.3）：成员端舞台/在册/成员抽屉看不到超管；LiveKit 服务端超管 `hidden=true / canPublish=false`；reduced-motion 强制模拟（`none` / 1e-06s）| 
 | 提权脚本 | `grant_superadmin.py --email host@example.com` → `--revoke`；`--email nobody@example.com` | `user → superadmin（影响 1 行）` / `superadmin → user（影响 1 行）` / 退出码 2「找不到账号」（实测原样） |
 | 前端 | `npx tsc --noEmit` | exit 0 |
 
 ## 9. 本页尚缺（随增量补齐，见需求单 §9 cp 切分）
 
-- 无代码侧欠账。未闭合项（双浏览器隐身交叉验证、`prefers-reduced-motion` 强制模拟）登记在 `rounds/r012-superadmin-console/review.md` §6。
+- 无代码侧欠账；原两个未闭合项（双浏览器隐身交叉验证、`prefers-reduced-motion` 强制模拟）已在 cp-7b 用 CDP 真机取证闭合（见 `review.md` §1/§4/§4.1）。
 
 ## 10. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1（cp-2） | 建页：身份（`users.role` + 提权脚本 + 演示超管 + 迁移 011/012 对象）与在线口径（`POST /api/presence` + 前端心跳 + 判据窗口） | 需求单 §10.1（Q1/Q14/Q15）、design §1/§2.6、ADR-0024 |
+| 2026-09-20 | v7（cp-7b） | §8 增「真机交叉验证」行（17/17 判据 + LiveKit 服务端权限 + reduced-motion 实测量测）；§9 欠账清空 | `verify_r012_superadmin_invisible.py` 实测 |
 | 2026-09-20 | v6（cp-7） | 追加 §5.1 广播线程安全（真机踩到后修 + 回归用例）；§8 补全量与冒烟实测（201 passed / PASS 58/58）；§9 欠账清空 | cp-7 实测、ADR-0025 D6 |
 | 2026-09-20 | v5（cp-6） | 追加 §6 前端逐文件（管理页 / 右侧大屏抽屉 / 入口 / 超管视角 / ViewerRole 类型）；补 §5 大屏与 SSE 的前端调用点 | 需求单 §10.1（Q11/Q12）、design §5 |
 | 2026-09-20 | v4（cp-5） | 追加 §5 大屏聊天与 SSE：存储与可见性、在线点、限流（库计数）、落库→通知顺序、SSE 帧协议、进程内 pub/sub 与单进程限制；ADR-0025 落地 | 需求单 §10.1（Q13/Q11/Q14）、design §4、ADR-0025 |

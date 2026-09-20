@@ -51,7 +51,11 @@ updated: 2026-09-20
 | 真机 · 跨客户端 SSE | host@example.com 经 HTTP 发一条 → 浏览器面板**未刷新**即出现 | 面板行：`林泽宇 17:04 来自另一个客户端（host）的消息`；面板标题「1 人在线」+ 1 个绿点 | 2026-09-20 |
 | 真机 · 超管只读视角 | 超管进**他人房间**（非成员）`/rooms/room_beb67510a8d00b64/live` | 顶部提示「管理视角：你以隐身方式在场…不发布音视频，只做管理。」；控制坞仅 `管理视角 · 隐身` + `离开` + `结束房间`，**无**麦克风/摄像头/共享/举手控件；舞台 0 格；截图 `%TEMP%\lg_r012\cp7-superadmin-room.png` | 2026-09-20 |
 | 真机 · 应用内取票 claims | 浏览器内 `POST /api/rooms/{id}/token` | `status 200`；JWT：`hidden=true`、`canPublish=false`、`canPublishData=false`、`roomAdmin` 非真、`attributes={'lg-role':'superadmin'}`、`room` = 目标房、`url` = 项目 LiveKit Cloud 地址 | 2026-09-20 |
-| 已知环境限制 | 工具浏览器内 LiveKit 媒体连接未建立（徽标「未连接」，控制台 0 个 JS 错误） | 故「双浏览器交叉验证隐身」与「reduced-motion 强制模拟」未做，登记在 review §6 未闭合 ①/② | 2026-09-20 |
+| 已知环境限制 | 工具浏览器内 LiveKit 媒体连接未建立（徽标「未连接」，控制台 0 个 JS 错误） | 已由 cp-7b 用 CDP 起真 Chrome 绕过（真 Chrome 里徽标=已连接）；原登记在 review §6 未闭合 ①/② | 2026-09-20 |
+| 真机 · 超管隐身交叉验证（cp-7b） | `python backend/scripts/verify_r012_superadmin_invisible.py`（两个隔离 Chrome，9222 成员 / 9223 超管） | **PASS 17/17**。成员端：舞台 `1 格不变`（`tileNames=['林泽宇']`）、在册 `2 / 8 成员` 前后一致、成员抽屉（长度 116）无「平台管理员」。超管端：徽标 `已连接`、chip `管理视角 · 隐身`、dock `['管理视角 · 隐身','离开','结束房间']`、mic/cam/share/hand 全 false | 2026-09-20 |
+| 真机 · LiveKit 服务端权限（cp-7b） | `list_participants(room_beb67510a8d00b64)` | `usr_demo_host`: hidden=false / canPublish=true；`usr_demo_admin`: **hidden=true / canPublish=false / canPublishData=false / attributes={'lg-role':'superadmin'} / tracks=[]**（媒体层也发不出去） | 2026-09-20 |
+| 真机 · 动效降级（cp-7b） | CDP `Emulation.setEmulatedMedia(prefers-reduced-motion=reduce)` | 常规 `transform, opacity` / **0.24s**（收起 `translateX(376px)`、展开 `0`）；reduce 下 `none` / `1e-06s`，`matchMedia(...)`=true，收起 200ms 内到位、再开 150ms 内到位 | 2026-09-20 |
+| 副作用与收尾（cp-7b） | 脚本自身 | 该房新增 1 条超管 `room_visits`（hidden=true）→ 脚本用 `close_room_visit` 自动关闭；`room_members` 仍 host+mod（在册 2）；两个 Chrome 一律 `Browser.close`（未用 taskkill）；成员在无麦无头浏览器中 `tracks=[]`（**未发布任何音频**，不污染转写） | 2026-09-20 |
 | 用例（cp-2） | `pytest backend/tests -q` | **174 passed**（r011 基线 164；新增 10 条：`test_presence_api.py` 4 + `test_superadmin_identity.py` 6）42.83s | 2026-09-20 |
 | 用例（cp-3） | `pytest backend/tests -q` | **182 passed**（新增 8 条：`test_superadmin_room_access.py`）45.03s | 2026-09-20 |
 | 用例（cp-4） | `pytest backend/tests -q` | **191 passed**（新增 9 条：`test_admin_api.py`）48.57s | 2026-09-20 |
@@ -83,5 +87,6 @@ updated: 2026-09-20
 | 2026-09-20 | cp-5 | 大屏聊天 + SSE 通知通道 + 限流 + ADR-0025；用例 200 passed；SSE 载荷口径定案（`type`+`payload` 同帧） | 需求单 §9 cp-5、§10.1（Q11/Q13/Q14）、ADR-0025 |
 | 2026-09-20 | 交接 | 另一会话在 `NavBar.tsx` / `SideBar.tsx` 的未提交改动（邀请码入口移入侧边栏，属 r011）由本分支先落盘为独立提交，再在其上做 cp-6，避免两份改动混进同一个提交 | 用户 2026-09-20 选择「现在就一并改」 |
 | 2026-09-20 | cp-6 | 前端落地（见 cp 台账行）+ 教学两页 + 功能页 + 04-style §12.4；`tsc`/`build` 绿、令牌与 emoji 扫描 0 命中 | 需求单 §9 cp-6、§10.1（Q11/Q12/Q13/Q14）、design §5/§9 |
+| 2026-09-20 | cp-7b | 未闭合 ①② 闭合：新增可复跑真机交叉验证脚本 + 两隔离 Chrome（CDP）取证 + LiveKit 服务端权限证据 + reduced-motion 强制模拟；review §1/§4/§4.1/§6 更新 | `verify_r012_superadmin_invisible.py` → **PASS 17/17**（Chrome 152 / CDP 1.3） | E2/E13/E11 |
 | 2026-09-20 | cp-7 | 门禁复跑（pytest 200）+ 真机取证（后台 136 条 / 面板开合实测 / 跨客户端 SSE / 超管只读视角 / 应用内取票 claims）+ 三张截图 + 视觉五组 + review 定稿 + 索引与 roadmap 回填 | 需求单 §9 cp-7；review §1/§4 |
 | 2026-09-20 | cp-4b | **补交**：`services/presence.py::online_since()`——cp-4 提交时漏登记该文件，导致 `GET /api/admin/users?online_only=1` 在 cp-4 树里引用了不存在的函数（本地工作区有、提交里没有）。教训记在此：**冷启动核对**（提交后 `git status` 必须为空，本轮 cp-4 曾遗留一个未登记的已改文件） | cp-4 自审发现 |

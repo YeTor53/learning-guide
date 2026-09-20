@@ -58,6 +58,14 @@ updated: 2026-09-20
 | D4 旁路治理 | 用例 `test_superadmin_kicks_and_ends_other_peoples_room`：超管踢人与结束**他人**房间均 200，且房内留下「被移出房间」「房间已结束」系统消息；`test_plain_participant_still_cannot_govern`：普通参与者同动作仍 403 |
 | 真机待办 | 2 浏览器验证「另一端 participants / 舞台 / 名册看不到超管」属人工/真机项，登记在 cp-7（E2） |
 
+## 落地与验证 · 补充（cp-7b 真机）
+
+`backend/scripts/verify_r012_superadmin_invisible.py`（PASS 17/17）在**真 Chrome** 里复核了「隐身」的两层：
+
+- 界面层：成员端舞台格数、在册人数、成员抽屉在超管进房前后**完全不变**，抽屉里没有「平台管理员」；
+- **媒体层（决定性的那一层）**：LiveKit 服务端 `list_participants` 显示超管 `hidden=true`、`canPublish=false`、
+  `canPublishData=false`、`attributes={'lg-role':'superadmin'}`、`tracks=[]`——即使绕过前端也发不出音视频、也不会出现在别人的参与者列表里。
+
 ## 影响面
 - 代码：`services/roles.py`（新增）、`services/rooms.py`（两处旁路 + 取票分支，cp-3）、`services/livekit.py::issue_token`（新增 `hidden`/`attributes`/`can_publish*` 参数，cp-3）、`agents/transcriber.py`（跳过超管，cp-3）。
 - 文档：`docs/02-modules/r012-superadmin-console.md`（模块页）、需求单 §1/§10.1、`docs/04-style/global-style.md`（管理视角标识的文案口径，cp-6）。

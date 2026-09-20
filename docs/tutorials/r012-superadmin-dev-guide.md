@@ -46,8 +46,16 @@ rounds: [r012]
 3. **前端查询参数是 snake_case**：后台接口沿用 `mine=` / `status=` 的口径（`online_only=1`、`before_id=...`），出参才是 camelCase。
 4. **`Role` 与 `ViewerRole` 是两个概念**：`Role` 只是成员角色（host/moderator/participant），超管的视角值单独用 `ViewerRole`；把 `superadmin` 塞进 `Role` 会让成员图标表到处报缺键。
 
+## 4.5 想改「隐身」相关行为时，先跑这条
+
+`py -3 backend/scripts/verify_r012_superadmin_invisible.py`（PASS 17/17）会在真 Chrome 里复核三层拦线：
+界面层（舞台 / 在册 / 成员抽屉）、**LiveKit 媒体层**（服务端 `hidden=true`、`canPublish=false`、`tracks=[]`）、
+以及面板动效的降级。改 `issue_token` 的 grants、`DeviceBar.superadminMode`、`excludeIdentity` 之后跑它，比手点两个浏览器快也更可信。
+另外两个脚本也值得挂上：`smoke.py`（58 步，含超管/后台/大屏）、`pytest backend/tests -q`（201 项）。
+
 ## 5. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1（cp-6） | 建页：两条扩展线步骤、三道隐身拦线、四个实测坑 | r012 cp-2~cp-6 实现过程 |
+| 2026-09-20 | v2（cp-7b） | 追加 §4.5：改隐身相关行为前先跑 `verify_r012_superadmin_invisible.py` | cp-7b 实测 |
