@@ -113,14 +113,21 @@ updated: 2026-09-20
 `loop.call_soon_threadsafe(_offer, subscriber, event)`；队列满时的丢最旧策略在 `_offer` 里（循环线程）执行。
 回归用例：`backend/tests/test_global_chat.py::test_publish_from_sync_endpoint_thread_wakes_waiting_subscriber`。
 
+### 5.2 SSE 连接**不许**碰数据库（cp-8b 修，必读）
+
+`/api/events` 永不结束，而 FastAPI 的依赖清理发生在响应之后：**只要依赖里有 `db_conn`，每个订阅者就永久占用
+连接池（`max_size=8`）的一条连接**。实测 9 条流挂上 → 普通接口全部 30 秒超时后 500（`PoolTimeout`），
+关流立刻恢复。口径：流只推公开的最小通知、未登录也可订阅，所以**不取用户身份、不碰数据库**。
+守卫：`test_events_route_must_not_depend_on_db`（依赖树 + 池占用）+ `smoke.py` 的「挂 9 条 SSE 仍畅通」一步。
+
 ## 8. 用例与实测
 
 | 项 | 命令 / 用例 | 实测 |
 | --- | --- | --- |
 | 迁移 | `python backend/scripts/db_init.py --seed` | `[migrate] 011_r012_superadmin_global_chat, 012_r012_seed_superadmin`；`schema_migrations 12`（2026-09-20 实测） |
 | 身份 | `pytest backend/tests -q -k "superadmin or presence"` | 见 `rounds/r012-superadmin-console/changes.md` §3（实测数字） |
-| 全量用例 | `pytest backend/tests -q` | **201 passed**（cp-7 实测；含跨线程广播回归用例） |
-| 冒烟 | `python backend/scripts/smoke.py --base-url http://127.0.0.1:8000` | **PASS 58/58**（cp-7 新增 11 步：超管登录 / 普通账号 403 / 四列表 / 超管取票 claims / 大屏发与读 / 未登录 401 / 未登录可读 / 心跳） |
+| 全量用例 | `pytest backend/tests -q` | **202 passed**（cp-8b 实测；含跨线程广播与「SSE 不占连接池」两条回归用例） |
+| 冒烟 | `python backend/scripts/smoke.py --base-url http://127.0.0.1:8000` | **PASS 59/59**（cp-8b 加一步：挂 9 条 SSE 时普通接口仍 200 / 0.01s）（cp-7 新增 11 步：超管登录 / 普通账号 403 / 四列表 / 超管取票 claims / 大屏发与读 / 未登录 401 / 未登录可读 / 心跳） |
 | 真机交叉验证 | `python backend/scripts/verify_r012_superadmin_invisible.py` | **PASS 17/17**（两隔离 Chrome 152 + CDP 1.3）：成员端舞台/在册/成员抽屉看不到超管；LiveKit 服务端超管 `hidden=true / canPublish=false`；reduced-motion 强制模拟（`none` / 1e-06s）| 
 | 提权脚本 | `grant_superadmin.py --email host@example.com` → `--revoke`；`--email nobody@example.com` | `user → superadmin（影响 1 行）` / `superadmin → user（影响 1 行）` / 退出码 2「找不到账号」（实测原样） |
 | 前端 | `npx tsc --noEmit` | exit 0 |

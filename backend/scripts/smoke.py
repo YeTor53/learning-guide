@@ -8,7 +8,8 @@
 设计事实源：docs/01-architecture/r001-app-architecture.md §9.6；docs/02-modules/r001-rooms.md §6.8
 判据：每步状态码与关键字段符合预期，末尾打印 `PASS n/n`；任一步不符即以非 0 退出。
  r002 补步（2026-09-19）：成员取 Token 200 / 非成员取 Token 403 / 踢人后取 Token 403 / 结束后取 Token 409。
- r012 补步（2026-09-20）：演示超管登录 → 普通账号调管理后台 403 → 超管三列表 200 → 超管取票（隐身/禁发布 claims）→ 大屏发言与读取 → 心跳上报。
+ r012 补步（2026-09-20）：演示超管登录 → 普通账号调管理后台 403 → 超管三列表 200 → 超管取票（隐身/禁发布 claims）→ 大屏发言与读取 → 心跳上报
+                     → SSE 挂 9 条流时普通接口仍畅通（cp-8b：SSE 曾把连接池攥死，8 条就把整站打成 500）。
 注意：① 脚本会向库里写入两个账号与一个房间（每次邮箱随机），跑完可用 db_init --reset --seed 恢复演示数据；
       ② 本脚本要求后端以 `APP_ENV=dev`（默认）运行：`APP_ENV=demo` 时会话 Cookie 带 Secure，脚本客户端不会回传，
          会出现「注册成功但下一步 401」——这是设计如此（演示形态用浏览器访问不受影响）。
@@ -19,6 +20,8 @@ import argparse
 import base64
 import json
 import sys
+import threading
+import time
 import uuid
 from typing import Any
 
@@ -379,6 +382,39 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 finally:
                     anon.close()
+                # SSE 订阅**不得占用连接池**：cp-8b 真机踩到——每条 /api/events 流攥住连接池（max 8）里的一条连接，
+                # 9 条流就能让整站 30 秒后 500（psycopg_pool.PoolTimeout）。这里挂住若干条流再做普通请求。
+                held: list[int] = []
+                keep_running = {"v": True}
+
+                def _hold_stream() -> None:
+                    client = httpx.Client(base_url=base, timeout=30.0)
+                    try:
+                        with client.stream("GET", "/api/events") as resp:
+                            if resp.status_code == 200:
+                                held.append(1)
+                                for _ in resp.iter_lines():
+                                    if not keep_running["v"]:
+                                        break
+                    except Exception:      # noqa: BLE001 - 收尾断开属正常
+                        pass
+                    finally:
+                        client.close()
+
+                streams = [threading.Thread(target=_hold_stream, daemon=True) for _ in range(9)]
+                for item in streams:
+                    item.start()
+                time.sleep(2.0)
+                started = time.time()
+                still_ok = admin.get("/api/rooms?status=active&limit=1")
+                elapsed = time.time() - started
+                check(
+                    "挂着 9 条 SSE 时普通接口仍畅通（SSE 不占连接池）",
+                    still_ok.status_code == 200 and elapsed < 5,
+                    f"→ {still_ok.status_code} in {elapsed:.2f}s（已建立 {len(held)} 条流）",
+                )
+                keep_running["v"] = False
+
                 beat = admin.post("/api/presence")
                 check(
                     "在线心跳 → 200 带 lastSeenAt",

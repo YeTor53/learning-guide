@@ -157,7 +157,7 @@ def test_events_stream_emits_retry_then_notify(client, db) -> None:
     events_service.reset()
 
     async def scenario() -> tuple[object, str, str]:
-        response = await events_router.stream_events(_Request(), user=None)
+        response = await events_router.stream_events(_Request())
         assert response.media_type == "text/event-stream"
         assert response.headers["x-accel-buffering"] == "no"
         assert response.headers["cache-control"] == "no-cache, no-store"
@@ -235,3 +235,53 @@ def test_publish_from_sync_endpoint_thread_wakes_waiting_subscriber(client, db) 
     assert event["payload"] == {"id": "gmsg_thread"}
     # 事件 id 由 publish 分配，说明投递走的是同一条编码出口
     assert isinstance(event["id"], int) and event["id"] >= 1
+
+def test_events_route_must_not_depend_on_db(client) -> None:
+    """r012 真机回归（2026-09-20）：SSE 路由**不许**带 DB 依赖。
+
+    复现路径：`/api/events` 是永不结束的流，FastAPI 的依赖清理在响应之后才跑 ——
+    只要依赖里有 `db_conn`，每个订阅者就永久占用连接池（`max_size=8`）的一条连接。
+    实测本机 9 条流挂上后，普通接口全部 30 秒超时后 500（`psycopg_pool.PoolTimeout`）；
+    关掉流立刻恢复 200。本用例把「不得加 DB 依赖」这条钉死，附运行时占用检查。
+    """
+    from app.api.deps import db_conn
+    from app.main import create_app
+
+    def walk(dependant) -> list:
+        found = []
+        for sub in dependant.dependencies:
+            if sub.call is db_conn:
+                found.append(sub.call)
+            found.extend(walk(sub))
+        return found
+
+    def iter_api_routes(items):
+        """本项目用 FastAPI 的 include_router，路由包在 `_IncludedRouter.original_router` 里。"""
+        from fastapi.routing import APIRoute
+
+        for item in items:
+            if isinstance(item, APIRoute):
+                yield item
+            original = getattr(item, "original_router", None)
+            if original is not None:
+                yield from iter_api_routes(original.routes)
+
+    app = create_app()
+    route = next((r for r in iter_api_routes(app.routes) if r.path.endswith("/events")), None)
+    assert route is not None, "没在应用里找到 /api/events 路由"
+    assert walk(route.dependant) == [], "SSE 路由不允许依赖 db_conn（会把连接池攥死）"
+
+    # 运行时：订阅者只吃内存队列，不碰连接池
+    from app.db.pool import get_pool
+
+    events_service.reset()
+    before = get_pool().get_stats()
+    subscribers = [events_service.subscribe() for _ in range(5)]
+    try:
+        after = get_pool().get_stats()
+        assert after["pool_available"] == before["pool_available"], (before, after)
+        assert after["requests_waiting"] == 0
+    finally:
+        for item in subscribers:
+            events_service.unsubscribe(item)
+        events_service.reset()
