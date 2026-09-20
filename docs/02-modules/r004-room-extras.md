@@ -210,7 +210,7 @@ room_focus(id PK, room_id FK→rooms, subject_user_id FK→users NULL, actor_use
 1. **E18b（本地 `livekit-server` 停机 8 秒）未做**：本轮两种自动化真断手段不成立（Playwright `set_offline` 在窗口内不触发 SDK 重连态；本地服务器未搭）。
 2. **E18c（物理断网 8 秒 + 设备保持）待用户演练**：载体 `reconnect-drill.bat` 已进仓库根；四项观察回填 review.md 后本条闭合。
 3. **「共享中说话不夺焦点」**：未单独实测（测试环境无人出声）；由 `computeStageLayout` 的优先级保证，建议真机点一次。
-4. **服务端强停共享**：本轮为协作式（对面客户端自停）；强停方案待实测（design §6.2），要改需另开轮次。
+4. ~~**服务端强停共享**~~ **已闭合（r013 cp-3，2026-09-20）**：可复跑脚本 `frontend/scripts/verify-screen-force-stop.py` 真机取证——A 端共享中**不点「停止共享」**、直接关掉标签（等价 MV-2 的「杀标签」），B 端 **0.5 秒**自动清格并恢复宫格（两次实测同值）；手段为 WS 正常关闭，**网络级硬断**未测（需防火墙/物理断网，见 r013 需求单 §10.5）。实现侧无需改动：`useScreenShare` 已订阅 `TrackUnpublished` / `ParticipantDisconnected` → `scan()` 重算共享者。
 5. **窄屏 + 抽屉同开**：抽屉占 360px，会把舞台压到 300px 级（缩格挤成一列、焦点格约 280px）。这是「抽屉优先」的取舍，不是布局 bug；若后续要改属 M5 候选。
 
 ## 12. r012 补丁：系统消息的补广播（cp-8c）

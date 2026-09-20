@@ -59,3 +59,10 @@ rounds: [r012]
 | --- | --- | --- | --- |
 | 2026-09-20 | v1（cp-6） | 建页：两条扩展线步骤、三道隐身拦线、四个实测坑 | r012 cp-2~cp-6 实现过程 |
 | 2026-09-20 | v2（cp-7b） | 追加 §4.5：改隐身相关行为前先跑 `verify_r012_superadmin_invisible.py` | cp-7b 实测 |
+
+## r013 新增：两处可复跑取证 + 回看页/大屏 tab 的落点
+
+- **三人档焦点回归门禁**：`python frontend/scripts/verify-focus-three-way.py`（三隔离 Chrome 真跑「给焦点」→ 读三端 `data-stage-mode` / `.is-focus` / 焦点 identity）。踩坑：控制坞按钮在 `status=connecting` 时 `disabled`，`.click()` 无效（要点前先等）；CDP 的 keepalive ping 在多套 Chrome 并发时会超时掐断（脚本里 `ping_interval=None`）；各端舞台排序「本地优先」，比对焦点不能取排序首项。
+- **强停共享取证**：`python frontend/scripts/verify-screen-force-stop.py` —— A 共享中直接关标签（等价 MV-2 的「杀标签」）→ B 端清格耗时；实测 **0.5 秒**（实现侧 `useScreenShare.scan()` 已订阅 `TrackUnpublished`/`ParticipantDisconnected`，无需改码）。
+- **回看页**：`frontend/src/pages/ReplayPage.tsx` + `hooks/useReplay.ts`（复用 `/rooms/{id}`、`/conversation`、`/summary`）；可见性沿用既有的「成员/历史成员/房主/协管」口径，**后端零改动**。
+- **大屏两壳**：`components/GlobalChatPanel.tsx`（`variant=drawer|embedded`）+ `GlobalChatDrawer`（只剩壳与 Esc）+ `RoomSidePanel` 第 4 个 tab；数据源单例，`enabled` 由壳传（抽屉开着 / tab 选中）。

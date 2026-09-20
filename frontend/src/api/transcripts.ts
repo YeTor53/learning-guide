@@ -26,6 +26,8 @@ export interface RoomSttStatus {
   fresh: boolean
   workerId: string | null
   sessions: number
+  /** r013：worker 上报的最后一次错误（连接失败/开会话失败）；无则 null。 */
+  lastError?: string | null
 }
 
 /** 三源合一的条目（聊天 / 系统事件 / 语音转写）。 */

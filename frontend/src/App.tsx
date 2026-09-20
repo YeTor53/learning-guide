@@ -14,6 +14,7 @@ import RegisterPage from './pages/RegisterPage'
 import RoomLivePage from './pages/RoomLivePage'
 import AdminPage from './pages/AdminPage'
 import JoinByCodePage from './pages/JoinByCodePage'
+import ReplayPage from './pages/ReplayPage'
 import RoomSummaryPage from './pages/RoomSummaryPage'
 import WaitingPage from './pages/WaitingPage'
 import RoomsPage from './pages/RoomsPage'
@@ -84,6 +85,8 @@ export default function App() {
         <Route path="/rooms/:id/live" element={<RoomLivePage />} />
       <Route path="/rooms/:id/wait" element={<WaitingPage />} />
       <Route path="/rooms/:id/summary" element={<RoomSummaryPage />} />
+      {/* r013：结束房回看（只读历史：时间线 / 纪要 / 成员） */}
+      <Route path="/rooms/:id/replay" element={<ReplayPage />} />
       <Route path="/join" element={<JoinByCodePage />} />
       {/* r012：管理后台（仅超管；页面内仍按 401/403 分流提示） */}
       <Route path="/admin" element={<AdminPage />} />

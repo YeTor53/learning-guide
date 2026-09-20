@@ -21,6 +21,7 @@ updated: 2026-09-20
 | cp-r011-5 | B 组 worker 健康上报（心跳端点 + 内存态 + 芯片按房判据）+ C 组用例（`STT_MODE=off` ×2、满员自动拒 ×3、心跳 ×3）+ 既有用例按新语义更新 | **完成 2026-09-20**（pytest **164 passed**、build exit 0） | 见 cp-5 提交 | E6/E7 |
 | cp-r011-6 | 焦点规则收窄：说话不再获得焦点（删说话者档 + 删 `useStableSpeaker` 死代码）+ ADR-0014/模块页/教学页/剧本同步 | **完成 2026-09-20** | 见 cp-6 提交 | E11 |
 | cp-r011-7 | 门禁与取证收官：四项门禁复跑 + smoke 脚本按新语义更新（46→47 步）+ 索引/矩阵回填 + review 定稿 + 快照 | **完成 2026-09-20** | 见 cp-7 提交 | E8/E9 |
+| cp-r011-9 | 邀请码入口**位置调整**（顶栏 → 侧边栏）+ 文档同步（教学页 / design / review / MV-9 / 台本） | **完成 2026-09-20** | 见 cp-9 提交 | E5 |
 | cp-r011-8 | **响应延迟收敛**（redirect-03，「未发现的未完成项」）：6 处前端轮询/刷新策略 + 地址口径（127.0.0.1）+ MV-12 | **完成 2026-09-20** | 见 cp-8 提交 | E12 |
 
 ## 2. 门禁数字
@@ -105,6 +106,20 @@ updated: 2026-09-20
 
 ### 双栈探针结论（未采用改绑）
 uvicorn `--host ::` 时 `[::1]` 可连、`127.0.0.1` **拒连**（Windows 默认 `IPV6_V6ONLY=1`）→ 若改绑会让 Vite 代理（写死 `127.0.0.1:8000`）与全部脚本失效，故**不改绑定**，改为文档统一口径。
+
+## 3.7 cp-9 逐处改动（邀请码入口移到侧边栏）
+
+> 代码改动实际落盘在 `fa7b7d1`（当时以「交接——另一会话的未提交前端改动」名义提交，未单独打 cp-9）；本提交补的是它的文档同步，并补打 tag `cp-r011-9`。
+
+| 文件 | 现在 → 改成 | 依据 |
+| --- | --- | --- |
+| `frontend/src/components/NavBar.tsx` | 删掉 `top-actions` 里的 `邀请码加入` 链接（顶栏只留登录 / 注册 / 用户名；面包屑标签保留） | 你 2026-09-20「邀请码加入的位置换到侧边栏」 |
+| `frontend/src/components/SideBar.tsx` | 主导航新增 `Item to="/join" label="邀请码加入"`（lucide `Ticket` 图标，收起态只显图标 + `title`），排在「创建房间」之后 | 同上 |
+| `docs/tutorials/r011-invite-entry-and-capacity.md` | 两条问答的入口位置改为「展开左侧栏 → 邀请码加入」 | 文档=代码 |
+| `docs/rounds/r011-debt-backfill/design.md` | 代码片段改侧边栏 `Item`；README 描述改「邀请码入口（侧边栏）」；变更记录加一行 | 同上 |
+| `docs/rounds/r011-debt-backfill/manual-verification.md` | MV-9 步 1 改为「侧边栏点邀请码加入」（并注明侧边栏默认收起） | 取证口径 |
+| `docs/rounds/r011-debt-backfill/review.md`、`docs/00-requirements/r011-debt-backfill.md` | E5 证据改为 `SideBar.tsx`；需求条目改「侧边栏常驻入口」 | 同上 |
+| `docs/00-project/demo-runbook.md` | 按钮速查与 S7 路径二改为「侧边栏 → 邀请码加入」 | 台本=现状 |
 
 ## 4. 未做 / 如实说明
 

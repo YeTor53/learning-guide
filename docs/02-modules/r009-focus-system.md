@@ -63,5 +63,6 @@ updated: 2026-09-19
 
 | 日期 | 轮次 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
+| 2026-09-20 | r013 `cp-2` | 三人档「给焦点」三端一致性**回归门禁**：新增 `frontend/scripts/verify-focus-three-way.py`；实测三端同进 `focus`（PASS 8/8 ×3）。r009.5 登记的「房主端未进布局」在当前代码**不复现** | r013 需求单 E1/E2；该脚本实测 |
 | 2026-09-20 | r011 | `LiveStage` 的焦点判定删除说话者档（连带删除 `hooks/useStableSpeaker.ts` 零引用死代码）；`stageGeometry` 与令牌未动 | `docs/rounds/r011-debt-backfill/redirect-02.md` |
 

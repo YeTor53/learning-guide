@@ -1,4 +1,4 @@
-import { CalendarX2, Clock, Crown, FileText, Hash, LogIn, Radio, ShieldCheck, UserRound, Users } from 'lucide-react'
+import {History, CalendarX2, Clock, Crown, FileText, Hash, LogIn, Radio, ShieldCheck, UserRound, Users} from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -72,11 +72,19 @@ export default function RoomCard({ room, index = 0 }: { room: Room; index?: numb
   const primary = () => {
     // r008：已结束的房间给「讨论纪要」入口（作业必做「结束后可查看纪要」）
     if (ended) {
+      // r013：结束后给**回看**入口（历史时间线 + 纪要 + 成员）；原「讨论纪要」按钮保留，
+      // 不动 r008 那条验收路径（作业必做「结束后可查看纪要」的证据链指着它）。
       return (
-        <button className="btn btn-sm" onClick={() => navigate(`/rooms/${room.id}/summary`)}>
-          <FileText {...ICON} />
-          讨论纪要
-        </button>
+        <>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate(`/rooms/${room.id}/replay`)}>
+            <History {...ICON} />
+            回看
+          </button>
+          <button className="btn btn-sm" onClick={() => navigate(`/rooms/${room.id}/summary`)}>
+            <FileText {...ICON} />
+            讨论纪要
+          </button>
+        </>
       )
     }
     if (room.myRole) {

@@ -65,3 +65,33 @@ def test_room_without_heartbeat_reports_null(client, db) -> None:
     assert data["lastHeartbeatAt"] is None
     assert data["heartbeatAgeSeconds"] is None
     assert data["fresh"] is False
+
+
+def test_heartbeat_carries_last_error_to_room_status(client, db) -> None:
+    """r013：worker 上报的 `lastError` 要能从 `/rooms/{id}/stt-status` 读回来（控制坞芯片 hover 用）。"""
+    from app.api.routers.transcripts import agent_heartbeat_token
+    from app.config import load_settings
+
+    host = register_user(db, "房主")
+    login(client, host)
+    room = create_room(client)
+    token = agent_heartbeat_token(room["id"], load_settings().session_secret)
+
+    body = {
+        "roomId": room["id"],
+        "workerId": "w-test",
+        "sessions": 0,
+        "lastError": "连接失败（3 次）：APIConnectionError: timed out waiting for ReadyForRoomEventRequest",
+    }
+    ok = client.post("/api/stt/heartbeat", json=body, headers={"X-Agent-Token": token})
+    assert ok.status_code == 200
+
+    status = client.get(f"/api/rooms/{room['id']}/stt-status")
+    assert status.status_code == 200
+    assert status.json()["data"]["lastError"] == body["lastError"]
+
+    # 不带 lastError 的心跳要把上次的错误清掉（否则前端会一直显示过期错误）
+    body.pop("lastError")
+    assert client.post("/api/stt/heartbeat", json=body, headers={"X-Agent-Token": token}).status_code == 200
+    cleared = client.get(f"/api/rooms/{room['id']}/stt-status").json()["data"]
+    assert cleared["lastError"] is None

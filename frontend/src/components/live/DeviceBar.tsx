@@ -8,7 +8,7 @@
  * 其他人是「离开」。房主没有「离开」——他必须先结束或先移交（r001 FQ-2 / ADR-0012 条 8）。
  */
 import { useEffect } from 'react'
-import { DoorOpen, Hand, Mic, MicOff, MonitorUp, PhoneOff, Settings2, ShieldCheck, Video, VideoOff } from 'lucide-react'
+import { AudioLines, DoorOpen, Hand, Mic, MicOff, MonitorUp, PhoneOff, Settings2, ShieldCheck, Video, VideoOff } from 'lucide-react'
 
 const ICON = { size: 18, strokeWidth: 1.75 } as const
 
@@ -47,7 +47,7 @@ interface Props {
   onToggleShare: () => void
   /** r010：房间侧转写状态（只读展示；关掉麦克风即不参与转写）。
    *  r011：加 `lastHeartbeatAt`（毫秒）——worker 掉线时提示里能看到「最后心跳 X 秒前」。 */
-  transcribe?: { on: boolean; lastHeartbeatAt?: number | null }
+  transcribe?: { on: boolean; lastHeartbeatAt?: number | null; lastError?: string | null }
   /** r012：超管视角 —— 不发布音视频（Token 无发布权限），故**不渲染设备/举手/共享控件**，
    *  只留管理与离场（同时给「结束房间」与「离开」）。 */
   superadminMode?: boolean
@@ -105,9 +105,12 @@ export default function DeviceBar({
         /* r012：超管的 Token 没有发布权限（ADR-0024 D3）→ 不渲染任何设备/举手/共享控件，
            只显示一枚只读标识，避免「有控件但点了发不出」的假动作。 */
         <div className="live-dock-group">
-          <span className="live-superadmin-chip" title="管理员以隐身方式在场：不发布音视频，只做管理">
+          <span
+            className="live-superadmin-chip"
+            title="管理视角 · 隐身：不发布音视频，只做管理"
+            aria-label="管理视角：隐身在场，只做管理"
+          >
             <ShieldCheck size={16} strokeWidth={1.75} />
-            管理视角 · 隐身
           </span>
         </div>
       ) : (
@@ -120,7 +123,6 @@ export default function DeviceBar({
           title={`${micEnabled ? '关闭' : '打开'}麦克风（M）`}
         >
           {micEnabled ? <Mic {...ICON} /> : <MicOff {...ICON} />}
-          <span className="live-ctrl-text">麦克风</span>
           <span className="live-ctrl-state">
             {micEnabled ? (
               <span className="live-level" aria-hidden>
@@ -129,7 +131,7 @@ export default function DeviceBar({
                 ))}
               </span>
             ) : (
-              <span className="live-ctrl-muted">已静音</span>
+              <span className="live-ctrl-dot live-ctrl-dot-danger" aria-hidden />
             )}
           </span>
         </button>
@@ -138,16 +140,19 @@ export default function DeviceBar({
           <span
             className={`live-transcribe-chip${transcribe.on ? ' on' : ''}`}
             title={
-              transcribe.on
+              (transcribe.on
                 ? '房间侧转写已开启；关掉麦克风即不参与转写'
                 : `房间侧转写未开启（演示前需先启动转写进程）${
                     transcribe.lastHeartbeatAt
                       ? `；最后心跳：${Math.max(0, Math.round((Date.now() - transcribe.lastHeartbeatAt) / 1000))} 秒前`
                       : '；本房还没有心跳记录'
-                  }`
+                  }`) +
+              // r013：worker 侧错误透出（只放 title，不新增常驻文案）
+              (transcribe.lastError ? `；最后错误：${transcribe.lastError.slice(0, 80)}` : '')
             }
           >
-            转写：{transcribe.on ? '开启' : '未开启'}
+            <AudioLines size={15} strokeWidth={1.75} aria-hidden />
+            {!transcribe.on && <span className="live-ctrl-dot live-ctrl-dot-danger" aria-hidden />}
           </span>
         )}
 
@@ -157,10 +162,12 @@ export default function DeviceBar({
           disabled={disabled}
           aria-pressed={handActive ?? handRaised}
           title={handTitle ?? (handRaised ? '放下手' : '举手（示意要发言）')}
+          aria-label={handLabel ?? (handRaised ? '放下手' : '举手')}
         >
           <Hand {...ICON} />
-          <span className="live-ctrl-text">{handLabel ?? (handRaised ? '放下手' : '举手')}</span>
-          <span className="live-ctrl-state">{handRaised ? '已举手' : ''}</span>
+          <span className="live-ctrl-state">
+            {handRaised ? <span className="live-ctrl-dot live-ctrl-dot-accent" aria-hidden /> : null}
+          </span>
         </button>
 
         <button
@@ -171,8 +178,9 @@ export default function DeviceBar({
           title={sharing ? '停止共享屏幕' : '共享屏幕（画面会占用焦点格）'}
         >
           <MonitorUp {...ICON} />
-          <span className="live-ctrl-text">{sharing ? '停止共享' : '共享屏幕'}</span>
-          <span className="live-ctrl-state">{sharing ? '共享中' : ''}</span>
+          <span className="live-ctrl-state">
+            {sharing ? <span className="live-ctrl-dot live-ctrl-dot-accent" aria-hidden /> : null}
+          </span>
         </button>
 
         <button
@@ -183,8 +191,7 @@ export default function DeviceBar({
           title={`${camEnabled ? '关闭' : '打开'}摄像头（V）`}
         >
           {camEnabled ? <Video {...ICON} /> : <VideoOff {...ICON} />}
-          <span className="live-ctrl-text">摄像头</span>
-          <span className="live-ctrl-state">{camEnabled ? '已开' : '已关'}</span>
+          <span className="live-ctrl-state" />
         </button>
       </div>
       )}
@@ -200,7 +207,6 @@ export default function DeviceBar({
             title="离开房间（不绑定快捷键）"
           >
             <DoorOpen {...ICON} />
-            <span className="live-ctrl-text">离开</span>
           </button>
         )}
         {isHost ? (
@@ -224,7 +230,6 @@ export default function DeviceBar({
               title="结束房间：所有人被移出、房间转为只读（不绑定快捷键）"
             >
               <PhoneOff {...ICON} />
-              <span className="live-ctrl-text">结束房间</span>
             </button>
           )
         ) : confirmingLeave ? (
@@ -245,14 +250,16 @@ export default function DeviceBar({
             title="离开房间（不绑定快捷键）"
           >
             <DoorOpen {...ICON} />
-            <span className="live-ctrl-text">离开</span>
           </button>
         )}
       </div>
 
-      <span className="live-dock-hint" aria-hidden>
-        <Settings2 size={12} strokeWidth={1.75} />{' '}
-        {superadminMode ? '隐身在场：不发布音视频 · 静默 30 秒后界面淡出' : 'M 静音 · V 摄像头 · 静默 30 秒后界面淡出'}
+      <span
+        className="live-dock-hint"
+        title={superadminMode ? '隐身在场：不发布音视频 · 静默 30 秒后界面淡出' : 'M 静音 · V 摄像头 · 静默 30 秒后界面淡出'}
+        aria-label="快捷键与界面淡出说明"
+      >
+        <Settings2 size={12} strokeWidth={1.75} />
       </span>
     </div>
   )

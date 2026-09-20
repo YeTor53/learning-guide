@@ -124,6 +124,7 @@ def read_stt_status(
             "segmentSeconds": settings.stt_segment_seconds,
             "lastHeartbeatAt": latest["lastSeenAt"].isoformat() if latest else None,
             "lastHeartbeatRoomId": latest["roomId"] if latest else None,
+            "lastError": latest.get("lastError") if latest else None,   # r013
         },
         status=200,
     )
@@ -143,7 +144,7 @@ def post_stt_heartbeat(
     expected = agent_heartbeat_token(payload.room_id, settings.session_secret)
     if not hmac.compare_digest(x_agent_token or "", expected):
         raise AppError(ERR_UNAUTHORIZED, "心跳令牌不正确", status=401)
-    stt_service.record_heartbeat(payload.room_id, payload.worker_id, payload.sessions)
+    stt_service.record_heartbeat(payload.room_id, payload.worker_id, payload.sessions, payload.last_error)
     item = stt_service.last_heartbeat(payload.room_id) or {}
     return ok({"recorded": True, "lastSeenAt": item.get("lastSeenAt").isoformat() if item.get("lastSeenAt") else None}, status=200)
 
@@ -171,6 +172,7 @@ def read_room_stt_status(
             "fresh": bool(age is not None and age <= stt_service.HEARTBEAT_FRESH_SECONDS),
             "workerId": item["workerId"] if item else None,
             "sessions": item["sessions"] if item else 0,
+            "lastError": item.get("lastError") if item else None,       # r013：worker 最后一次错误
         },
         status=200,
     )

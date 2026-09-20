@@ -119,18 +119,22 @@ def call_stt(
 # ---------------- r011：worker 健康上报（内存态，零迁移） ----------------
 
 _HEARTBEATS: dict[str, dict] = {}
-"""room_id → {workerId, sessions, lastSeenAt}。进程内存：后端重启即清空，**不伪装**「一直在跑」。"""
+"""room_id → {workerId, sessions, lastSeenAt, lastError}。进程内存：后端重启即清空，**不伪装**「一直在跑」。"""
 
 HEARTBEAT_FRESH_SECONDS = 15
 """心跳新鲜窗口（秒）：前端把这个窗口内的心跳也算「转写开启」。"""
 
 
-def record_heartbeat(room_id: str, worker_id: str, sessions: int = 0) -> None:
-    """记一次 worker 心跳（由 `POST /api/stt/heartbeat` 调用）。"""
+def record_heartbeat(room_id: str, worker_id: str, sessions: int = 0, last_error: Optional[str] = None) -> None:
+    """记一次 worker 心跳（由 `POST /api/stt/heartbeat` 调用）。
+
+    `last_error`（r013）：worker 上报的最近一次错误；**带错误的心跳也刷新 `lastSeenAt`**——那说明 worker 还活着。
+    """
     _HEARTBEATS[room_id] = {
         "workerId": worker_id,
         "sessions": int(sessions),
         "lastSeenAt": datetime.now(timezone.utc),
+        "lastError": (last_error or None),
     }
 
 

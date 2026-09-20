@@ -35,6 +35,8 @@ export interface TranscriptionState {
   heartbeatAt: number | null
   /** r011：心跳是否新鲜（15 秒内）——与 `agentPresent` 取「或」，worker 崩了也能翻成未开启。 */
   heartbeatFresh: boolean
+  /** r013：worker 最后一次错误（控制坞芯片 hover 显示，不弹 toast）。 */
+  lastError: string | null
   mode: SttMode
   error: string | null
 }
@@ -64,6 +66,7 @@ export function useTranscription(
   const [liveMap, setLiveMap] = useState<Record<string, SpeechLine>>({})
   const [agentPresent, setAgentPresent] = useState(false)
   const [heartbeatAt, setHeartbeatAt] = useState<number | null>(null)
+  const [lastError, setLastError] = useState<string | null>(null)
   const [mode, setMode] = useState<SttMode>('off')
   const [error, setError] = useState<string | null>(null)
 
@@ -98,6 +101,7 @@ export function useTranscription(
         .then((status) => {
           if (!alive) return
           setHeartbeatAt(status.lastHeartbeatAt ? Date.parse(status.lastHeartbeatAt) : null)
+          setLastError(status.lastError ?? null)      // r013：worker 侧错误透出
         })
         .catch(() => undefined)
     }
@@ -209,5 +213,5 @@ export function useTranscription(
 
   const heartbeatFresh = heartbeatAt !== null && Date.now() - heartbeatAt < 15_000
 
-  return { lines: sorted, live, agentPresent, heartbeatAt, heartbeatFresh, mode, error }
+  return { lines: sorted, live, agentPresent, heartbeatAt, heartbeatFresh, lastError, mode, error }
 }

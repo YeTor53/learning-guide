@@ -32,11 +32,17 @@ updated: 2026-09-19
 | r009 | `r009-focus-system.md` | `r009-focus-system-features.md` | 均分铺满 + 举手—焦点闭环 + 声波（ADR-0021 覆盖 r004 布局口径） |
 | r010 | `r010-transcription.md` | `r010-transcription-features.md` | **最新一轮的当前真相页**：语音转文字并入讨论流（Agents 侧识别 + 前端回传落库；ADR-0023） |
 
+## 4. 演示就绪（r013 起）
+
+| 轮次 | 实现页 | 功能页 | 一句话 |
+| --- | --- | --- | --- |
+| r013 | 见 `docs/rounds/r013-demo-readiness/design.md`（本轮增量分散在 r004/r009/r010/r012 四页的变更记录里） | — | 三人档焦点回归门禁 · 强停共享取证（0.5 秒清格）· worker 自愈（重试 + 退出码 + `lastError` 到芯片）· 结束房**回看页** `/rooms/:id/replay` · 大屏并入交流页抽屉第 4 tab |
+
 ## 3. 平台管理 · 大屏（r012 起）
 
 | 轮次 | 实现页 | 功能页 | 备注 |
 | --- | --- | --- | --- |
-| r012 | `r012-superadmin-console.md` | `r012-superadmin-console-features.md`（**planned，cp-6**） | 超管（隐身进任意房 + 任一房房主能力 + 只管理不发布音视频）· 简单管理后台 · 全服大屏聊天；实现页首版已落地身份与在线口径（cp-2），其余随 cp-3~cp-6 补齐；决定见 ADR-0024 |
+| r012 | `r012-superadmin-console.md` | `r012-superadmin-console-features.md` | 超管（隐身进任意房 + 任一房房主能力 + 只管理不发布音视频）· 简单管理后台 · 全服大屏聊天；实现页首版已落地身份与在线口径（cp-2），其余随 cp-3~cp-6 补齐；决定见 ADR-0024 |
 
 ## 4. 阅读顺序建议
 

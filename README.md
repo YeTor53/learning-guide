@@ -19,6 +19,7 @@
 | `docs/04-style/` | 风格指南：命名 / 提交约定 + 前端设计系统（色板、排版、动效令牌、图标与可达性） |
 | `docs/glossary.md` | 术语表 |
 | `AGENTS.md` | 给 AI 的项目规则（禁区、验证命令、提交规范） |
+| `docs/00-project/global-delivery.md` | **交付说明**：作业题目 A 交付物四项对照、提交口径、起服务与演示、证据索引、提交前 checklist |
 
 ## 已定选型
 
@@ -26,7 +27,7 @@
 - **前端**：React 18 + Vite + TypeScript + TanStack Query，图标统一 Lucide（设计规范见 `docs/04-style/global-style.md`）
 - **后端**：Python 3.11 + FastAPI + psycopg3，conda 环境 `learningguide`
 - **数据层**：手写 SQL + 轻量版本表；**实时音视频**：LiveKit Cloud 为主、自建留档；**纪要**：DeepSeek
-- **交付物**：zip + GitHub 仓库 + npm 包（发布细则待定）
+- **交付物**：zip + GitHub 仓库 + npm 包（发布细则待定）；**交付说明与提交口径见 `docs/00-project/global-delivery.md`**
 
 ## 工程说明
 
