@@ -204,38 +204,54 @@ export default function RoomLivePage() {
   // r013 cp-11：浏览器把隐藏/离屏窗口冻结时，LiveKit SDK 会主动断开（见 useRoomConnection 注释）。
   // 页面回到可见时自动重连（最多 3 次 × 退避），失败则由下面的「重新连接」banner 兜底。
   const autoRejoinRef = useRef(false)
+  // 连接对象每次渲染都是新的：放进 ref，effect 只依赖 recoverable（否则会被反复 cleanup 掐死循环）
+  const connRef = useRef(connection)
+  connRef.current = connection
+  const tokenQueryRef = useRef(tokenQuery)
+  tokenQueryRef.current = tokenQuery
   useEffect(() => {
-    if (!connection.autoDisconnected || autoRejoinRef.current) return
+    if (!connection.recoverable || autoRejoinRef.current) return
     autoRejoinRef.current = true
     let cancelled = false
+    const isLive = () => String(connRef.current.room.state) === 'connected'
     const attempt = async () => {
-      for (let i = 0; i < 3 && !cancelled; i += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 600))
+      for (let i = 0; !cancelled; i += 1) {
+        if (isLive()) {
+          autoRejoinRef.current = false
+          return
+        }
         try {
-          const fresh = await tokenQuery.refetch()
+          const fresh = await tokenQueryRef.current.refetch()
           const data = fresh.data
-          if (data?.url && data.token && connection.status !== 'connected') {
-            await connection.connect(data.url, data.token)
-            autoRejoinRef.current = false
-            return
+          if (data?.url && data.token) {
+            await connRef.current.connect(data.url, data.token)
+            if (isLive()) {
+              autoRejoinRef.current = false
+              return
+            }
           }
         } catch {
           /* 继续重试 */
         }
-        await new Promise((resolve) => window.setTimeout(resolve, 1200 * (i + 1)))
+        await new Promise((resolve) => window.setTimeout(resolve, Math.min(800 * (i + 1), 4000)))
       }
-      autoRejoinRef.current = false
-      setNotice('自动重连没成功。点上方「重新连接」重进这间房即可，聊天与纪要都在。')
     }
     const onVisible = () => {
       if (document.visibilityState === 'visible') void attempt()
     }
     onVisible() // 有时冻结解除不会再派发 visibilitychange，先自己试一次
     document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('resume', onVisible)
+    const timer = window.setInterval(onVisible, 5000)
     return () => {
       cancelled = true
+      autoRejoinRef.current = false   // 解锁，下一次 effect 能重新起循环
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('resume', onVisible)
+      window.clearInterval(timer)
     }
-  }, [connection, tokenQuery])
+  }, [connection.recoverable])
 
   // 准入判定：403 NOT_MEMBER → 回管理页（cp-r002-4 起改送等待页）；409 ROOM_ENDED → 房间已结束
   useEffect(() => {

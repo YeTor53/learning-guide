@@ -8,6 +8,14 @@ import { DisconnectReason, Room, RoomEvent } from 'livekit-client'
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'closed'
 
+/** r013 cp-14：真终态（不自愈）——其余一切断开都当作「可恢复」（口径：界面无论如何不显示已断开）。 */
+const TERMINAL_REASONS = new Set<DisconnectReason | undefined>([
+  DisconnectReason.PARTICIPANT_REMOVED,
+  DisconnectReason.ROOM_DELETED,
+  DisconnectReason.ROOM_CLOSED,
+  DisconnectReason.DUPLICATE_IDENTITY,
+])
+
 const REASON_TEXT: Partial<Record<DisconnectReason, string>> = {
   [DisconnectReason.PARTICIPANT_REMOVED]: '你已被移出房间',
   [DisconnectReason.ROOM_DELETED]: '房间已结束',
@@ -23,6 +31,8 @@ export interface RoomConnection {
   error: string | null
   /** r013 cp-11：本次断开是「页面被浏览器挂起（freeze/pagehide）」导致的，页面回到可见时应自动重连。 */
   autoDisconnected: boolean
+  /** r013 cp-14：无需归因的自愈判定 —— 只要不是用户主动离开、也不是被移出/房间结束/同账号他处进入，就自愈。 */
+  recoverable: boolean
   connect: (url: string, token: string) => Promise<void>
   disconnect: () => Promise<void>
 }
@@ -36,6 +46,8 @@ export function useRoomConnection(): RoomConnection {
   // 且它会走 ClientInitiated 断开（原因文案为 null）→ 表现成「隐藏就断、还没有提示、也不自愈」。
   // 这里自己先记一笔，把它与「用户点离开」区分开。
   const pageSuspendedRef = useRef(false)
+  const userClosedRef = useRef(false)
+  const terminalRef = useRef(false)
   const [autoDisconnected, setAutoDisconnected] = useState(false)
   const [status, setStatus] = useState<ConnectionStatus>('idle')
   const [reason, setReason] = useState<string | null>(null)
@@ -56,21 +68,29 @@ export function useRoomConnection(): RoomConnection {
       setReason(null)
     }
     const onDisconnected = (code?: DisconnectReason) => {
-      setStatus('closed')
+      // 口径（r013 cp-14，你定：界面不管怎样都不许显示「已断开」）：
+      //   · 用户点「离开房间」 → closed，不提示、不自愈
+      //   · 真终态（被移出 / 房间结束 / 同账号他处进入）→ closed + 原因文案
+      //   · 其余一切（CLIENT_INITIATED / 无原因 / 浏览器冻结挂起 / 网络中断）→ 一律按「正在重连…」处理，
+      //     由页面层不限次数重连，回来了就一切照旧。
       connectedRef.current = false
-      if (pageSuspendedRef.current) {
-        // 浏览器冻结/隐藏导致 SDK 主动断开：给出真实原因并交给页面自动重连（不是「用户离开」）
-        pageSuspendedRef.current = false
-        setAutoDisconnected(true)
-        setReason('页面被浏览器挂起（最小化 / 切到别的标签 / 被遮挡），连接已断开')
+      terminalRef.current = TERMINAL_REASONS.has(code)
+      if (userClosedRef.current) {
+        setStatus('closed')
+        setReason(null)
         return
       }
-      if (code === undefined || code === DisconnectReason.CLIENT_INITIATED) {
-        setReason(null) // 自己点的「离开房间」，不提示
+      if (terminalRef.current) {
+        setStatus('closed')
+        setReason((code !== undefined ? REASON_TEXT[code] : undefined) ?? '连接已断开，请检查网络后重试')
         return
       }
-      setReason(REASON_TEXT[code] ?? '连接已断开，请检查网络后重试')
+      pageSuspendedRef.current = false
+      setAutoDisconnected(true)
+      setStatus('reconnecting')
+      setReason(null)
     }
+
     room
       .on(RoomEvent.Reconnecting, onReconnecting)
       .on(RoomEvent.SignalReconnecting, onSignalReconnecting)
@@ -106,6 +126,7 @@ export function useRoomConnection(): RoomConnection {
       connectedRef.current = true
       setStatus('connecting')
       setError(null)
+      userClosedRef.current = false
       try {
         await room.connect(url, token)
         setStatus('connected')
@@ -113,7 +134,8 @@ export function useRoomConnection(): RoomConnection {
         setAutoDisconnected(false)
       } catch (err) {
         connectedRef.current = false
-        setStatus('closed')
+        // 非用户主动的中断不进「已断开」：保持「正在重连…」，交给自愈循环继续试
+        if (userClosedRef.current) setStatus('closed')
         const message = err instanceof Error ? err.message : '实时服务暂时不可用，请稍后重试'
         setError(message.includes('full') ? '房间已满（上限 8 人）' : '实时服务暂时不可用，请稍后重试')
         throw err
@@ -125,11 +147,17 @@ export function useRoomConnection(): RoomConnection {
   const disconnect = useCallback(async () => {
     connectedRef.current = false
     pageSuspendedRef.current = false
+    userClosedRef.current = true
     setAutoDisconnected(false)
     await room.disconnect()
     setStatus('closed')
     setReason(null)
   }, [room])
 
-  return { room, status, reason, error, autoDisconnected, connect, disconnect }
+  const recoverable =
+    (status === 'closed' || status === 'reconnecting') &&
+    !userClosedRef.current &&
+    !terminalRef.current
+
+  return { room, status, reason, error, autoDisconnected, recoverable, connect, disconnect }
 }
