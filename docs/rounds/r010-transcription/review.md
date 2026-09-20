@@ -84,7 +84,7 @@ updated: 2026-09-20
 | ⑦ | 房主级「全房关转写」、跨端说话人分离、B 路径前端 | 范围外 | 记入 roadmap §9 |
 | ⑧ | 免费档额度/并发（3 人演示内安全） | 已查证写入 `spike-01-path-a.md` §8 | 演示 ≤3 人 |
 | ⑨ | `/api/stt/status` 仍返回 `segmentSeconds = 8`（B 路径的「8 秒分段」残留字段）——A 路径下分段由官方 synchronizer 决定，字段易误读 | 前端**未使用**该字段（只读 `mode`），无界面误导 | 改契约（重命名/移除）属 L3 → **登记待批**，不擅自改 |
-| ⑩ | `docs/rounds/r002-livekit/redirect-03.md` 有 1 处假死链（正文里的竖线被当成链接目标，形如 `](alert｜confirm｜prompt)`） | 非本轮引入（r002 遗留） | 登记，随下一轮文档维护一并修 |
+| ⑩ | 断链扫描唯一命中 `docs/rounds/r002-livekit/redirect-03.md` 第 16 行的 `](alert｜confirm｜prompt)` | **查证为扫描器假阳性**：该片段在**代码 span（反引号）内**，Markdown 渲染正常、不是真链接；本轮不动 r002 文件 | 无需修（已并入 `docs/README.md` §6 快照的说明） |
 
 ## 5b. 复核补正（2026-09-20，cp-5b）
 
