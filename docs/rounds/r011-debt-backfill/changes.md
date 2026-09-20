@@ -20,7 +20,7 @@ updated: 2026-09-20
 | cp-r011-4 | B 组功能增量：满员自动拒待批申请（批量 `rejected` + 汇总系统消息）+ 邀请码入口（顶栏常驻）与未登录 `returnTo` 闭环 + 等待页文案 + 使用者教学页 | **完成 2026-09-20** | 见 cp-4 提交 | E4/E5 |
 | cp-r011-5 | B 组 worker 健康上报（心跳端点 + 内存态 + 芯片按房判据）+ C 组用例（`STT_MODE=off` ×2、满员自动拒 ×3、心跳 ×3）+ 既有用例按新语义更新 | **完成 2026-09-20**（pytest **164 passed**、build exit 0） | 见 cp-5 提交 | E6/E7 |
 | cp-r011-6 | 焦点规则收窄：说话不再获得焦点（删说话者档 + 删 `useStableSpeaker` 死代码）+ ADR-0014/模块页/教学页/剧本同步 | **完成 2026-09-20** | 见 cp-6 提交 | E11 |
-| cp-r011-7 | 门禁与取证收官：四项门禁 + 索引/矩阵回填 + review 定稿 | 待做 | — | E8/E9 |
+| cp-r011-7 | 门禁与取证收官：四项门禁复跑 + smoke 脚本按新语义更新（46→47 步）+ 索引/矩阵回填 + review 定稿 + 快照 | **完成 2026-09-20** | 见 cp-7 提交 | E8/E9 |
 
 ## 2. 门禁数字
 
@@ -31,7 +31,7 @@ updated: 2026-09-20
 | cp-2/3（纯文档） | 未跑（无代码改动） | 未跑 | 未跑 | 未跑 |
 | cp-5（本轮，2026-09-20） | **164 passed**（49.53s；+8：自动拒 3 / 心跳 3 / off 2） | 待 cp-6 跑 | exit 0 | exit 0（2010 modules，4.05s） |
 | cp-6（焦点收窄，2026-09-20） | 164 passed（未改后端逻辑，复跑见 cp-7） | 待 cp-7 跑 | exit 0 | exit 0 |
-| cp-7（收官，待填） |  |  |  |  |
+| cp-7（收官，2026-09-20） | **164 passed**（51.06s） | **PASS 47/47** | exit 0 | exit 0（2010 modules，4.00s） |
 
 ## 3. 逐处改动（现在 → 改成 → 依据）
 
@@ -88,6 +88,14 @@ updated: 2026-09-20
 | `docs/00-requirements/r009-focus-system.md`、`rounds/r009-focus-system/motion-design.md` | 只加**指路行**（已收官轮次不回改正文） | 复验纪律 |
 | `docs/tutorials/r009.5-r008-r009-user-guide.md` | 「规则一句话」改为新链条 | 教学页是活页 |
 | `docs/rounds/r011-debt-backfill/manual-verification.md` | 新增 **MV-11**；**MV-5 作废**（说话不再夺焦点，无对象） | 取证口径 |
+
+## 3.5 cp-7 收官改动
+
+| 文件 | 现在 → 改成 | 依据 |
+| --- | --- | --- |
+| `backend/scripts/smoke.py` | 「申请状态含 cancelled」改为「申请状态含 rejected（r011 满员自动拒）」并注明 `cancelled` 由服务层用例覆盖；新增检查「满员时待批申请被自动拒绝留痕」→ 步数 46 → **47** | 行为变更（E4）导致旧断言失效 |
+| `docs/rounds/r011-debt-backfill/review.md` | 骨架 → 定稿（E1~E11 证据、规则核对、文档对账、人工取证未跑清单、两栏清单、合并指引） | 阶段 3 |
+| `docs/00-requirements/README.md`、`docs/00-project/global-roadmap.md`、`docs/README.md` | r011 状态转「实现完成待合并」；roadmap §7 第 12 条更新；§6 追加 145 页快照 | 收官回填 |
 
 ## 4. 未做 / 如实说明
 

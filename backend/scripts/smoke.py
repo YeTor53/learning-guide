@@ -215,6 +215,11 @@ def main(argv: list[str] | None = None) -> int:
             f"→ 系统消息 {len(events)} 条，含满员拒绝={'房间已满' in '|'.join(events)}",
         )
         check(
+            "满员时待批申请被自动拒绝留痕（r011）",
+            any("自动拒绝" in e for e in events),
+            f"→ 系统消息 {len(events)} 条，含自动拒绝={'自动拒绝' in '|'.join(events)}",
+        )
+        check(
             "加入/离开/被移出也留痕",
             any("加入了房间" in e for e in events) and any("离开了房间" in e for e in events) and any("被移出房间" in e for e in events),
             f"→ 样例 {events[:3]}",
@@ -234,7 +239,10 @@ def main(argv: list[str] | None = None) -> int:
 
         requests_after = body(host.get(f"/api/rooms/{room_id}/join-requests")).get("data", {}).get("requests", [])
         statuses_req = sorted(item["status"] for item in requests_after)
-        check("申请状态含 cancelled", "cancelled" in statuses_req, f"{statuses_req}")
+        # r011 口径变更：满员那一刻，该房**待批申请已被自动拒绝**（上面 8e 填满到 8 人触发），
+        # 所以结束房间时已无 pending 可供置 `cancelled` —— 断言改为「出现过 rejected」，
+        # `cancelled` 路径仍由 `test_rooms_service.py` 的服务层用例覆盖。
+        check("申请状态含 rejected（r011 满员自动拒）", "rejected" in statuses_req, f"{statuses_req}")
 
         blocked = guest.post(f"/api/rooms/{room_id}/join-requests", json={})
         check("结束后不能再申请", blocked.status_code == 409 and body(blocked).get("error", {}).get("code") == "ROOM_ENDED", f"→ {blocked.status_code} {body(blocked).get('error', {}).get('code')}")
