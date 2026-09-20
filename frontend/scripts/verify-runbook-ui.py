@@ -87,6 +87,11 @@ class Page:
         self._ws = await websockets.connect(target["webSocketDebuggerUrl"], max_size=40_000_000)
         for m in ("Runtime.enable", "Page.enable", "Log.enable"):
             await self.call(m)
+        # headless 窗口永不聚焦 → react-query 会暂停轮询（`refetchIntervalInBackground: false`），
+        # 于是「服务端新写入的系统消息」永远等不到。用 CDP 把这一页模拟成前台聚焦，
+        # 与人手演示时的真实状态一致。
+        await self.call("Page.bringToFront")
+        await self.call("Emulation.setFocusEmulationEnabled", enabled=True)
         return self
 
     async def __aexit__(self, *exc) -> None:
