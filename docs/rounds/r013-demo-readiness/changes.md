@@ -16,6 +16,7 @@ rounds: [r013]
 | cp | 提交 | 内容 | 测试/证据 | 文档 |
 | --- | --- | --- | --- | --- |
 | cp-r013-1 | 文档先行 | 需求单（含断线方案 §10.5）+ 逐文件函数级设计 + 台账骨架 | 不适用（纯文档） | 需求单、design |
+| cp-r013-3 | 本次提交 | B 项：新增 `frontend/scripts/verify-screen-force-stop.py`；真机取证「A 不点停止、直接关标签」→ B 端清格 | **两次实测均 0.5 秒**清格、宫格恢复 1 格；实现无需改动（`useScreenShare` 既有 `TrackUnpublished`/`ParticipantDisconnected` 重扫就够）；**边界**：手段=WS 正常关闭，网络级硬断未测 | `docs/02-modules/r004-room-extras.md` §11 遗留 4 回填 |
 | cp-r013-2 | 本次提交 | A 项：新增 `frontend/scripts/verify-focus-three-way.py`（三隔离 Chrome 真跑三人档「给焦点」）；**在当前代码不复现** r009.5 登记的现象 | **PASS 8/8 ×3 次**（三端 `mode=focus`、焦点格各 1、焦点 identity 三端一致）；顺带实测：举手传播到另两端 **2.0 秒**、服务端 1 条；脚本自身踩坑三条已写进头部注释（禁用按钮点击无效 / CDP keepalive ping 超时 / 各端排序「本地优先」不能比首项） | `docs/02-modules/r009-focus-system.md`、roadmap §9 |
 
 ## 2. 缺陷与例外登记
@@ -33,4 +34,5 @@ rounds: [r013]
 | 日期 | cp | 变更 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | cp-1 | 建台账 | 需求单 v1 |
+| 2026-09-20 | cp-3 | B 项结论：强停共享 0.5 秒清格（标签关闭路径），无需改码；网络级硬断未测并写明 | `verify-screen-force-stop.py` 实测 |
 | 2026-09-20 | cp-2 | A 项结论：不复现 + 脚本固化为回归门禁；台账登记三条脚本踩坑 | `verify-focus-three-way.py` 实测 |
