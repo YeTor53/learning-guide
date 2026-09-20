@@ -8,7 +8,7 @@ updated: 2026-09-20
 ---
 
 <!-- overview -->
-行号基准：`req/r012-superadmin-console` 自 `req/r011-debt-backfill` @ `ab8edb5`（cp-7，r011 实现完成待合并）开出；`main` = `96b1153`。以下行号均为**改动前**的实际位置（`git grep -n` 实测），实现时以 `git diff` 为准。
+行号基准：本页写于 r011 `ab8edb5`（cp-7）；此后已把 r011 收尾两个提交（cp-8 响应延迟收敛 / cp-8b 台账）**merge 进本分支**（merge 提交 `e0c6598`，基点 = r011 HEAD `24b0bad`）。cp-8 只动前端 hook/页面与项目级文档，**后端行号不变**；`main` = `96b1153`。以下行号均为**改动前**的实际位置（`git grep -n` 实测），实现时以 `git diff` 为准。
 本页只写**改哪个文件的哪个函数、签名与职责是什么、依据来自哪条验收**；不改规范、不引入新依赖（SSE 用原生 `EventSource` + FastAPI `StreamingResponse`）。
 待拍板项见需求单 §10（`ASK-r012-1`，Q1~Q18）；本页按**建议值**展开，凡受某题影响的小节都在标题后标 `[Qn]`，改选项只影响标了它的小节。
 
@@ -16,10 +16,10 @@ updated: 2026-09-20
 
 | 组 | 项 | 级别 | 依据 |
 | --- | --- | --- | --- |
-| A | 超管身份 + 隐身进房 + 旁路治理 | **L3** | Q1/Q2 数据模型变（`users.role`、新表 `room_visits`）、Q3 对外可见面变（成员列表/舞台/名册行为）、Q5 边界变（权限面新增一类角色） |
+| A | 超管身份 + 隐身进房 + 旁路治理 | **L3** | Q1/Q2 数据模型变（`users.role`、新表 `room_visits`）、Q3 对外可见面变（成员列表/舞台/名册行为）、Q5 边界变（权限面新增一类角色）；Q4/Q8 补充：**超管不发布音视频**（Token 关发布权限，界面无设备控件） |
 | B | 管理后台（三列表 + 三动作 + 审计） | **L3** | Q1 新表 `admin_audit`、新增对外端点族 `/admin/*`、Q5 能力面新增 |
 | C | 全服大屏聊天 + SSE 通道 | **L3** | 新表 `global_messages`、新增对外端点与**新传输形态**（`text/event-stream`），是既有无 SSE/WS 架构（ADR-0013：DataChannel 只加速、HTTP 是唯一真相）的一处新增，须 ADR-0025 定口径 |
-| D | 在线口径（`users.last_seen_at`） | **L2** | Q14：只影响「在线」判据与后端一处节流写；对外面仅新增一个 `role`/在线相关字段 |
+| D | 在线口径（`users.last_seen_at`） | **L3** | Q14=2 定案：**新增对外端点 `POST /api/presence`** + 前端 60 秒心跳，故由 L2 升为 L3（对外可见面新增） |
 
 三条 L3 都要出 ADR（ADR-0024 / ADR-0025）并在实现期按 2.0 闸门走；若实现中发现设计不成立，先停手取证再定级。
 
@@ -34,7 +34,7 @@ updated: 2026-09-20
 -- Q1①：超管身份落在 users（单列，零新表）
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'
   CHECK (role IN ('user','superadmin'));
--- Q14①：在线口径 = 最近一次请求时间（请求即心跳，后端节流写）
+-- Q14②：在线口径 = 前端每 60 秒 POST /api/presence 写入的最近一次心跳时间（判据窗口见 §2.6）
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS ix_users_last_seen ON users (last_seen_at DESC);
 
@@ -128,7 +128,8 @@ def issue_room_token(conn, actor, room_id) -> RoomTokenVO:
        ① 房间不存在 404 / 已结束 409 与现逻辑一致（超管也不能进已结束房间的实时层——历史内容走只读接口）；
        ② 跳过「活跃成员」校验（不查 room_members）；
        ③ repo.insert_room_visit(...)（已有未关闭访问记录则复用，不重复插）；
-       ④ livekit_service.issue_token(..., hidden=True, attributes={"lg-role": "superadmin"})；
+       ④ livekit_service.issue_token(..., hidden=True, attributes={"lg-role": "superadmin"},
+                                    can_publish=False, can_publish_data=False)；   # Q4/Q8 补充：只管理、不出声不出画
        ⑤ 返回体与普通成员**完全一致**（Token/url/roomName/expiresIn），前端无需分叉。"""
 ```
 
@@ -138,10 +139,12 @@ def issue_room_token(conn, actor, room_id) -> RoomTokenVO:
 def issue_token(room_name, user_id, display_name, role, settings=None,
                 ttl_seconds=None, max_participants=None, *,
                 hidden: bool = False, attributes: Optional[dict[str, str]] = None) -> str:
-    """（改）hidden=True → VideoGrants(hidden=True)；attributes → AccessToken.with_attributes(attributes)。
+    """（改）新增只读参数：hidden / attributes / can_publish（默认 None=沿用现值 True，**不动普通成员行为**）。
+    超管取票固定传 hidden=True + attributes={"lg-role":"superadmin"} + can_publish=False + can_publish_data=False
+    —— 理由（你 2026-09-20 原话）：音频视频走 LiveKit 计费，为省额度，超管不能说话和视频，只能管理。
     实测依据：livekit-api 1.2.1 的 VideoGrants 含 `hidden` 字段（注释原文「participant is not visible to
-    other participants」）、AccessToken 含 `with_attributes`（`site-packages/livekit/api/access_token.py`）。
-    超管的 room_admin 仍为 False（最小权限：管理能力一律走我方 HTTP，不借 LiveKit 管控权）。"""
+    other participants」）与 `can_publish` / `can_publish_data`、AccessToken 含 `with_attributes`
+    （`site-packages/livekit/api/access_token.py`）。超管的 room_admin 仍为 False（最小权限：管理能力一律走我方 HTTP）。"""
 ```
 
 新仓储函数（`backend/app/repositories/rooms.py`，紧邻 `count_active_members`:316）：
@@ -157,6 +160,7 @@ def list_open_visits(conn, room_id) -> list[RoomVisitRow]         # 房里还挂
 
 | # | 拦线 | 位置 | 做法 |
 | --- | --- | --- | --- |
+| 0 | **发布面**（Q4/Q8 补充） | Token grants | `can_publish=False` + `can_publish_data=False` → 超管**发不出**音视频与数据；前端也不渲染麦克风/摄像头控件（双保险，见 §5 `RoomLivePage`） |
 | 1 | LiveKit 参与者面 | Token grants | `hidden=True`（实测字段存在）；实现第一步就用 **2 浏览器真机**验证「另一端的 participants / 舞台 / 名册看不到超管」 |
 | 2 | 本库成员面 | 不写 `room_members` | 成员列表（`GET /rooms/{id}` / 抽屉成员 tab）、人数、待批可见性天然不含超管 |
 | 3 | 转写 worker | `backend/agents/transcriber.py::TranscriberPool._maybe_start`（:237） | 在既有 `pid.startswith("agent-")` 判据旁补 `or (participant.attributes or {}).get("lg-role") == "superadmin"` → 跳过（**双保险**：hidden 已可能让 worker 看不见他） |
@@ -169,19 +173,24 @@ def list_open_visits(conn, room_id) -> list[RoomVisitRow]         # 房里还挂
 - `backend/scripts/db_init.py`（**改**）：seed 段增一个演示超管账号（`role='superadmin'`），口令与既有演示账号同源；重复初始化幂等。
 - `backend/app/repositories/users.py`（**改**）：`_COLUMNS`（:14）补 `role, last_seen_at`；`UserRow`（:18）补两字段；`insert_user`（:30）加 `role: str = "user"`；新增 `touch_last_seen(conn, user_id, at)`、`set_user_role(conn, user_id, role)`。
 
-### 2.6 在线口径（请求即心跳）[Q14]
+### 2.6 在线口径（前端短轮询心跳）[Q14=2]
 
-- `backend/app/api/deps.py::current_user_optional`（:28）：验签成功拿到 `uid` 后，调用 `presence.touch(uid)`（**新模块** `backend/app/services/presence.py`），由它在内存里节流：
+你 2026-09-20 定案：**不用「请求即心跳」**，改由前端按固定周期上报。设计如下：
+
+- **新端点** `POST /api/presence`（`api/routers/presence.py`，登录必需、无请求体）：`cur = Depends(current_user)` → `presence.touch(conn, cur.id)` → `200 {"ok": true, "lastSeenAt": ...}`。手写不碰任何房间/成员逻辑，幂等。
+- **新服务** `backend/app/services/presence.py`：
 
 ```python
-PRESENCE_TOUCH_MIN_INTERVAL_SECONDS = 30   # 单点可调：同一用户两次写库的最小间隔
-
-def touch(user_id: str) -> None    # 距上次写库 < 30 秒 → 直接返回（零 DB 压力）；否则写 users.last_seen_at
-def is_online(row_last_seen: Optional[datetime], *, now: Optional[datetime] = None) -> bool
-                                   # 在线 = now - last_seen_at ≤ settings.presence_online_seconds（默认 60，redirect-01 已批口径）
+def touch(conn, user_id: str, *, now: Optional[datetime] = None) -> datetime
+    """把 users.last_seen_at 写成当前时间并返回它（**每次上报都写**，不做内存节流——周期由前端控制）。"""
+def is_online(last_seen_at: Optional[datetime], *, now: Optional[datetime] = None) -> bool
+    """在线 = now - last_seen_at ≤ settings.presence_online_seconds。"""
 def online_user_ids(conn) -> set[str]
+    """大屏面板「在线」判据（Q13=1 的在线点用）；一次 SQL 取回集合。"""
 ```
-- `config.py::Settings` 增 `presence_online_seconds: int = 60`（与 `invite_ttl_max_seconds` 同风格的「一个数可调」）。
+- **前端** `frontend/src/hooks/usePresenceBeat.ts`：`PRESENCE_BEAT_MS = 60_000`（单点可调）；`setInterval` 触发，**仅当** `document.visibilityState === 'visible'` 且已登录时才真发（沿用 `useRosterSync` 的可见性判据，不空跑请求）；登录成功后立刻补一次，`beforeunload` 不特殊处理（离线靠超时自然收敛）。挂在 `App.tsx` 顶层（一次挂载，全站生效）。新 api 模块 `frontend/src/api/presence.ts`（`presenceApi.beat()`）。
+- **判据窗口 `presence_online_seconds` 默认 120**（= 2× 轮询周期，容一次丢包不掉线）；要严格「60 秒内算在线」→ 改这一个数（`config.py::Settings` + `.env.example`）。
+- **不再改动** `api/deps.py`：请求链路上不写库（避免每个请求一次 UPDATE）。
 
 ## 3. B 组：简单管理后台（后端）[Q5][Q6][Q7][Q16]
 
@@ -319,17 +328,19 @@ data: {"type":"global_message","payload":{"id":"gmsg_01J..."}}
 | `frontend/src/api/auth.ts` | 改 | `User` 类型补 `role: string`（`/me`、登录、注册三处响应都带） |
 | `frontend/src/api/admin.ts` | 新增 | `adminApi.listRooms/listUsers/listSummaries/listAudit/endRoom/deleteRoom/regenerateSummary` |
 | `frontend/src/api/globalChat.ts` | 新增 | `globalChatApi.list({limit, beforeId})` / `post(body)` |
+| `frontend/src/api/presence.ts` | 新增 | `presenceApi.beat()`（Q14=2 的心跳上报） |
 | `frontend/src/hooks/useAdmin.ts` | 新增 | 四个 `useQuery`（分页参数进 queryKey，翻页即取）+ 三个 `useMutation`（成功后 `invalidateQueries(['admin-rooms'|'admin-summaries'])`） |
 | `frontend/src/hooks/useGlobalChat.ts` | 新增 | `useQuery(['global-messages'], list)` + `useMutation(post)`；**兜底轮询 30 秒**（仅页面可见时，沿用 `useRosterSync` 写法：`document.visibilityState === 'visible'` 才真取） |
+| `frontend/src/hooks/usePresenceBeat.ts` | 新增 | `PRESENCE_BEAT_MS = 60_000` 定时上报 `POST /api/presence`（仅可见 + 已登录才发）；挂在 `App.tsx` 顶层 |
 | `frontend/src/hooks/useEventStream.ts` | 新增 | `new EventSource('/api/events')`；`onmessage` 解析 `type` → 按表 invalidate（`global_message` → `['global-messages']`）；`onerror` 不自己重连（`EventSource` 自带 3 秒重连）；`useEffect` 卸载时 `close()` |
-| `frontend/src/components/GlobalChatPanel.tsx` | 新增 | 首页底部的宽面板：标题行（在线人数 + 「大屏」标识）+ 消息列表（作者 + 时间 + 正文，走 `MessageBubble` 同款视觉）+ 输入区（未登录：输入框禁用 + 「登录后可发言」+ 去登录带 `returnTo=/`） |
+| `frontend/src/components/GlobalChatDrawer.tsx` | 新增 | **右侧可收起侧栏面板（Q11=2，编辑器 Copilot 式）**：常规页面右缘的展开/收起按钮（Lucide `MessagesSquare`，带 `aria-expanded`）+ 抽屉本体（标题行「大屏 · 在线 N 人」+ 消息列表（作者 + 时间 + 正文，走 `MessageBubble` 同款视觉）+ 输入区（未登录：输入框禁用 + 「登录后可发言」+ 去登录带 `returnTo`）+ 关闭按钮）；**交流页不挂**（那里已有 `RoomSidePanel`，避免双右抽屉，见需求单 §10.1 细化点 2） |
 | `frontend/src/pages/AdminPage.tsx` | 新增 | `/admin` 三 tab（房间 / 用户 / 纪要，另加「审计」tab 仅 Q7①）；tab 切换用既有 `live-drawer-tabs` 同款按钮组；每行右侧动作按钮（结束 / 删除 / 重生纪要），动作前**行内二次确认**（沿用 `DeviceBar` 的 `live-dock-confirm` 写法，不用原生 `confirm`——实测全仓 0 处原生弹窗） |
 | `frontend/src/components/admin/AdminRoomTable.tsx` 等 3 个 | 新增 | 纯展示表格（列定义 + 空态 + 分页控件）；不放业务逻辑，便于开发者教学页讲「怎么加一列」 |
-| `frontend/src/components/NavBar.tsx` | 改 | `top-actions` 内：`user?.role === 'superadmin'` 时显示「管理后台」文字入口（与既有「邀请码加入」同款 `link-plain`） |
+| `frontend/src/components/NavBar.tsx` | **不改**（Q12=2） | 顶栏**不加**管理后台入口；顶栏只多一个「大屏」面板开合按钮（与 `onToggleCollapsed` 同风格的 icon 按钮） |
 | `frontend/src/components/SideBar.tsx` | 改 | `nav` 内追加常驻项「管理后台」（仅超管可见，Lucide `ShieldCheck`）；未登录/普通用户不可见 |
 | `frontend/src/App.tsx` | 改 | 路由追加 `/admin`（沿用非交流页的 `layout` + 侧栏外壳） |
-| `frontend/src/pages/RoomsPage.tsx` | 改 | 列表底部插入 `<GlobalChatPanel />`（Q11①） |
-| `frontend/src/pages/RoomLivePage.tsx` | 改 | 超管视角：`room.myRole === 'superadmin'` → 顶部 chip「管理视角 · 隐身」、治理按钮按房主权限开放（后端已放行）、**自身参与者格不进舞台**、进入时不自动开麦；其余用户路径完全不变 |
+| `frontend/src/pages/RoomsPage.tsx` | **不改**（Q11=2 后无需） | 面板由 `App.tsx` 层挂载（右侧抽屉），房间列表页不承担挂载 |
+| `frontend/src/pages/RoomLivePage.tsx` | 改 | 超管视角：`room.myRole === 'superadmin'` → 顶部 chip「管理视角 · 隐身」、治理按钮按房主权限开放（后端已放行）、**自身参与者格不进舞台**；**不渲染麦克风/摄像头/共享控件**，也不申请设备（Q4/Q8 补充：只管理）；进房前提示「管理员以客户端隐身方式进入，不发布音视频」；其余用户路径完全不变 |
 | `frontend/src/styles/global.css` | 改 | 新增参数集中区（`--global-chat-*`：面板宽/行高/最大高；`--admin-*`：表格密度/行 hover 描边）+ 两处新块样式；所有值走既有令牌，禁止写死色值 |
 
 ## 6. 契约面清单（CR 定级基准物）
@@ -338,12 +349,12 @@ data: {"type":"global_message","payload":{"id":"gmsg_01J..."}}
 
 | 类别 | 清单 |
 | --- | --- |
-| 端点 | `GET /api/global-messages`、`POST /api/global-messages`、`GET /api/events`、`GET /api/admin/rooms`、`GET /api/admin/users`、`GET /api/admin/summaries`、`GET /api/admin/audit`、`POST /api/admin/rooms/{id}/end`、`DELETE /api/admin/rooms/{id}`、`POST /api/admin/rooms/{id}/summary` |
+| 端点 | `GET /api/global-messages`、`POST /api/global-messages`、`GET /api/events`、`POST /api/presence`（Q14=2）、`GET /api/admin/rooms`、`GET /api/admin/users`、`GET /api/admin/summaries`、`GET /api/admin/audit`、`POST /api/admin/rooms/{id}/end`、`DELETE /api/admin/rooms/{id}`、`POST /api/admin/rooms/{id}/summary` |
 | 响应字段 | `UserVO.role`（新增，`/me` 与登录/注册都带）；`RoomVO.myRole` 取值集合扩为 `host/moderator/participant/superadmin` |
 | 错误码 | 新增 `RATE_LIMITED`（429）；其余复用（401 `UNAUTHORIZED`、403 `FORBIDDEN`、404 `NOT_FOUND`、409 `ROOM_ENDED`） |
 | 数据模型 | `users.role` / `users.last_seen_at` / `room_visits` / `global_messages` / `admin_audit`（迁移 011） |
 | 新传输形态 | `GET /api/events` 的 `text/event-stream`（首个 SSE 端点，须 ADR-0025） |
-| 配置键 | `PRESENCE_ONLINE_SECONDS=60`、`GLOBAL_CHAT_RATE_LIMIT=5`、`GLOBAL_CHAT_RATE_WINDOW_SECONDS=10`、`SSE_KEEPALIVE_SECONDS=15`、`SSE_SUBSCRIBER_QUEUE_MAX=32`、`SSE_MAX_SUBSCRIBERS=200`（`.env.example` 同步） |
+| 配置键 | `PRESENCE_ONLINE_SECONDS=120`（细则：2× 轮询周期；要严格 60 秒改这一个数）、`GLOBAL_CHAT_RATE_LIMIT=5`、`GLOBAL_CHAT_RATE_WINDOW_SECONDS=10`、`SSE_KEEPALIVE_SECONDS=15`、`SSE_SUBSCRIBER_QUEUE_MAX=32`、`SSE_MAX_SUBSCRIBERS=200`（`.env.example` 同步） |
 | 验收清单 | 需求单 §4 的 E1~E12 |
 | 示范动作 | 见 §7 教学契约 |
 
@@ -353,7 +364,7 @@ data: {"type":"global_message","payload":{"id":"gmsg_01J..."}}
 
 **使用者视角**
 - 场景一句话：评审方想看「平台管理员」和「全服讨论」，浏览器里两个页面就能演完。
-- 入口：顶栏/侧栏「管理后台」→ `/admin`；首页底部「大屏」面板。
+- 入口：**侧栏「管理后台」（仅超管可见）** → `/admin`；**顶栏「大屏」按钮 → 右侧可收起面板**（常规页面常驻，交流页不挂）。
 - 输入与输出：后台三 tab 的列表与三动作（结束 / 删除 / 生成纪要）；大屏输入 ≤500 字 → 立刻出现在面板与所有在线用户的页面上。
 - **一次典型使用动作（=验收示范）**：① 用演示超管登录 → 首页底部面板发一条「大家好」→ 另一个浏览器（普通账号）**不刷新**也看到该条；② 超管打开 `/admin` → 房间 tab 对**别人**的房间点「结束」→ 该房转已结束，房内聊天栏出现一条「管理员结束了房间」的系统消息，审计 tab 出现一条 `room.end`；③ 超管进入一个**满员**房间 → 成员列表与人数不变、看不到超管 → 超管点「移出成员」生效（E2/E3/E4/E9）。
 - **开发者视角（要改哪里）**：加一个管理动作 = ① `services/admin.py` 里加函数（内部先 `assert_superadmin`，动作后 `_audit`）② `routers/admin.py` 加一行路由 ③ 前端 `api/admin.ts` + `useAdmin.ts` 加一个 mutation ④ 页面加按钮（行内二次确认）；加一类 SSE 事件 = ① 落库后 `events.publish("<type>", {...})` ② 前端 `useEventStream` 的类型→queryKey 映射表加一行。
@@ -371,6 +382,9 @@ data: {"type":"global_message","payload":{"id":"gmsg_01J..."}}
 | 大屏发言太快 | 429 `RATE_LIMITED`（窗口内 ≥5 条）；前端提示「发得太快了，稍后再试」，输入内容**保留**不丢 |
 | SSE 断线 / 服务重启 | `EventSource` 自动重连（3 秒）；重连期间 30 秒轮询兜底；多进程部署会漏通知（已知限制，落 ADR-0025） |
 | 大屏历史消息为空 | 空态：一行文案 + 图标（无 emoji），不做骨架屏 |
+| 超管尝试开麦/开摄像头 | 前端无控件；即便手改请求，Token 也无 `can_publish` → 服务端拒绝（E13 用例断言 grants） |
+| 心跳停止（关页/断网） | 超过 `PRESENCE_ONLINE_SECONDS`（默认 120 秒）后该用户从「在线」消失；不产生额外写库 |
+| 未登录用户开大屏面板 | 可看全部消息（Q13=1），输入区禁用并给「登录后可发言」+ 去登录（带 `returnTo`） |
 | 未登录打开 `/admin` | 前端直接重定向到 `/login?returnTo=/admin`；后端仍然 401（双保险） |
 | 满员房 + 超管 + 在册=容量 | 超管不被计入；新申请仍 409 `ROOM_FULL`（E4 用例断言） |
 
@@ -382,7 +396,8 @@ data: {"type":"global_message","payload":{"id":"gmsg_01J..."}}
 
 | 位置 | 参数 | 默认（可调范围） | 参数写在哪（单点） | 降级 |
 | --- | --- | --- | --- | --- |
-| 大屏面板 | `--global-chat-max-h` / 行间距 / 输入区高 | `360px`（240~520）/ `--s-3` | `global.css` 顶部 `/* r012 参数区 */` | reduced-motion：新消息不做位移，只淡入 |
+| 右侧大屏面板 | `--global-chat-w` / 列表最大高 / 行间距 / 输入区高 | `360px`（320~420）/ `min(60vh, 520px)` / `--s-3` | `global.css` 顶部 `/* r012 参数区 */` | reduced-motion：新消息不做位移，只淡入 |
+| 面板展开/收起 | 宽度 + 透明度（右侧滑入） | `--t-base` / `--ease` | 同上 | 直接显示/隐藏（无过渡） |
 | 大屏新消息插入 | 淡入 + 上移 6px | 180ms / `--ease` | 同上 | 只淡入 |
 | 管理表行 hover | 描边提亮（`--line` → `--accent-soft`） | `--t-fast` | 同上 | 无过渡（直接切换） |
 | 删除/结束二次确认 | 行内展开（宽度 + 透明度） | `--t-base` | 复用 `live-dock-confirm` 既有参数 | 无过渡 |
@@ -390,7 +405,7 @@ data: {"type":"global_message","payload":{"id":"gmsg_01J..."}}
 
 - 图标：Lucide 唯一（`ShieldCheck` 管理后台 / `MessagesSquare` 大屏 / `Trash2` 删除 / `UserX` 结束）；每处图标旁必须有文字或 `title/aria-label`；**零 emoji**。
 - 文案：称呼「你」；按钮动词短语（「结束房间」「生成纪要」「发布」）；禁内部词（轮次 / 里程碑 / 检查点 / cp-NNN / 作业 / 考核）；错误三分流沿用 `global-style.md` §8。
-- **一次视觉验收动作（=验收示范）**：打开 `/admin` 与首页（桌面 1440×900 + 窄屏 375×812 各一张截图），确认表格不横向溢出（`document.documentElement.scrollWidth === clientWidth`）、大屏面板在窄屏收为单列；截图存 `docs/rounds/r012-superadmin-console/shots/`。
+- **一次视觉验收动作（=验收示范）**：① 打开 `/admin`（桌面 1440×900）→ 三 tab 表格不横向溢出（`document.documentElement.scrollWidth === clientWidth`）；② 首页点顶栏「大屏」→ 面板从右侧滑出（实测 `--t-base` 240ms）、**不遮**房间卡片网格；③ 窄屏 375×812：面板改为覆盖式全宽 + 有关闭按钮；截图存 `docs/rounds/r012-superadmin-console/shots/`。
 
 ## 10. 待拍板与依赖
 
@@ -402,3 +417,4 @@ data: {"type":"global_message","payload":{"id":"gmsg_01J..."}}
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1 | 建页：迁移 011 DDL + A/B/C 三组逐文件函数级设计 + 契约面清单 + 教学契约 + 失败边界与回退 + 视觉契约 | 需求单 v1 + `redirect-01.md` + 代码实测（行号、`VideoGrants.hidden`、级联 FK、错误码表） |
+| 2026-09-20 | v2 | 按 `ASK-r012-1` 批复（需求单 §10.1）改写：① 超管**不发布音视频**（Token `can_publish=False`、界面无设备控件；§2.3/§2.4/§5/§8）② 在线改**前端 60 秒短轮询**（新增 `POST /api/presence` + `usePresenceBeat`；§2.6 整节重写，定性升 L3）③ 大屏面板改**右侧 Copilot 式抽屉**（§5/§7/§9）④ 管理后台入口**只放侧栏**、顶栏不加（§5）⑤ 基点合并 r011 cp-8/cp-8b（`e0c6598`） | 你 2026-09-20 的按编号批复 + 原话补充 |
