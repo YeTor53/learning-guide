@@ -19,8 +19,10 @@ updated: 2026-09-20
 | spike-01 | 路径 A（Agents 侧转写）实测：独立环境 + 一次性脚本，主线零改动 | **完成 2026-09-20** | 见 spike 报告（未进主线提交，只提交文档） | `spike-01-path-a.md` |
 | cp-r010-0b | **阶段 1 契约补齐**：design 加 §3.2 视觉契约（3 个新令牌 / 动效清单 / 界面文案 / 一次视觉验收动作）+ §5 教学契约；需求单加 §2.1 界面口径卡七项；design 状态 `approved` → **`draft`（等你读完再批）** | **完成 2026-09-20** | 见 cp-0b 提交 | 契约核对（见 §3.0） |
 | cp-r010-1 | 迁移 009 + `services/stt.py`（唯一出口、可打桩）+ `repositories/transcripts.py` + 上传/列表路由 + 用例 | **完成 2026-09-20**（含 CR r010-01 依赖处置：装 `python-multipart==0.0.32`） | 见 cp-1 提交 | E1/E2/E3 |
-| cp-r010-2 | 三源合一：`build_conversation` + `GET /conversation` + 前端 `ConversationPanel` | planned | — | E4 |
-| cp-r010-3 | 前端采集：`useTranscription`（默认开启 / 8 秒分段 / 静音跳过 / 关闭即停）+ 告知条 + 开状态接口 | planned | — | E5 |
+| cp-r010-2a | 迁移 010（`external_id` 幂等键）+ `ingest_segment` + `/transcripts/segments` + `/api/stt/status` + 派单能力 + 用例（含并发幂等） | planned（换轨后口径，见 design §9.3/§9.8） | — | E2/E3/E6/E14 |
+| cp-r010-2w | 转写 worker：`backend/agents/transcriber.py` + `requirements-agents.txt` + `agents.bat` + 探活说明 | planned（design §9.2） | — | 3 人房识别成功 |
+| cp-r010-2 | 三源合一：`build_conversation` + `GET /conversation` + 前端 `ConversationPanel` | planned（架构不变，可能并入 cp-2a） | — | E4 |
+| cp-r010-3 | 前端：**监听 `TranscriptionReceived` 渲染 + 上报 final 段**（不再 MediaRecorder 分段）+ 告知条文案改写 + 闸门状态 + 气泡 | planned（design §9.4） | — | E5/E13 |
 | cp-r010-4 | 纪要接上转写素材 | planned | — | E7 |
 | cp-r010-5 | 收官（真机取证、门禁、文档、review） | planned | — | E8 |
 
@@ -31,6 +33,8 @@ updated: 2026-09-20
 | 1 | 「r010」 | 澄清回答（W2：点轮次名＝开工） | — |
 | 2 | （cp-1 撞依赖门禁后上报） | 阻塞上报 → CR r010-01 | `cr-01.md`（超时 defaulted → 已按建议值执行） |
 | 4 | 「那就测试一下A」 | 讨论决定 → 执行 spike（验证优先、不改主线） | `spike-01-path-a.md`（VALIDATED） |
+| 5 | 「搜一下配额」 | 查询 → 额度/单价/场景估算落文档 | `spike-01-path-a.md` §8 |
+| 6 | 「有免费档就行，只做最小程度演示，出设计方案」 | **换轨批准 + 范围收缩** → 出设计方案 | `cr-02.md`（待批）+ `design.md §9` + `ADR-0023`（proposed） |
 | 3 | 「1 设计我都没看看完回复」 | 补充约束：Q1=①（补两份契约）；Q2=**设计批准延后**（你还没读） | 设计状态回 `draft`；界面口径卡 + 视觉契约 + 教学契约（cp-0b）；redirect-01 补 §9 批复台账但**保持 `proposed`** |
 
 ## 3. 实测证据

@@ -14,12 +14,12 @@ updated: 2026-09-19
 
 | # | 需求 | 说明 |
 | --- | --- | --- |
-| R1 | **默认开启** | 一进房间即转写；本人可一键关；关闭后**立刻停传** |
+| R1 | **默认开启** | 一进房间即转写（**2026-09-20 换轨后**：由房间侧转写 worker 承担，见 design §9）；**关掉自己的麦克风即不参与转写**（原「一键关本端上传」在 A 路径下不成立，已按 ADR-0023 D5 改写） |
 | R2 | **说的话并入「文字对话」** | 转写文本进入房间讨论流（与群聊同一条流），不是单独的「转写片段」列表 |
 | R3 | **与成员进出等管理信息同流** | 系统消息（加入/离开/被移出/移交/房间结束/满员未通过）与转写、聊天三源合一，构成完整会议记录 |
 | R4 | **STT 获取方案** | 先讲清用哪家、怎么拿、成本限额、云/自建、离线兜底（见 §3） |
 | R5 | 转写进纪要 | r008 已预留「转写文本（有则带）」，本轮接上 |
-| R6 | 隐私 | 进房一次性明确告知 + 一键关闭 + **不保留原始音频**（只存文本） |
+| R6 | 隐私 | 进房一次性明确告知 + **关麦即不转写** + **不保留原始音频**（只存文本）。**换轨后必须如实改写措辞**：音频会经 LiveKit Cloud 与识别服务商（原「音频只到我方后端」已不成立，见 ADR-0023 D4） |
 
 ## 2. 口径与边界
 
@@ -66,7 +66,7 @@ updated: 2026-09-19
 | # | 条目 | 证据 |
 | --- | --- | --- |
 | E1 | 迁移 `009_r010_transcripts` 落库（表 + 段唯一索引） | `db_init` 输出 |
-| E2 | `POST /rooms/{id}/transcripts` 上传音频 → 201 返回文本；未配 STT → 503；超限 → 400；结束后 → 409 | 用例（打桩 STT） |
+| E2（换轨后按 design §9.7 修订） | `POST /rooms/{id}/transcripts` 上传音频 → 201 返回文本；未配 STT → 503；超限 → 400；结束后 → 409 | 用例（打桩 STT） |
 | E3 | 幂等：同 `segmentIndex` 重传 → 不产生重复行 | 用例 |
 | E4 | `GET /rooms/{id}/conversation` 三源合一：聊天 + 系统消息 + 转写按时间排序、字段统一 | 用例 + 真机 |
 | E5 | 前端默认开启 + 一次性告知条 + 一键关闭（关闭后不再上传） | 真机 DOM/网络 |
@@ -89,7 +89,8 @@ updated: 2026-09-19
 
 | 依赖 | 用途 | 处置 | 出处 |
 | --- | --- | --- | --- |
-| `python-multipart==0.0.32` | FastAPI 解析前端上传音频的 multipart 表单（`File(...)` / `Form(...)`） | **已装**（conda `learningguide`）+ 追加进 `backend/requirements.txt`；按 `cr-01.md` 的建议值执行（超时 defaulted，你可否掉） | `docs/rounds/r010-transcription/cr-01.md` |
+| `python-multipart==0.0.32` | FastAPI 解析前端上传音频的 multipart 表单（B 路径用；A 路径不再需要） | **已装**（conda `learningguide`）+ 追加进 `backend/requirements.txt`；按 `cr-01.md` 的建议值执行（超时 defaulted，你可否掉） | `docs/rounds/r010-transcription/cr-01.md` |
+| `livekit-agents`（+`livekit-api`） | 转写 worker（A/C 路径识别侧） | **装在独立环境 `lg_agents`**（**不进** `learningguide` 主环境）；清单落 `backend/requirements-agents.txt`（cp-2w 产出） | `cr-02.md`、`spike-01-path-a.md` §3-1（安装 37.6s） |
 
 ## 6. 文档产出清单（覆盖矩阵）
 
@@ -103,6 +104,9 @@ updated: 2026-09-19
 | 决策 | ADR-0022（路径 B + 官方协议迁移点） | `docs/03-decisions/ADR-0022-transcription-path.md` | landed |
 | 调研 | 两条调研（客户端转写事件 / Agents 侧与 Jitsi 对照） | `docs/rounds/r010-transcription/research-01/02.md` | landed |
 | CR | 依赖登记（L3） | `docs/rounds/r010-transcription/cr-01.md` | landed |
+| CR | **换轨（L3，proposed）** | `docs/rounds/r010-transcription/cr-02.md` | **待你批** |
+| Spike | 路径 A 实测（含配额与成本） | `docs/rounds/r010-transcription/spike-01-path-a.md` | landed |
+| 决策 | **ADR-0023（换轨，proposed）** | `docs/03-decisions/ADR-0023-agent-side-transcription.md` | 待你批 |
 | 模块轴 | 实现页 + 功能页（转写 / 三源合一） | `docs/02-modules/r010-transcription{,-features}.md` | planned（cp-5） |
 | C 使用者教学页 | 「说的话变成文字、进纪要」怎么用 | `docs/tutorials/r010-transcription-user-guide.md` | planned（cp-5） |
 | 索引轴 | 需求索引 / `docs/README.md` / roadmap / 模块 README 回填 | 四处 | planned（cp-5） |
@@ -116,3 +120,4 @@ updated: 2026-09-19
 | 2026-09-19 | v1 | 建页：R1~R6 + 口径与边界 + E1~E8 + STT 方案 + cp 切分 | 澄清单 Q1~Q12（你 2026-09-19） |
 | 2026-09-20 | v2 | 补 **§5.1 依赖登记**（`python-multipart`，CR r010-01）与 **§6 覆盖矩阵**；`STT_*` 三键状态改为「已进 `.env.example`，值待填」 | 本轮 cp-1 实现期实测 + 铁律 6（覆盖矩阵） |
 | 2026-09-20 | v3 | 补 **§2.1 界面口径卡七项**（你回 Q1=①）；覆盖矩阵同步 | 你 2026-09-20「1」（Q1=①）；设计契约要求 |
+| 2026-09-20 | v4 | **换轨**：R1/R6 口径改写（关麦即不转写、隐私措辞如实）；§5.1 补 worker 依赖（独立环境）；覆盖矩阵补 CR-02/ADR-0023/spike-01；E 条目修订见 design §9.7 | 你 2026-09-20「有免费档就行，只做最小程度演示，出设计方案」+ spike-01 实测 + ADR-0023 |

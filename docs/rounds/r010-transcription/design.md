@@ -177,9 +177,142 @@ def build_conversation(conn, actor: UserVO, room_id: str, *, limit: int = 200) -
 
 需求单 + 本文 + ADR-0022 + 实现页/功能页 + README（`.env` 三键与演示路径）+ review。
 
-## 7. 变更记录
+
+## 9. 路径修订：Agents 侧识别 + 前端回传落库（最小演示，2026-09-20）
+
+> **本节取代** §1~§4 中与「路径 B（本端上传音频）」相关的实现细节：迁移改为 010（§9.3.1）、后端不再需要 `STT_*` 才能工作（§9.3.4）、前端不再做 MediaRecorder 分段（§9.4）。**§4 失败与边界、§5 教学契约、§6 文档产出**中与 B 路径绑定的条目按本节口径改写。依据：`spike-01-path-a.md`（实测）+ `cr-02.md`（换轨 CR）+ `ADR-0023`（proposed）。
+> 三条已核事实：`identity = user_id`（ADR-0011 条 2）、**LiveKit 房间名 = `rooms.id`**、建房可带 `RoomAgentDispatch`。
+
+### 9.1 拓扑与运行形态（最小演示）
+
+三个进程：后端 `:8000` + 前端 `:5173`（Vite）+ **转写 worker**（新，常驻；自带管理口 `:2077`）。
+- worker 文件：`backend/agents/transcriber.py`；依赖清单：`backend/requirements-agents.txt`（`livekit-agents`，**不装进 `learningguide` 主环境**）；启动：`agents.bat`（激活 `lg_agents` 环境 → `python transcriber.py dev`）。
+- 识别走 **LiveKit Inference**（免费档，`inference.STT("deepgram/nova-3", language="zh")`）→ **无需自备 STT key**；`.env` 里 `STT_BASE_URL/API_KEY` 降级为「B 路径专用，可为空」。
+- 演示前置：先起 worker → 再建房/进房；探活 `curl http://127.0.0.1:2077` 或看日志 `registered worker`。
+- **免费档护栏**：Inference STT 并发 5 条 → **演示 ≤3 人、单场 ≤30 分钟**；worker 侧 `MAX_SESSIONS=5`，超限只告警并跳过（不抛错）。
+
+### 9.2 worker（`backend/agents/transcriber.py`，函数级）
+
+```python
+AGENT_NAME = "learning-guide-transcriber"          # 一行常量，派单与前端识别共用
+MAX_SESSIONS = 5                                    # 免费档 STT 并发护栏
+
+server = AgentServer()                              # cli.run_app(server) 起进程
+
+@server.rtc_session(agent_name=AGENT_NAME)
+async def entrypoint(ctx: JobContext) -> None:
+    """被派单进房：订阅音频（AUDIO_ONLY），给「有音频轨的」参与者各开一个 AgentSession。"""
+
+class Transcriber(Agent):
+    def __init__(self, *, participant_identity: str) -> None:
+        super().__init__(instructions="not-needed",
+                         stt=inference.STT("deepgram/nova-3", language="zh"))
+    async def on_user_turn_completed(self, turn_ctx, new_message) -> None:
+        # 只转写、不回话、不跑 LLM
+        raise StopResponse()
+
+class TranscriberPool:
+    def on_participant_connected(self, p) -> None      # 有音频轨才开会话；超过 MAX_SESSIONS → 告警跳过
+    def on_track_subscribed(self, track, pub, p) -> None  # 后加入的音频轨补开会话
+    def on_participant_disconnected(self, p) -> None   # 关会话 + drain
+    async def _start_session(self, p) -> AgentSession   # room_options=RoomOptions(
+                                                        #   audio_input=True, text_output=True,
+                                                        #   audio_output=False, text_input=False,
+                                                        #   participant_identity=p.identity)
+```
+
+- **关麦 = 不转写**：参与者静音后音频轨无声 → STT 无输出，无需额外逻辑（隐私承诺由这条承担）。
+- **不做**：多语种切换、说话人分离、worker 自愈/监控、房主级开关。
+- 前端如何知道"转写已开启"：**看房间里有没有 `agent-*` 参与者**（LiveKit SDK 天然可见，零后端改动）。
+
+### 9.3 后端改造（函数级）
+
+#### 9.3.1 迁移 `backend/app/db/sql/010_r010_agent_transcripts.sql`
+```sql
+ALTER TABLE transcripts ADD COLUMN IF NOT EXISTS external_id TEXT;   -- = LiveKit segment.id
+CREATE UNIQUE INDEX IF NOT EXISTS ux_transcripts_external
+  ON transcripts (room_id, external_id) WHERE external_id IS NOT NULL;
+ALTER TABLE transcripts ALTER COLUMN segment_index DROP NOT NULL;    -- A 路径无"分段序号"
+```
+（`009_` 已应用，**不改历史迁移**。）
+
+#### 9.3.2 `app/repositories/transcripts.py`
+- `NewTranscript` 增 `external_id: str | None`；`insert_transcript` 走 `ON CONFLICT (room_id, external_id) DO NOTHING`（有 `external_id` 时；无则退回原 `segment_index` 唯一索引）。
+- 新增 `get_by_external_id(conn, room_id, external_id) -> TranscriptRowWithName | None`。
+
+#### 9.3.3 `app/services/transcripts.py`
+```python
+def ingest_segment(conn, actor, room_id, *, external_id: str, speaker_id: str, text: str,
+                   started_at: datetime, duration_ms: int, language: str = "zh") -> tuple[TranscriptVO, bool]:
+    """前端回传的**最终稿**文本段（A 路径）。
+    权限：actor 必须是本房**活跃成员**；`speaker_id` 必须**也是本房成员**（含已离开）；
+    房间 `ended` → 409 ROOM_ENDED（与上传口径一致）；
+    幂等：(room_id, external_id) 冲突即返回已存在的行（created=False）——**谁先到谁落**。
+    """
+```
+- `transcribe_segment`（B 路径音频上传）**保留不删**：`STT_MODE=backend` 时才被前端调用。
+
+#### 9.3.4 `app/api/routers/transcripts.py` 与配置
+| 接口 | 说明 |
+| --- | --- |
+| `POST /api/rooms/{id}/transcripts/segments`（**新增**） | JSON：`{externalId, speakerIdentity, text, startedAt, durationMs, language, final}`；`final=false` → **204 且不落库**；`final=true` → 201 `{transcript, created}` |
+| `POST /api/rooms/{id}/transcripts`（保留） | B 路径音频上传，`STT_MODE=backend` 时才有意义 |
+| `GET /api/rooms/{id}/transcripts`、`/conversation` | 不变 |
+| `GET /api/stt/status`（**新增**） | `{mode, agentName, maxSessions}`；`mode` 取 `STT_MODE`（`agent` 默认 / `backend` / `off`） |
+- `app/config.py`：新增 `stt_mode`（`STT_MODE`，默认 `agent`）、`stt_agent_name`（默认 `learning-guide-transcriber`）。
+- `app/services/livekit.py`：新增 `dispatch_transcriber(room_id)`；`rooms.create_room` 在 `STT_MODE=agent` 时建房带 `agents=[RoomAgentDispatch(agent_name=...)]`；**已存在的房**用 `AgentDispatch` 补派单（演示前兜底，一次调用）。
+
+### 9.4 前端改造
+
+| 文件 | 改动 |
+| --- | --- |
+| `hooks/useTranscription.ts` | **重写**：`room.on(RoomEvent.TranscriptionReceived, (segments, participant))` → 渐进文本存本地态（`final=false` 原地替换）、`final=true` 时 ①渲染气泡 ②`POST /transcripts/segments`（`externalId=segment.id`、`speakerIdentity=participant.identity`）。**删除** MediaRecorder 分段/重传/能量门限 |
+| `components/live/ConversationPanel.tsx` | `speech` 气泡：说话人名由 `identity → 成员显示名` 映射；时长显示 `durationMs` |
+| `components/live/TranscribeNotice.tsx` | **文案改写**（隐私口径变化）：明确「说的话会被房间内的转写服务识别，音频会经过 LiveKit 云与识别服务商；关掉自己的麦克风即不参与转写」 |
+| 控制坞「转写」开关 | 状态来源改为「房间里有无 `agent-*` 参与者」：有=「转写：开启」/无=「转写：未开启（不影响你说话）」；**去掉**"本端关转写上报"的旧语义（关麦即停） |
+| 上报策略 | 默认**所有在线成员都上报收到的 final 段**（冗余 + 幂等，谁先到谁落）；若你要省请求，可改成"仅房主 + 说话人本人"（见待拍板 Q1） |
+
+### 9.5 纪要与三源合一（不变）
+`build_conversation` 三源合一照旧；纪要读 `transcripts` 表照旧（cp-4 预计零代码改动，只补用例与口径）。
+
+### 9.6 边界与降级（最小演示）
+| 情况 | 处置 |
+| --- | --- |
+| worker 不在线 | 前端显示「转写：未开启」，**不报错、不伪装**；不做 B 路径自动兜底（本轮） |
+| 免费档额度/并发 | 演示 ≤3 人、单场 ≤30 分钟；`MAX_SESSIONS=5` 护栏；额度见 `spike-01-path-a.md` §8 |
+| 音频隐私 | 如实告知（音频经 LiveKit Cloud 与供应商）；**不保留音频**（ADR-0022 D5 沿用） |
+| 8 人满员 | 不做（会超免费档 5 并发） |
+
+### 9.7 验收条目修订（在需求单 E 条目上替换/新增）
+
+| 条目 | 新口径 |
+| --- | --- |
+| E2（改） | 三条分支：worker 在场 → 说话出渐进字幕并落库；不在场 → 前端提示且无报错；`STT_MODE=off` → 提示且不上报 |
+| E3（改） | 幂等改为**同一 `segment.id` 多次上报只落一行**（含"三端同时上报"的并发用例） |
+| E5（改） | 前端**不再有** MediaRecorder 分段与音频上传（`STT_MODE=agent` 时）；`STT_MODE=backend` 时旧路径仍可用 |
+| E6（改） | `.env.example`：`STT_MODE` / `STT_AGENT_NAME` 新增；`STT_BASE_URL/API_KEY/MODEL` 标注「B 路径专用，可空」 |
+| E13（新） | **3 人真机**：说话 5 秒内出现渐进字幕、定稿后库里 +1 行、三端内容一致、`speaker` 正确 |
+| E14（新） | worker 不在场：前端显示"未开启"、控制台无未捕获异常、接口无 5xx |
+
+### 9.8 cp 重新切分（原 §8 的 cp-2 起替换）
+
+| cp | 内容 | 验收点 |
+| --- | --- | --- |
+| cp-2a | 迁移 010 + `ingest_segment` + `/transcripts/segments` + `/api/stt/status` + 派单能力（`services/livekit.py`）+ 用例（含并发幂等） | E2/E3/E6/E14（后端侧） |
+| cp-2w | worker：`backend/agents/transcriber.py` + `requirements-agents.txt` + `agents.bat` + 探活与演示前置说明 | worker 起得来、被派单、3 人房识别成功 |
+| cp-3 | 前端：监听渲染 + 上报 + 告知条文案 + 关麦语义 + 气泡 + 闸门状态 | E5/E13 |
+| cp-4 | 纪要带转写（补用例与口径） | E7 |
+| cp-5 | 收官：真机（3 人 10 分钟）+ 门禁四绿 + 教学页（含演示脚本与探活）+ review | E8/E11/E12 |
+
+### 9.9 待实测项（诚实标注，实现时先取数）
+1. 真 STT 下 `TranscriptionSegment.startTime/endTime` 是否有值（spike 用假 STT 时为 0）→ 影响 `started_at`/`duration_ms`；兜底：用收到时间与相邻段差值。
+2. 免费档并发是"按参与者"还是"按活跃语音"占用（决定 3 人演示是否安全）。
+3. `agent session minutes` 计费口径（每人一会话 vs 每房一会话）→ 看控制台账单确认。
+
+## 10. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-19 | v1 | 建页：逐文件函数签名与职责（数据层 / 后端 / 前端 / 失败与边界 / 文档产出） | 澄清单 Q1~Q12 |
+| 2026-09-20 | v3 | **换轨修订**：新增 **§9 路径修订（Agents 侧识别 + 前端回传，最小演示）**，取代 §1~§4 中与路径 B 相关的实现细节；依据 `spike-01-path-a.md` / `cr-02.md` / `ADR-0023` | 你 2026-09-20「有免费档就行，只做最小程度演示，出设计方案」 |
 | 2026-09-20 | v2 | 补 **§3.2 视觉契约**（3 个新令牌 + 动效清单 + 界面文案 + 一次视觉验收动作）与 **§5 教学契约**（场景/入口/输入输出/典型动作/扩展点/边界）；原 §5 文档产出顺延为 §6；状态 `approved` → **`draft`（等你读完再批）** | 你 2026-09-20「设计我都没看，看完回复」+ 界面类轮次的契约要求 |

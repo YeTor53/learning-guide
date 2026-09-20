@@ -1,0 +1,45 @@
+---
+title: ADR-0023 转写改走 Agents 侧识别 + 前端回传 final 文本落库（最小演示档），B 路径保留为降级
+description: 为什么从路径 B 换到 A/C、免费档护栏、隐私口径与"关麦即不转写"的语义变化。
+type: reference
+status: proposed
+owner: 陀梓皓
+updated: 2026-09-20
+---
+
+<!-- overview -->
+背景：`spike-01-path-a.md` 实测证明路径 A 可用且成本可控（无需自备 STT key、端到端中位 ~257ms、官方 `transcript_delay 0.55s`、渐进字幕、说话人可辨）。用户 2026-09-20 决定「有免费档就行，只做最小程度演示」。本 ADR 记录这次换轨；**与 ADR-0022 的关系：D2/D3/D5 沿用，D1（路径 B）被本 ADR 取代**。
+
+## 事实（spike-01 实测）
+1. Agents worker 注册后被派单进房；**每个远端参与者一个 `AgentSession`**；转写注入房间，**三端互见**（`{pub1: 30, pub2: 26}`）。
+2. 客户端回调第二个参数是 **`Participant`**，`identity` 可直接取到 → 归属天然正确（且本项目 `identity = user_id`，ADR-0011 条 2）。
+3. 官方 `synchronizer` 提供**渐进字幕**（`final=false` → `true`）；真语音走 `inference.STT("deepgram/nova-3")` **不需要自备 STT key**。
+4. 资源：worker **1 进程 / RSS 429MB**；安装 37.6s（官方源）。
+5. 免费档（Build）：Agent session minutes 1,000/月、Inference **$2.50 额度**、**STT 并发 5 条**；STT 单价最低 $0.0025/min（AssemblyAI），Nova-3 $0.0048/min。
+
+## 决定
+### D1 转写识别移到 Agents worker（常驻第三进程），走免费档 Inference
+理由：真实时与渐进字幕是 B 路径拿不到的；且实测**不需要新 key**、安装成本 38 秒。
+
+### D2 落库仍走我方 HTTP：前端回传 **final** 文本段（C 混合）
+理由：保住「HTTP 落库＝唯一真相 + 可离线打桩 + 与 r004~r009 架构一致」；`transcripts` 表与既有可见性规则直接复用。中间稿（`final=false`）**不落库**（沿用 ADR-0022 D3）。
+
+### D3 幂等键 = LiveKit `segment.id`
+同一段会被多端冗余上报 → `(room_id, external_id)` 唯一索引，谁先到谁落，**天然抗丢**（比"只由说话人上报"更稳）。
+
+### D4 隐私口径**改写**：音频会经 LiveKit Cloud 与 STT 供应商
+B 路径原口径是"音频只到我方后端"，换轨后不成立 → 告知条、需求单、教学页必须如实改写（不得沿用旧措辞）。
+
+### D5 「一键关转写」改为「关麦即不转写」
+A 路径下识别在 worker 侧，前端无法关闭"别人对你的识别"；关掉自己的麦克风＝没有音频＝不产生转写（零额外代码）。房主级开关仍不做。
+
+### D6 免费档护栏：演示 **≤3 人 / 单场 ≤30 分钟**；worker 侧 `MAX_SESSIONS=5`
+理由：免费档 Inference STT 并发 5 条，而本项目房容量 8；演示规模内不撞限。B 路径保留（`STT_MODE=backend`）但不激活。
+
+## 备选与否决
+| 备选 | 否决理由 |
+| --- | --- |
+| 保持路径 B（本端上传音频） | 拿不到渐进字幕；端到端 ~9~11s；前端要写分段/重传/门限整套 |
+| 纯 A（不落库，只在房间内显示） | 无法满足"说的话进纪要"（R5） |
+| 每参与者一条 STT 常开（不做护栏） | 免费档 5 并发，8 人房必超限 |
+| 现在就把 B 路径删掉 | 无 worker 的环境（如他人机器）需要降级档；留着零成本 |
