@@ -25,6 +25,7 @@ updated: 2026-09-20
 | E9 | 文档 = 代码（无 `planned` 残留） | 本轮新增/回填页 `planned` 命中 **0**；`docs` 全量 60 处命中均为**已收官轮次的历史记录**（r003 覆盖矩阵「当时计划」等，按复验纪律不回改）；断链扫描 145 页 → 真死链 1 处（`docs/README.md` 的 `](*.md)` 通配符假阳性） | **通过** |
 | E10 | 剧本交付 | `manual-verification.md`：MV-1~MV-11（MV-5 已作废并注明原因），每项含前置/步骤/判据/回填位/耗时 + 汇总表 | **通过（交付物）** |
 | E11 | 焦点规则 = 共享 > 手动焦点 > 自己（说话不参与） | 代码：`LiveStage.tsx` 焦点判定已无说话者档；`hooks/useStableSpeaker.ts` 已删（零引用）；`tsc`/`build` 绿；**人工**见 MV-11（未跑） | **通过（代码）／真机未跑** |
+| E12 | 响应延迟收敛（redirect-03，「未发现的未完成项」） | 6 处常量/开关已收敛（8s→3s、5s→3s、5s→2s、30s→10s、windowFocus true、列表 5s 轮询）+ 地址口径写进 README/AGENTS/dev.bat；`tsc`/`build` 绿；**人工**见 MV-12（未跑） | **通过（代码）／真机未跑** |
 
 ## 2. 规则核对（AGENTS.md / 本轮纪律）
 
@@ -68,6 +69,7 @@ updated: 2026-09-20
 4. worker 健康上报：`POST /stt/heartbeat`（HMAC）+ `/rooms/{id}/stt-status` + worker 心跳循环 + 芯片「最后心跳」提示（cp-5）。
 5. 焦点规则收窄：说话不再获得焦点（删说话者档与 `useStableSpeaker` 死代码）+ ADR-0014 变更记录 + 模块页/教学页同步（cp-6/6b）。
 6. 用例 +8（自动拒 3 / 心跳 3 / off 2），既有满员用例按新语义更新；smoke 由 46 → **47** 步（新增自动拒留痕检查）。
+7. 响应延迟收敛（cp-8，redirect-03）：轮询与刷新策略 6 处 + 地址口径统一（`127.0.0.1`）+ MV-12。
 
 **未闭合 / 如实说明**
 
@@ -79,6 +81,8 @@ updated: 2026-09-20
 | ④ | `GET /api/stt/status` 仍返回 `segmentSeconds=8`（B 路径残留字段） | 前端未使用 | 改契约属 L3 → 待你批（r010 未闭合 ⑨ 仍在） |
 | ⑤ | 邀请码入口的「注册后回跳」未经真机 | 代码同 `LoginPage` 既有 returnTo 口径 | MV-9 步 2 |
 | ⑥ | `cancel_pending_requests`（结束房间 → `cancelled`）在 smoke 中不再被覆盖 | 已被「满员自动拒」抢先；服务层用例仍在（`test_rooms_service.py:256`、`test_rooms_api.py:144`） | 无需动 |
+| ⑦ | 后端 `localhost:8000` 的 ~2 秒回退 | 不改绑定（探针证明 Windows 绑 `::` 会让 `127.0.0.1` 失效）；改为文档/脚本统一 `127.0.0.1` | 保持现状，遇人踩坑按 README 口径纠正 |
+| ⑧ | 轮询仍是轮询（未上 SSE） | 手感已收敛；SSE 归 r012 全服大屏聊天的 `GET /api/events` | r012 |
 
 ## 6. 合并指引（由人执行）
 

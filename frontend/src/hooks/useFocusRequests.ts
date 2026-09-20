@@ -1,7 +1,8 @@
 /** 协管焦点申请（r009）：申请 / 列出待批 / 批准 / 拒绝。
  *
  * 设计事实源：docs/rounds/r009-focus-system/design.md §3；口径见 ADR-0021 D2（必须另一个非本人批准）。
- * 实时性：先用轮询（8 秒）+ 自身动作后立即刷新；SSE 归 r011（好友与定向邀请那轮）。
+ * 实时性（r011 redirect-03 收敛）：轮询 3 秒兜底 + 自身动作后立即刷新；
+ * 别端动作走 `lg.roster` 广播（秒级），SSE 见 r012 的全服大屏聊天规划。
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -29,7 +30,7 @@ export interface FocusRequestsState {
   reject: (id: string) => Promise<void>
 }
 
-const POLL_MS = 8000
+const POLL_MS = 3_000
 
 export function useFocusRequests(roomId: string | null, enabled: boolean, myUserId: string | null, canManage: boolean): FocusRequestsState {
   const [requests, setRequests] = useState<FocusRequest[]>([])

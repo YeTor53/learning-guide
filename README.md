@@ -66,6 +66,7 @@ python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # 真实 HTTP
 pytest backend/tests -q                                            # 156 项（含 r002 治理/容量、r008 纪要/邀请、r009 焦点、r010 转写；2026-09-20 实测）
 ```
 
+- **地址口径（r011 redirect-03 实测）**：后端一律用 `127.0.0.1:8000`（写成 `localhost:8000` 时每次请求会多等约 **2 秒** —— 实测 2070ms vs 6ms：uvicorn 只绑 IPv4，而 Windows 上 `localhost` 先解析到 `::1`，被拒后才回退）；前端一律用 `localhost:5173`（浏览器安全上下文要 `localhost`，且 Vite 只监听回环 `::1`）。
 - 冒烟脚本会写入两个随机邮箱账号与一个房间；跑完可再执行一次 `db_init --reset --seed` 恢复演示数据。
 - r002 需要额外的实时凭据：`.env` 里的 `LIVEKIT_MODE` / `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET`（Cloud 或自建二选一）；**键名与形状见上，值只放本机 `.env`**。第一次跑请看教程一：`docs/tutorials/r002-livekit-setup.md`；演示与排查看教程二：`docs/tutorials/r002-livekit-demo.md`
 - 依赖版本：后端见 `backend/requirements*.txt`（conda `learningguide` 的 pip freeze）；前端见 `frontend/package.json`（npm 走 npmmirror）。
