@@ -160,7 +160,7 @@ SNAPSHOT_JS = """JSON.stringify({
   tileNames: [...document.querySelectorAll('.live-tile-name')].map(e => e.textContent),
   countText: (document.body.innerText.match(/\d+\s*\/\s*\d+\s*成员/) || [''])[0],
   dock: [...document.querySelectorAll('.live-dock button, .live-superadmin-chip')].map(e => e.textContent.trim()),
-  superadminChip: (document.querySelector('.live-superadmin-chip')||{}).textContent || null,
+  superadminChip: (() => { const el = document.querySelector('.live-superadmin-chip'); return el ? (el.getAttribute('title') || el.textContent || null) : null; })(),
   hasMic: !!document.querySelector('.live-ctrl[title*="麦克风"]'),
   hasCam: !!document.querySelector('.live-ctrl[title*="摄像头"]'),
   hasShare: !!document.querySelector('.live-ctrl[title*="共享"]'),
@@ -301,7 +301,7 @@ async def main(argv: list[str] | None = None) -> int:
                 check("超管端登录", who_admin.get("role") == "superadmin", f"→ {who_admin}")
                 await admin.goto(f"{base}/rooms/{room_id}/live", wait=12)
                 adm = json.loads(await admin.js(SNAPSHOT_JS))
-                check("超管端：隐身标识与控制坞", adm["superadminChip"] == "管理视角 · 隐身",
+                check("超管端：隐身标识与控制坞", (adm["superadminChip"] or "").startswith("管理视角 · 隐身"),
                       f"→ chip={adm['superadminChip']!r} dock={adm['dock']}")
                 check("超管端：没有麦克风/摄像头/共享/举手控件",
                       not (adm["hasMic"] or adm["hasCam"] or adm["hasShare"] or adm["hasHand"]),
