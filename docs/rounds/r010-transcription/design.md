@@ -299,11 +299,12 @@ def ingest_segment(conn, actor, room_id, *, external_id: str, speaker_id: str, t
 
 | cp | 内容 | 验收点 |
 | --- | --- | --- |
-| cp-2a | 迁移 010 + `ingest_segment` + `/transcripts/segments` + `/api/stt/status` + 派单能力（`services/livekit.py`）+ 用例（含并发幂等） | E2/E3/E6/E14（后端侧） |
-| cp-2w | worker：`backend/agents/transcriber.py` + `requirements-agents.txt` + `agents.bat` + 探活与演示前置说明 | worker 起得来、被派单、3 人房识别成功 |
-| cp-3 | 前端：监听渲染 + 上报 + 告知条文案 + 关麦语义 + 气泡 + 闸门状态 | E5/E13 |
-| cp-4 | 纪要带转写（补用例与口径） | E7 |
-| cp-5 | 收官：真机（3 人 10 分钟）+ 门禁四绿 + 教学页（含演示脚本与探活）+ review | E8/E11/E12 |
+| cp-2a | 迁移 010 + `ingest_segment` + `/transcripts/segments` + `/api/stt/status` + 派单能力（`services/livekit.py`）+ 用例（含并发幂等） | E2/E3/E6（后端侧） |
+| cp-2w | worker：`backend/agents/transcriber.py` + `requirements-agents.txt` + `agents.bat`（含自动重启）+ `scripts/dispatch_agent.py` | worker 起得来、被派单、3 人房识别成功 |
+| cp-3a | 三源合一：`build_conversation` + `GET /rooms/{id}/conversation` + 用例 | E4 |
+| cp-3b | 前端：监听渲染 + 最终稿回传 + 告知条 + 关麦语义 + 气泡 + 控制坞状态 + agent 过滤 | E5/E6/E13 |
+| cp-4 | 纪要带转写（素材 + `speech=` 计数 + 用例） | E7 |
+| cp-5 | 收官：零配额真机 E2E（3 人）+ 门禁四绿 + 教学页（含演示脚本与探活）+ review | E8/E11/E12/E14 |
 
 ### 9.9 待实测项（诚实标注，实现时先取数）
 1. 真 STT 下 `TranscriptionSegment.startTime/endTime` 是否有值（spike 用假 STT 时为 0）→ 影响 `started_at`/`duration_ms`；兜底：用收到时间与相邻段差值。
