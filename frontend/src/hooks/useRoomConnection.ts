@@ -64,6 +64,7 @@ export function useRoomConnection(): RoomConnection {
     // 但 r002 §8.9 的契约是「断网 1~3 秒内状态条可见 + 控制坞禁用」，所以这里必须接。
     const onSignalReconnecting = () => setStatus('reconnecting')
     const onReconnected = () => {
+      stripFreezeHook(room)
       setStatus('connected')
       setReason(null)
     }
@@ -118,6 +119,19 @@ export function useRoomConnection(): RoomConnection {
     }
   }, [room])
 
+  /**
+   * r013 cp-16（根因修复）：「一直断链」的源头 —— livekit-client 在每次 connect 里**无条件**执行
+   *     window.addEventListener('freeze', this.onPageLeave)
+   * 而 onPageLeave 就是 disconnect()。于是浏览器一冻结（窗口被遮挡 / 最小化 / 切标签 / 离屏），
+   * 连接就"自杀"，恢复后再冻结再自杀 → 表现成「一直断链」。
+   * `onPageLeave` 是实例上的箭头属性，引用同一个函数对象，所以能精确摘掉这一条；
+   * `pagehide`/`beforeunload`（关标签=立即离开）**保留**，不改变原有的离开语义。
+   */
+  const stripFreezeHook = useCallback((target: Room) => {
+    const handler = (target as unknown as { onPageLeave?: EventListener }).onPageLeave
+    if (typeof handler === 'function') window.removeEventListener('freeze', handler)
+  }, [])
+
   const connectedRef = useRef(false)
 
   const connect = useCallback(
@@ -129,6 +143,7 @@ export function useRoomConnection(): RoomConnection {
       userClosedRef.current = false
       try {
         await room.connect(url, token)
+        stripFreezeHook(room) // 摘掉「冻结即断连」，见上
         setStatus('connected')
         setReason(null)
         setAutoDisconnected(false)
@@ -141,7 +156,7 @@ export function useRoomConnection(): RoomConnection {
         throw err
       }
     },
-    [room],
+    [room, stripFreezeHook],
   )
 
   const disconnect = useCallback(async () => {

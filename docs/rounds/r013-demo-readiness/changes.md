@@ -16,6 +16,7 @@ rounds: [r013]
 | cp | 提交 | 内容 | 测试/证据 | 文档 |
 | --- | --- | --- | --- | --- |
 | cp-r013-1 | 文档先行 | 需求单（含断线方案 §10.5）+ 逐文件函数级设计 + 台账骨架 | 不适用（纯文档） | 需求单、design |
+| cp-r013-16 | 本次提交 | **根因修复「一直断链」**：摘掉 `livekit-client` 每次 connect 无条件挂的 `window.addEventListener('freeze', onPageLeave)`（= 浏览器一冻结就 disconnect）；`pagehide/beforeunload` 保留（关标签仍立即离开）。另：房间页控制坞与抽屉 tab 全改纯图标（状态点 + tooltip，cp-15） | 真机：派发 freeze 4 次不断；CDP 冻结 4 秒解冻后 10 秒自回；**离屏 hidden 静止 60 秒全程已连接**（修前 5 秒掉且不自愈）。tsc/build 绿；台本 UI 自检 30→29/30（余 1 条为脚本口径未对齐，专用脚本 17/17 通过） | 需求单 §10.9 |
 | cp-r013-14 | 本次提交 | 口径升级「界面不管怎样都不许断开」：连接层除真终态外一律 `reconnecting`（不再落 closed）、重连失败也保持；页面层不限次数自愈（票现签、退避≤4s、visibilitychange/resume/5s 兜底、连接对象入 ref 修「effect 被反复 cleanup 掐死循环」）；`connect()` 失败不再打「已断开」 | 真机连续 4 次掐断：**从未出现「已断开」**，恢复 7.3/7.9/7.9/11.0 秒；tsc/build 绿。已知边界：同实例重连需等 SDK 结算（7~11s），换实例的改法试过、把初次连接带坏已回退 | 需求单 §10.8 |
 | cp-r013-13 | 本次提交 | 修 `agents.bat`（你实测报错）：① 文件曾是「双 CR + UTF-8」，cmd 按 GBK 读会把中文注释拆出来当命令执行 → 改为 **GBK + 标准 CRLF**；② `lg_agents` 环境**没装 python-dotenv**，worker 不会自己读 `.env` → 脚本改为先把 `.env` 注入环境变量再启动（原症状：`ValueError: ws_url is required` + 退出-重启循环）；③ 启动打印注入自检（只报「有没有」，不回显值） | 实测：worker `registered worker {"agent_name":"learning-guide-transcriber","region":"Japan"}` | 台本 §0、本表 |
 | cp-r013-12 | 本次提交 | 演示库清理：删 **169 间**测试房 + **593 个**脚本账号 + 大屏测试消息与残留举手/访问；新增可复跑 `backend/scripts/clean_demo_junk.py`（默认干跑、`--yes` 真删、`--keep-users`）；台本 §0/§6 改用该脚本并纠正「演示前 `--reset`」旧指引 | 清后：房 8（3 间 seed + 5 间你的演示房）/ 账号 4 / 成员 17 / 聊天 16 / 大屏 0 / 审计 1 | 台本 §0 §6、本表 |
