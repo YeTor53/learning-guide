@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Optional
+from dataclasses import dataclass
+from typing import Any, Optional
 
 from psycopg import Connection
 
@@ -29,6 +30,7 @@ from app.api.errors import (
     AppError,
 )
 from app.config import load_settings
+from app.repositories import room_extras as extras_repo
 from app.repositories import rooms as rooms_repo
 from app.repositories import transcripts as repo
 from app.repositories.transcripts import NewTranscript
@@ -42,6 +44,8 @@ logger = logging.getLogger(__name__)
 
 TRANSCRIPT_LIMIT_DEFAULT = 200
 TRANSCRIPT_LIMIT_MAX = 200
+CONVERSATION_LIMIT_DEFAULT = 200
+CONVERSATION_LIMIT_MAX = 200
 SEGMENT_TEXT_MAX_CHARS = 2000   # 单段文本上限（前端回传；超长即 400，防脏数据）
 AGENT_PROVIDER = "livekit"       # A 路径记为房间侧识别
 
@@ -223,6 +227,75 @@ def ingest_segment(
     return _vo(row), True
 
 
+def _assert_can_read(conn: Connection, actor: Optional[UserVO], room_id: str) -> None:
+    """转写/对话流的统一可见性：本房成员（含已离开）与房主/协管可读；房间可 `ended`。"""
+    item = rooms_service.assert_room_exists(conn, room_id)
+    try:
+        rooms_service.assert_manager_role(conn, actor, item.room)
+    except AppError:
+        if actor is None or actor.id not in rooms_service.list_members_for_visibility(conn, room_id):
+            raise AppError(ERR_FORBIDDEN, "只有这间房的成员可以查看房间记录", status=403) from None
+
+
+@dataclass(frozen=True)
+class ConversationItem:
+    """三源合一的一条（R2/R3）：聊天 / 系统事件 / 语音转写。"""
+
+    id: str
+    kind: str                      # 'chat' | 'system' | 'speech'
+    at: datetime                   # 排序键（转写用 started_at）
+    speaker_id: Optional[str]
+    speaker_name: Optional[str]
+    text: str
+    meta: dict[str, Any]           # speech: {durationMs, language, externalId}；其余为空（系统消息没有事件码列）
+
+
+def build_conversation(
+    conn: Connection,
+    actor: Optional[UserVO],
+    room_id: str,
+    *,
+    limit: int = CONVERSATION_LIMIT_DEFAULT,
+) -> list[ConversationItem]:
+    """把「聊天 + 系统消息 + 语音转写」合成一条时间正序的对话流（各取最近 `limit` 条再合并截断）。
+
+    排序稳定键：`(at, id)`；`speech` 的 `at` 用 `started_at`（客户端给的该段音频开始时间）。
+    """
+    _assert_can_read(conn, actor, room_id)
+    if limit < 1 or limit > CONVERSATION_LIMIT_MAX:
+        raise AppError(ERR_VALIDATION, f"limit 需在 1~{CONVERSATION_LIMIT_MAX} 之间", status=400)
+
+    items: list[ConversationItem] = []
+    for found in extras_repo.list_messages(conn, room_id, None, limit):
+        mid, _room_id, user_id, body, kind, created_at = found.message
+        items.append(
+            ConversationItem(
+                id=mid,
+                kind="system" if kind == "system" else "chat",
+                at=created_at,
+                speaker_id=user_id,
+                speaker_name=found.display_name,
+                text=body,
+                meta={},
+            )
+        )
+    for found in repo.list_transcripts(conn, room_id, limit=limit):
+        row = found.transcript
+        items.append(
+            ConversationItem(
+                id=row.id,
+                kind="speech",
+                at=row.started_at,
+                speaker_id=row.speaker_id,
+                speaker_name=found.display_name,
+                text=row.text,
+                meta={"durationMs": row.duration_ms, "language": row.language, "externalId": row.external_id},
+            )
+        )
+    items.sort(key=lambda item: (item.at, item.id))
+    return items[-limit:]
+
+
 def list_transcripts(
     conn: Connection,
     actor: Optional[UserVO],
@@ -230,13 +303,8 @@ def list_transcripts(
     *,
     limit: int = TRANSCRIPT_LIMIT_DEFAULT,
 ) -> list[TranscriptVO]:
-    """按时间正序返回转写（最近 limit 条）；本房成员（含已离开）与房主/协管可读，房间可 `ended`。"""
-    item = rooms_service.assert_room_exists(conn, room_id)
-    try:
-        rooms_service.assert_manager_role(conn, actor, item.room)
-    except AppError:
-        if actor is None or actor.id not in rooms_service.list_members_for_visibility(conn, room_id):
-            raise AppError(ERR_FORBIDDEN, "只有这间房的成员可以查看转写", status=403) from None
+    """按时间正序返回转写（最近 limit 条）；可见性同 `_assert_can_read`。"""
+    _assert_can_read(conn, actor, room_id)
     if limit < 1 or limit > TRANSCRIPT_LIMIT_MAX:
         raise AppError(ERR_VALIDATION, f"limit 需在 1~{TRANSCRIPT_LIMIT_MAX} 之间", status=400)
     rows = repo.list_transcripts(conn, room_id, limit=limit)

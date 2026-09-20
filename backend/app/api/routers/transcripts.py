@@ -17,7 +17,7 @@ from app.api.envelope import ok
 from app.api.errors import ERR_VALIDATION, AppError
 from app.config import load_settings
 from app.schemas.auth import UserVO
-from app.schemas.transcripts import SegmentIn
+from app.schemas.transcripts import ConversationItemVO, SegmentIn
 from app.services import transcripts as transcripts_service
 
 router = APIRouter(tags=["transcripts"])
@@ -113,6 +113,30 @@ def read_stt_status(
         },
         status=200,
     )
+
+
+@router.get("/rooms/{room_id}/conversation", status_code=200)
+def read_conversation(
+    room_id: str,
+    limit: int = Query(transcripts_service.CONVERSATION_LIMIT_DEFAULT, ge=1),
+    actor: UserVO = Depends(current_user),
+    conn: Connection = Depends(db_conn),
+):
+    """三源合一对话流（聊天 + 系统事件 + 语音转写），时间正序；可见性同转写。"""
+    items = transcripts_service.build_conversation(conn, actor, room_id, limit=limit)
+    payload = [
+        ConversationItemVO(
+            id=item.id,
+            kind=item.kind,
+            at=item.at,
+            speaker_id=item.speaker_id,
+            speaker_name=item.speaker_name,
+            text=item.text,
+            meta=item.meta,
+        )
+        for item in items
+    ]
+    return ok({"items": [_dump(item) for item in payload]}, status=200)
 
 
 @router.get("/rooms/{room_id}/transcripts", status_code=200)

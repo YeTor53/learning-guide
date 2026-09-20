@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import Field
 
@@ -29,6 +29,18 @@ class TranscriptVO(CamelModel):
     model: str = ""
     external_id: Optional[str] = None
     created_at: datetime
+
+
+class ConversationItemVO(CamelModel):
+    """三源合一的一条（R2/R3）：`kind` = chat / system / speech。"""
+
+    id: str
+    kind: str
+    at: datetime
+    speaker_id: Optional[str] = None
+    speaker_name: Optional[str] = None
+    text: str
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class SegmentIn(CamelModel):
