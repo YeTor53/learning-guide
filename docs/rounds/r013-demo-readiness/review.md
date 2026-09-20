@@ -24,7 +24,8 @@ rounds: [r013]
 | E7 | 回看页内容齐 | `frontend/src/pages/ReplayPage.tsx` + `hooks/useReplay.ts`（复用 `/rooms/{id}`、`/rooms/{id}/conversation`、`/rooms/{id}/summary`） | 真机（`room_3b167f0d4f0e1e22`）：标题/踢线**回看（只读）**、时间线 **2 行**（系统消息）、成员 **2 行**、纪要段与「回房间列表」都在；截图 `%TEMP%\lg_r013_shots\replay-host.png` | **通过** |
 | E8 | 回看页权限 | 复用既有后端口径（**无需改码**）：`transcripts._assert_can_read`、`summary.get_summary` 本就是「成员/历史成员/房主/协管可读」 | 用例 4 条（`test_replay_access.py`）：在册成员 200、房主 200、超管 200、非成员 **403（conversation + summary）**、未登录 **401**；真机：新注册账号打开回看页 → 提示「这间房的历史只对当时在册的成员与管理身份开放」且时间线 0 行 | **通过** |
 | E9 | 回看入口 | `components/RoomCard.tsx`（ended 房卡新增「回看」；保留原「讨论纪要」以不动 r008 验收链） | 真机：列表页切「已结束」→ 该房卡按钮 `['回看','讨论纪要']` → 点「回看」→ 路径 `/rooms/room_3b167f0d4f0e1e22/replay` | **通过** |
-| 待填 | E10~E12 | | | 见对应 cp |
+| E10 | 大屏进抽屉 | `components/GlobalChatPanel.tsx`（拆分）+ `GlobalChatDrawer`（壳）+ `RoomSidePanel`（第 4 tab）+ `global.css` `.gc-panel-embedded` | 真机：交流页抽屉 tabs = `['讨论','成员','邀请','大屏']`；大屏 tab 内 `embedded=true`、「6 人在线」、占位「对所有人说一句…」、「发布」；发出后本端可见、**另一端（常规页抽屉）0.5 秒内不刷新可见**；切回「讨论」正常；交流页顶栏仍**没有**大屏按钮（r012 cp-8 口径保持）；截图 `%TEMP%\lg_r013_shots\gc-tab-embedded.png` | **通过** |
+| 待填 | E11/E12 | | | 见 cp-7 |
 
 ## 6. 未闭合清单（交你复核）
 
@@ -34,6 +35,7 @@ rounds: [r013]
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
+| 2026-09-20 | cp-6 | E10 对账：大屏并入交流页抽屉（面板拆分 drawer/embedded 两壳，单例数据源，SSE 跨端 0.5 秒） | 真机（含第二端） |
 | 2026-09-20 | cp-5 | E7/E8/E9 对账：回看页三段 + 权限 + 入口（后端零改动，既有可见性口径已满足 Q1=1） | `test_replay_access.py` 4 条 + 真机三条 |
 | 2026-09-20 | cp-4 | E5/E6 对账：worker 连接重试（纯函数 + 5 用例）与错误透出（用例 + 真机芯片 title）；后端按 PID 重启加载新代码 | `test_connect_retry.py`、`test_stt_heartbeat.py`、真机 |
 | 2026-09-20 | cp-3 | E3/E4 对账：强停共享 0.5 秒清格；边界（非网络级硬断、冻结判定不了）如实写明 | `verify-screen-force-stop.py` 实测 |

@@ -16,6 +16,7 @@ rounds: [r013]
 | cp | 提交 | 内容 | 测试/证据 | 文档 |
 | --- | --- | --- | --- | --- |
 | cp-r013-1 | 文档先行 | 需求单（含断线方案 §10.5）+ 逐文件函数级设计 + 台账骨架 | 不适用（纯文档） | 需求单、design |
+| cp-r013-6 | 本次提交 | E 项：大屏并入交流页抽屉——`GlobalChatPanel`（面板本体，`variant=drawer|embedded`）+ `GlobalChatDrawer`（只剩壳与 Esc）+ `RoomSidePanel` 第四个 tab「大屏」+ `.gc-panel-embedded` 样式；顶栏按钮在交流页仍不渲染（入口改为 tab）。**口径变更**：改写 r012「交流页不挂大屏」——在 r012 需求单 §10.1 与 changes 各加一行指路（不改历史结论） | `tsc`/`build` 绿；真机：4 tab、embedded 面板可发、**跨端 0.5 秒内不刷新可见**、切回讨论正常、交流页顶栏无按钮 | r012 需求单 §10.1 / r012 changes、`docs/02-modules/r012-superadmin-console.md`、台本 v5 |
 | cp-r013-5 | 本次提交 | D 项：结束房只读回看页——新增 `pages/ReplayPage.tsx` + `hooks/useReplay.ts`（复用三条既有只读接口）、`App.tsx` 路由 `/rooms/:id/replay`、`RoomCard` 结束房卡新增「回看」按钮、`global.css` 回看样式；**后端零改动**（既有可见性口径本就是「成员/历史成员/房主/协管」）。修一处自身文案缺陷：JSX 里写了 markdown 星号会原样显示 | 用例 **+4**（`test_replay_access.py`：成员 200 / 房主 200 / 超管 200 / 非成员 403 / 未登录 401）→ `pytest 212 passed`；`tsc`/`build` 绿；真机：房主回看三段齐全（时间线 2 行、成员 2 行）、新账号 403 提示、列表「已结束」筛选下点「回看」跳 `/replay` | r008 模块页变更记录 |
 | cp-r013-4 | 本次提交 | C 项：worker 自愈与可观测——新增纯函数 `backend/agents/retry.py`；`transcriber.entrypoint` 的连接段改为**有限重试（3 次 / 2+4 秒退避）**，彻底失败时上报原因并以**退出码 2** 退出（不再裸崩）；心跳带 `lastError`，后端 `/rooms/{id}/stt-status` 透出，控制坞芯片 hover 可见 | 用例 **+6**（`test_connect_retry.py` 5 条 + `test_stt_heartbeat.py` 1 条）→ `pytest 208 passed`；`tsc`/`build` 绿；真机：芯片 title 出现/清除「最后错误」各一次 | r010 模块页变更记录、roadmap §9 |
 | cp-r013-3 | 本次提交 | B 项：新增 `frontend/scripts/verify-screen-force-stop.py`；真机取证「A 不点停止、直接关标签」→ B 端清格 | **两次实测均 0.5 秒**清格、宫格恢复 1 格；实现无需改动（`useScreenShare` 既有 `TrackUnpublished`/`ParticipantDisconnected` 重扫就够）；**边界**：手段=WS 正常关闭，网络级硬断未测 | `docs/02-modules/r004-room-extras.md` §11 遗留 4 回填 |
@@ -36,6 +37,7 @@ rounds: [r013]
 | 日期 | cp | 变更 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | cp-1 | 建台账 | 需求单 v1 |
+| 2026-09-20 | cp-6 | E 项结论：大屏两壳（抽屉 / 抽屉内 tab），单例数据源；r012 口径变更已指路 | 真机 |
 | 2026-09-20 | cp-5 | D 项结论：回看页三段 + 入口 + 权限（用例 4 条 / 真机三条）；后端无改动 | 实测 |
 | 2026-09-20 | cp-4 | C 项结论：自愈（重试 + 退出码 2）+ 可观测（lastError 到芯片）；**FFI panic 根因未修**（需升级 `livekit-agents`，你未批） | 用例 + 真机 |
 | 2026-09-20 | cp-3 | B 项结论：强停共享 0.5 秒清格（标签关闭路径），无需改码；网络级硬断未测并写明 | `verify-screen-force-stop.py` 实测 |

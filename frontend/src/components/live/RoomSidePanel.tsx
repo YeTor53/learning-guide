@@ -17,6 +17,7 @@ import type { SpeechLine } from '../../hooks/useTranscription'
 import type { FocusState } from '../../hooks/useRoomFocus'
 import type { HandState } from '../../hooks/useHandRaise'
 import type { ScreenShareState } from '../../hooks/useScreenShare'
+import GlobalChatPanel from '../GlobalChatPanel'
 import ChatPanel from './ChatPanel'
 import InvitePanel from './InvitePanel'
 
@@ -90,7 +91,8 @@ export default function RoomSidePanel({
   const isManager = myRole === 'host' || myRole === 'moderator'
   const online = new Set(onlineIds)
   /** r004：抽屉双 tab —— 「讨论」默认（U1），「成员」放原治理内容。 */
-  const [tab, setTab] = useState<'chat' | 'members' | 'invite'>('chat')
+  // r013 cp-6：第四个 tab「大屏」（全服公开面）——入口从顶栏按钮改为这里
+  const [tab, setTab] = useState<'chat' | 'members' | 'invite' | 'global'>('chat')
   const myHands = hands.hands.filter((item) => item.userId !== myUserId)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -231,6 +233,14 @@ export default function RoomSidePanel({
               邀请
             </button>
           )}
+          <button
+            role="tab"
+            aria-selected={tab === 'global'}
+            className={`live-drawer-tab${tab === 'global' ? ' on' : ''}`}
+            onClick={() => setTab('global')}
+          >
+            大屏
+          </button>
         </div>
         <button className="icon-btn" onClick={onClose} title="收起（Esc）" aria-label="收起成员与管理">
           <X {...ICON} />
@@ -285,6 +295,13 @@ export default function RoomSidePanel({
             </div>
           )}
           <ChatPanel chat={chat} myUserId={myUserId} onChanged={onChatChanged} speech={speech} live={live} />
+        </section>
+      )}
+
+      {tab === 'global' && (
+        <section className="panel gc-embedded">
+          {/* 全服大屏（r013 cp-6）：与顶栏抽屉同一个面板组件；只有本 tab 选中时才拉数据/接 SSE */}
+          <GlobalChatPanel variant="embedded" enabled={tab === 'global'} />
         </section>
       )}
 
