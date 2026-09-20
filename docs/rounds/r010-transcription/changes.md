@@ -21,8 +21,8 @@ updated: 2026-09-20
 | cp-r010-1 | 迁移 009 + `services/stt.py`（唯一出口、可打桩）+ `repositories/transcripts.py` + 上传/列表路由 + 用例 | **完成 2026-09-20**（含 CR r010-01 依赖处置：装 `python-multipart==0.0.32`） | 见 cp-1 提交 | E1/E2/E3 |
 | cp-r010-2a | 迁移 010（`external_id` 幂等键）+ `ingest_segment` + `/transcripts/segments` + `/api/stt/status` + 派单能力 + 用例（含并发幂等） | **完成 2026-09-20** | 见 cp-2a 提交 | E2/E3/E6/E14（用例 9 条，全量 **152 passed**） |
 | cp-r010-2w | 转写 worker：`backend/agents/transcriber.py` + `requirements-agents.txt` + `agents.bat` + `backend/scripts/dispatch_agent.py` | **完成 2026-09-20**（离线自检通过；真机联调见 cp-5，默认用假 STT 零配额） | 见 cp-2w 提交 | 离线自检：FakeSTT 1.3s 出 3 条 |
-| cp-r010-2 | 三源合一：`build_conversation` + `GET /conversation` + 前端 `ConversationPanel` | planned（架构不变，可能并入 cp-2a） | — | E4 |
-| cp-r010-3 | 前端：**监听 `TranscriptionReceived` 渲染 + 上报 final 段**（不再 MediaRecorder 分段）+ 告知条文案改写 + 闸门状态 + 气泡 | planned（design §9.4） | — | E5/E13 |
+| cp-r010-3a | **三源合一**：`build_conversation` + `GET /rooms/{id}/conversation` + 用例（聊天 / 系统事件 / 语音同一条流） | **完成 2026-09-20** | 见 cp-3a 提交 | E4（3 条用例） |
+| cp-r010-3b | 前端：监听 `TranscriptionReceived` 渲染（渐进 + 定稿）+ **回传 final 段** + 转写气泡 + 进房告知条 + 控制坞「转写：开启/未开启」 | **完成 2026-09-20**（tsc exit 0 / build exit 0） | 见 cp-3b 提交 | E5/E13 |
 | cp-r010-4 | 纪要接上转写素材 | planned | — | E7 |
 | cp-r010-5 | 收官（真机取证、门禁、文档、review） | planned | — | E8 |
 
@@ -66,6 +66,19 @@ updated: 2026-09-20
 - 离线自检（`lg_agents` 环境，无网络）：`FakeSTT` 1.3 秒出 **3 条**最终稿；常量 `AGENT_NAME=learning-guide-transcriber / MAX_SESSIONS=5`。
 - 组件：worker 主体 + `requirements-agents.txt`（独立环境，**不进主环境**）+ `agents.bat`（`AGENT_STT=fake|inference` 一键切换）+ `backend/scripts/dispatch_agent.py`（给已有房补派单）。
 - 并发护栏：只给**有音频轨**的参与者开会话；`MAX_SESSIONS=5` 超限告警跳过。
+
+### 3.0d cp-3a / cp-3b（2026-09-20 实测，零配额）
+
+**cp-3a 三源合一（后端）**
+- `GET /api/rooms/{id}/conversation?limit=`：把 `chat_messages(kind=chat|system)` + `transcripts` 合成**时间正序**一条流；`speech` 的 `at` 用 `started_at`，`meta` 带 `durationMs/language/externalId`；可见性沿用 `_assert_can_read`（成员含已离开 / 管理 / 房间可 ended）。
+- 用例：`pytest backend/tests/test_conversation.py -q` → **3 passed**（三源排序与字段；成员/已离开/外人/未登录/limit 越界；结束后仍可读）。
+- 全量：`pytest backend/tests -q` → **155 passed**（原 152 + 3）。
+
+**cp-3b 前端（换轨后口径）**
+- 新文件：`api/transcripts.ts`（status / conversation / postSegment）、`hooks/useTranscription.ts`（监听 + 渐进上屏 + 定稿落库 + agent 在场检测）、`components/live/SpeechBubble.tsx`、`components/live/TranscribeNotice.tsx`。
+- 改动：`ChatPanel`（三源合并渲染，含「识别中…」渐进气泡）、`RoomSidePanel`（透传）、`RoomLivePage`（接线 + 告知条）、`DeviceBar`（只读「转写：开启/未开启」chip）、`global.css`（r010 令牌段 + 样式，含 reduced-motion）。
+- 判据：`npx tsc --noEmit` **exit 0**；`npm run build` **exit 0**（2010 modules / 3.88s）；**未新增任何前端依赖**。
+- 未做（如实）：跨端说话人分离、房主级转写开关、B 路径前端（不激活）。
 
 ### 3.1 cp-1（2026-09-20 实测）
 

@@ -45,6 +45,8 @@ interface Props {
   sharing: boolean
   onToggleHand: () => void
   onToggleShare: () => void
+  /** r010：房间侧转写状态（只读展示；关掉麦克风即不参与转写）。 */
+  transcribe?: { on: boolean }
 }
 
 const LEVEL_BARS = 3
@@ -73,6 +75,7 @@ export default function DeviceBar({
   sharing,
   onToggleHand,
   onToggleShare,
+  transcribe,
 }: Props) {
   // 快捷键：M 切麦、V 切摄像头（离开不绑定快捷键——离场必须是有意的）
   useEffect(() => {
@@ -114,6 +117,15 @@ export default function DeviceBar({
             )}
           </span>
         </button>
+
+        {transcribe && (
+          <span
+            className={`live-transcribe-chip${transcribe.on ? ' on' : ''}`}
+            title={transcribe.on ? '房间侧转写已开启；关掉麦克风即不参与转写' : '房间侧转写未开启（演示前需先启动转写进程）'}
+          >
+            转写：{transcribe.on ? '开启' : '未开启'}
+          </span>
+        )}
 
         <button
           className={`live-ctrl live-ctrl-hand${(handActive ?? handRaised) ? ' live-ctrl-hand-on' : ''}`}
