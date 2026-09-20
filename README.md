@@ -64,7 +64,7 @@ cd backend && python -m uvicorn app.main:app --port 8000
 
 # ⑤ 验证
 python backend/scripts/smoke.py --base-url http://127.0.0.1:8000   # 真实 HTTP 全链路，末尾打印 PASS n/n
-pytest backend/tests -q                                            # 174 项（含 r002 治理/容量、r008 纪要/邀请、r009 焦点、r010 转写、r011 满员自动拒/心跳、r012 身份与在线；2026-09-20 实测）
+pytest backend/tests -q                                            # 191 项（含 r002 治理/容量、r008 纪要/邀请、r009 焦点、r010 转写、r011 满员自动拒/心跳、r012 身份与在线；2026-09-20 实测）
 ```
 
 - **地址口径（r011 redirect-03 实测）**：后端一律用 `127.0.0.1:8000`（写成 `localhost:8000` 时每次请求会多等约 **2 秒** —— 实测 2070ms vs 6ms：uvicorn 只绑 IPv4，而 Windows 上 `localhost` 先解析到 `::1`，被拒后才回退）；前端一律用 `localhost:5173`（浏览器安全上下文要 `localhost`，且 Vite 只监听回环 `::1`）。

@@ -47,6 +47,17 @@ updated: 2026-09-20
 | 只靠前端过滤超管（不加 `hidden`） | 其他客户端仍能从 LiveKit 参与者列表看到他，隐身只剩一半 |
 | 让超管照常开麦、只在转写侧过滤 | 与「节约额度」的原始要求相反（音视频本身计费） |
 
+## 落地与验证（cp-3 实测）
+
+| 主张 | 证据（可复跑） |
+| --- | --- |
+| D2 隐身（应用层） | 用例 `test_superadmin_token_is_hidden_readonly_and_records_visit`：超管取票后 `room_visits` 有且只有一条开着的记录；房间详情 `memberCount == 1`、成员列表里没有他 |
+| D2 隐身（传输层） | 同一用例解 JWT：`video.hidden is True`、`attributes == {'lg-role': 'superadmin'}` |
+| D3 不发布 | 同一用例：`video.canPublish is False`、`video.canPublishData is False`、`roomAdmin` 非真 |
+| D5 不占人数 | 用例 `test_superadmin_enters_full_room_while_stranger_cannot`：满员房（在册 = 8）超管取票 200、取票前后 `memberCount` 恒为 8；路人 403 `NOT_MEMBER` |
+| D4 旁路治理 | 用例 `test_superadmin_kicks_and_ends_other_peoples_room`：超管踢人与结束**他人**房间均 200，且房内留下「被移出房间」「房间已结束」系统消息；`test_plain_participant_still_cannot_govern`：普通参与者同动作仍 403 |
+| 真机待办 | 2 浏览器验证「另一端 participants / 舞台 / 名册看不到超管」属人工/真机项，登记在 cp-7（E2） |
+
 ## 影响面
 - 代码：`services/roles.py`（新增）、`services/rooms.py`（两处旁路 + 取票分支，cp-3）、`services/livekit.py::issue_token`（新增 `hidden`/`attributes`/`can_publish*` 参数，cp-3）、`agents/transcriber.py`（跳过超管，cp-3）。
 - 文档：`docs/02-modules/r012-superadmin-console.md`（模块页）、需求单 §1/§10.1、`docs/04-style/global-style.md`（管理视角标识的文案口径，cp-6）。

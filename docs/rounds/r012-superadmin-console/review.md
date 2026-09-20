@@ -16,18 +16,18 @@ updated: 2026-09-20
 | # | 条目 | 实现位置 | 证据（命令输出 / 用例名 / 截图） | 结论 |
 | --- | --- | --- | --- | --- |
 | E1 | 超管身份落地 | `backend/app/db/sql/011_*.sql`、`012_*.sql`；`services/roles.py`；`repositories/users.py`；`schemas/auth.py::UserVO.role`；`scripts/grant_superadmin.py` | `db_init.py --seed` → `schema_migrations 12` + `room_visits/global_messages/admin_audit`；`grant_superadmin --email host@example.com` → `user → superadmin（影响 1 行）`、`--revoke` → 反向；`/api/auth/me` 返回 `role`（用例 `test_superadmin_identity.py` 6 条） | cp-2 通过（cp-3 起进入隐身与旁路，届时复核） |
-| E2 | 隐身进房 | 待填 | 待填 | 待填 |
-| E3 | 房主能力 | 待填 | 待填 | 待填 |
-| E4 | 不计入人数 | 待填 | 待填 | 待填 |
-| E5 | 管理后台三列表 | 待填 | 待填 | 待填 |
-| E6 | 管理后台动作 + 审计 | 待填 | 待填 | 待填 |
+| E2 | 隐身进房 | `services/rooms.py::issue_room_token`（超管分支）+ `repositories/rooms.py`（`room_visits` 读写）+ `services/livekit.py::issue_token` | 用例：JWT `hidden=True`；`room_visits` 恰好一条开启记录；房间详情 `memberCount` 不变、成员列表无超管 | 后端侧通过；**真机 2 浏览器待 cp-7** |
+| E3 | 房主能力 | `assert_room_role`/`assert_manager_role` 超管旁路（`services/rooms.py`） | 用例 `test_superadmin_kicks_and_ends_other_peoples_room`（踢人 + 结束他人房间 200、`livekitApplied` 打桩为真、房内系统消息留下）+ `test_superadmin_sees_pending_requests_of_foreign_room`（待批可见且列表 200） | 通过（后端）；真机复核待 cp-7 |
+| E4 | 不计入人数 | 超管不写 `room_members`（`room_visits` 旁路） | 用例 `test_superadmin_enters_full_room_while_stranger_cannot`：在册 8/8 时超管取票 200 且 `memberCount` 恒 8；既有满员用例（409 `ROOM_FULL`）全绿未回归 | 通过 |
+| E5 | 管理后台三列表 | `backend/app/repositories/admin.py`、`services/admin.py`、`routers/admin.py` | 用例 `test_admin_api.py` 9 条：房间列表（房主名/人数/待批/纪要状态、`q` 过滤、`status` 过滤、`limit/offset` 分页）、用户列表（角色/心跳/`online_only=1` 过滤）、纪要列表（房间标题/字数）、审计初始为空 | cp-4 通过（真机页面待 cp-6） |
+| E6 | 管理后台动作 + 审计 | `services/admin.py::end_room/delete_room/regenerate_summary` + `repositories/admin.py::insert_audit/get_room_snapshot` | 用例：结束他人房间 200 且 `room.end` 审计 + 房内「房间已结束」；硬删 200（`deleted/livekitApplied`）、房间行消失、消息级联删、审计 `detail.snapshot` 保留标题与消息数；重生纪要 201 + `room.summary_regenerate` 审计；未知房间 404 且不写审计 | cp-4 通过（后台页面交互待 cp-6） |
 | E7 | 大屏聊天（500 字 / 限流 / 落库） | 待填 | 待填 | 待填 |
 | E8 | SSE 通道与兜底 | 待填 | 待填 | 待填 |
 | E9 | 管理动作留痕 | 待填 | 待填 | 待填 |
-| E10 | 超管音频不进转写 | 待填 | 待填 | 待填 |
+| E10 | 超管音频不进转写 | `agents/transcriber.py::_maybe_start`（`lg-role` 跳过）+ Token 无发布权限 | 代码事实：超管 Token `canPublish=False`（无音频轨 → worker 的 `_has_audio` 已挡）+ `lg-role` 双保险；pytest 182 无回归 | 代码侧通过；真机（超管开麦 → 无转写）待 cp-7 |
 | E11 | 门禁与视觉对账 | 待填 | 待填 | 待填 |
 | E12 | 文档 = 代码 | 待填（cp-7 定稿） | 覆盖矩阵已按 cp 逐格更新（cp-2：实现页首版 / ADR-0024 landed） | 进行中 |
-| E13 | 超管只管理、不发布 | 待填（cp-3：Token grants + 界面无设备控件） | 待填 | 未开始 |
+| E13 | 超管只管理、不发布 | Token 侧：`services/rooms.py::issue_room_token` 超管分支；界面侧：`RoomLivePage`（cp-6） | 用例断言 `canPublish=False`/`canPublishData=False`/`roomAdmin` 非真 | 后端侧通过；界面「无设备控件」待 cp-6 + cp-7 截图 |
 | E14 | 在线心跳 | `backend/app/api/routers/presence.py`、`services/presence.py`、`config.py::presence_online_seconds`；`frontend/src/hooks/usePresenceBeat.ts`、`api/presence.ts`、`App.tsx` | 用例 `test_presence_api.py` 4 条（未登录 401 / 上报后 `last_seen_at` 前进且计入 `online_user_ids` / 600 秒前的心跳判离线 / 纯函数窗口）；`pytest` 174 passed | cp-2 通过（真机数字待 cp-7：浏览器 Network 里 60 秒一次的 `/api/presence`） |
 
 ## 2. 规则核对（AGENTS.md / docs/04-style/）

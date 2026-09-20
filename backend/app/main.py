@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.errors import register_error_handlers
+from app.api.routers.admin import router as admin_router
 from app.api.routers.auth import router as auth_router
 from app.api.routers.room_extras import router as room_extras_router
 from app.api.routers.invites import router as invites_router
@@ -43,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def register_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix="/api")
+    app.include_router(admin_router, prefix="/api")   # r012：管理后台（仅超管）
     app.include_router(rooms_router, prefix="/api")
     app.include_router(room_extras_router, prefix="/api")
     app.include_router(summary_router, prefix="/api")

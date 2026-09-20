@@ -243,7 +243,7 @@ def regenerate_summary(conn, actor, room_id) -> SessionSummaryVO
 | 方法 | 路径 | 出参 | 依据 |
 | --- | --- | --- | --- |
 | GET | `/admin/rooms?status=&q=&limit=&offset=` | `{ items, total, limit, offset }` | E5 |
-| GET | `/admin/users?q=&onlineOnly=&limit=&offset=` | 同上 | E5 |
+| GET | `/admin/users?q=&online_only=&limit=&offset=` | 同上 | E5 |
 | GET | `/admin/summaries?status=&limit=&offset=` | 同上 | E5 |
 | GET | `/admin/audit?action=&limit=&offset=`（Q7① 才做） | 同上 | E6 |
 | POST | `/admin/rooms/{room_id}/end` | `RoomVO` | E6 |

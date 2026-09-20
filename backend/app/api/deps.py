@@ -17,6 +17,7 @@ from app.repositories.users import get_user_by_id
 from app.schemas.auth import UserVO
 from app.security.session import COOKIE_NAME, read_session
 from app.services.auth import to_vo
+from app.services.roles import assert_superadmin
 
 
 def db_conn() -> Iterator[Connection]:
@@ -42,3 +43,11 @@ def current_user(user: Optional[UserVO] = Depends(current_user_optional)) -> Use
     if user is None:
         raise AppError(ERR_UNAUTHORIZED, "请先登录", status=401)
     return user
+
+
+def current_superadmin(user: UserVO = Depends(current_user)) -> UserVO:
+    """管理后台端点用（r012）：未登录 401，非超管 403 `FORBIDDEN`。
+
+    判据唯一入口 `services/roles.py`（ADR-0024 D1/D4）；前端只负责显示入口，不放宽此处。
+    """
+    return assert_superadmin(user)
