@@ -25,7 +25,7 @@ updated: 2026-09-20
 | E8 | SSE 通道与兜底 | `services/events.py`、`routers/events.py`、`hooks/useEventStream.ts` | 用例：路由存在、`text/event-stream` + `no-store` + `X-Accel-Buffering: no`、首帧 `retry: 3000`、publish → `event: notify` + `{type,payload}`、`: ping` 编码、订阅上限 503、**跨线程广播（新增回归用例）**。**真机跨客户端**：另一账号（host@example.com）经 HTTP 发言 → 浏览器面板**未刷新**即出现该条（SSE → invalidate → HTTP 拉真相）；修缺陷后复验：SSE 挂起中连发 3 条 → 3 帧到达且 `/api/auth/me` 仍 **0.02s** 返回 | **通过（含 cp-7 修缺陷后复验）** |
 | E9 | 管理动作留痕 | 房内系统消息 + `admin_audit` | 用例断言同上；管理动作消息在房内聊天栏落库（`kind='system'`） | **通过** |
 | E10 | 超管音频不进转写 | `agents/transcriber.py::_maybe_start`（`lg-role` 跳过）+ Token 无发布权限 | 代码事实 + 用例：超管 Token `canPublish=false`（无音频轨 → worker 的 `_has_audio` 已挡），`lg-role` 为双保险 | **代码侧通过**；真机（超管开麦 → 无转写）因「超管根本无发布权限」而**不可发生**，故不设真机项 |
-| E11 | 门禁与视觉对账 | — | `pytest` **201 passed**；`tsc --noEmit` exit 0；`npm run build` exit 0（2022 modules，JS 984.19 kB / gzip 278.09 kB）；视觉五组见 §4 | **通过（视觉五组见 §4，其中降级复测为静态核对）** |
+| E11 | 门禁与视觉对账 | — | 台本逐项自检（cp-8b/8c）：`verify-runbook-ui.py` **PASS 28/28**（四角色文案控件）、`verify-runbook-flow.py` **PASS 18/18**（真浏览器跑 S2→S8 + 大屏跨端）；`pytest` **202 passed**；`tsc --noEmit` exit 0；`npm run build` exit 0（2022 modules，JS 984.19 kB / gzip 278.09 kB）；视觉五组见 §4 | **通过（视觉五组见 §4，其中降级复测为静态核对）** |
 | E12 | 文档 = 代码 | 需求单 / design / changes / review；模块实现页 + 功能页；教学两页；`04-style` §12.4；ADR-0024/0025 | 覆盖矩阵无 `planned` 残留（§3）；教学两页已落并有索引行 | **通过** |
 | E13 | 超管只管理、不发布 | `issue_room_token` 超管分支；`DeviceBar.superadminMode`；`useLocalDeviceState(publishDevices=false)` | 应用内取票 claims：`canPublish=false` / `canPublishData=false` / `roomAdmin` 非真；真机交流页：控制坞只有「管理视角 · 隐身」+「离开 / 结束房间」，**无**麦克风 / 摄像头 / 共享 / 举手控件（截图 `%TEMP%\lg_r012\cp7-superadmin-room.png`）；**LiveKit 服务端**该参与者 `canPublish=false / canPublishData=false / hidden=true / tracks=[]`——媒体层也发不出去 | **通过** |
 | E14 | 在线心跳 | `routers/presence.py`、`services/presence.py`、`hooks/usePresenceBeat.ts` | 用例 4 条（未登录 401 / 上报后 `last_seen_at` 前进且计入 `online_user_ids` / 600 秒前的判离线 / 纯函数窗口）；真机：面板「1 人在线」与绿点随心跳正确显示 | **通过** |
@@ -69,6 +69,17 @@ updated: 2026-09-20
 | 截图 | 桌面（工具浏览器 1243×约 1000） | 3 张落 `%TEMP%\lg_r012\`：`cp7-admin-rooms.png`、`cp7-admin-with-global-panel.png`、`cp7-superadmin-room.png`（**截图按仓库惯例不入库**，与 r004~r010 的 `%TEMP%\lg_rXXX` 一致） | 通过 |
 | 零 emoji / 单一图标库 | `git grep` emoji 区间 / `react-icons|@heroicons|fontawesome|feather` | 均 **0 命中** | 通过 |
 | 几何量测 | `document.documentElement.scrollWidth === clientWidth`；后台表格容器 `scrollWidth/clientWidth` | 页面 1243/1243；表格容器 1070/1070（**无横向溢出**）；面板展开时主内容未被遮挡（面板 `position: fixed` 右侧） | 通过 |
+
+### 4.0 台本逐项自检（cp-8b/8c，三份脚本）
+
+| 脚本 | 覆盖 | 实测 |
+| --- | --- | --- |
+| `backend/scripts/verify_r012_superadmin_invisible.py` | 超管隐身交叉验证（两隔离 Chrome + LiveKit 服务端参与者权限）+ reduced-motion 强制模拟 | **PASS 17/17** |
+| `frontend/scripts/verify-runbook-ui.py` | 台本点名的**按钮与文案**：未登录 / 房主 / 参与者 / 超管四角色（含后台八列表头、三动作、删除二次确认、超管只读控制坞） | **PASS 28/28** |
+| `frontend/scripts/verify-runbook-flow.py` | 台本**行为流**：建房 → 申请 → 批准自动进房 → 群聊 → 举手给焦点 → 邀请码 → 移出 → 结束 → 大屏跨端 | **PASS 18/18** |
+
+台本自检顺带修掉 3 个真缺陷：交流页「大屏」按钮无动作（cp-8）、**SSE 订阅占满连接池**（cp-8b，9 条流打满整站）、
+**系统消息只有 F5 才出现**（cp-8c）。另用超管 `DELETE /api/admin/rooms/{id}` 真机删掉一个测试房：返回 `{deleted: true, livekitApplied: false}` 且 `admin_audit` 落一条 `room.delete`（E10 的删除动作由此获得真实执行证据）。
 
 ## 4.1 真机交叉验证怎么复跑（cp-7b 新增）
 

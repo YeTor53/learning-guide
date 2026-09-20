@@ -242,9 +242,16 @@ def pick_rooms() -> tuple[str, str]:
 
     init_pool(load_settings().database_url)
     with get_conn() as conn:
+        # 房主房要选**有别的成员**的：成员 tab 的「移出 / 设为协管 / 给焦点」只在有别人时才渲染
         host_room = conn.execute(
-            """SELECT r.id FROM rooms r JOIN users u ON u.id = r.host_id
-               WHERE r.status='active' AND u.email=%s ORDER BY r.created_at DESC LIMIT 1""",
+            """SELECT id FROM (
+                   SELECT r.id,
+                          (SELECT count(*) FROM room_members m WHERE m.room_id = r.id) AS seats,
+                          r.created_at
+                   FROM rooms r JOIN users u ON u.id = r.host_id
+                   WHERE r.status='active' AND u.email=%s
+               ) t
+               ORDER BY (t.seats >= 2) DESC, t.created_at DESC LIMIT 1""",
             (HOST_EMAIL,)).fetchone()
         free_room = conn.execute(
             """SELECT r.id FROM rooms r
@@ -352,10 +359,18 @@ async def main(argv: list[str] | None = None) -> int:
                       all(has(d1, t) for t in ("讨论", "成员", "邀请")),
                       f"→ tabs {[b for b in d1['buttons'] if b][:10]}")
                 await set_panel_tab(user, "成员")
+                # 名册行要等名册接口/广播到位（3 秒轮询），别在加载中就断言
+                rows_ready = await wait_until(
+                    user,
+                    "[...document.querySelectorAll('aside.live-drawer button')].some(b => b.textContent.includes('移出'))",
+                    15)
+                if not rows_ready:
+                    print("  [!] 未等到名册行，抽屉当时的文案：",
+                          (await user.js("((document.querySelector('aside.live-drawer')||{}).innerText||'（没有抽屉）').replace(/\\s+/g,' ').slice(0,220)")))
                 d2 = await probe(user)
                 check("抽屉·成员 tab：移出 / 设为协管 / 给焦点",
-                      all(has(d2, t) for t in ("移出", "设为协管")),
-                      f"→ 缺 {[t for t in ('移出','设为协管','给焦点') if not has(d2, t)] or '无'}")
+                      rows_ready and all(has(d2, t) for t in ("移出", "设为协管")),
+                      f"→ 名册行到位={rows_ready}；缺 {[t for t in ('移出','设为协管','给焦点') if not has(d2, t)] or '无'}")
                 await set_panel_tab(user, "邀请")
                 d3 = await probe(user)
                 # 两种合法状态：还没生成码（生成邀请码 + 有效期 + 可用次数）／已有码（码行 + 复制链接）
