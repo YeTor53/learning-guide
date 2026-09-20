@@ -16,6 +16,7 @@ updated: 2026-09-20
 | cp | 内容 | 状态 | 提交 | 证据 |
 | --- | --- | --- | --- | --- |
 | cp-r010-0 | 阶段 1 文档（需求单 + 函数级设计 + ADR-0022 + 调研 01/02） | **完成 2026-09-20** | `941046f`（tag `cp-r010-0` 由 r009.5 补打） | — |
+| cp-r010-0b | **阶段 1 契约补齐**：design 加 §3.2 视觉契约（3 个新令牌 / 动效清单 / 界面文案 / 一次视觉验收动作）+ §5 教学契约；需求单加 §2.1 界面口径卡七项；design 状态 `approved` → **`draft`（等你读完再批）** | **完成 2026-09-20** | 见 cp-0b 提交 | 契约核对（见 §3.0） |
 | cp-r010-1 | 迁移 009 + `services/stt.py`（唯一出口、可打桩）+ `repositories/transcripts.py` + 上传/列表路由 + 用例 | **完成 2026-09-20**（含 CR r010-01 依赖处置：装 `python-multipart==0.0.32`） | 见 cp-1 提交 | E1/E2/E3 |
 | cp-r010-2 | 三源合一：`build_conversation` + `GET /conversation` + 前端 `ConversationPanel` | planned | — | E4 |
 | cp-r010-3 | 前端采集：`useTranscription`（默认开启 / 8 秒分段 / 静音跳过 / 关闭即停）+ 告知条 + 开状态接口 | planned | — | E5 |
@@ -28,8 +29,18 @@ updated: 2026-09-20
 | --- | --- | --- | --- |
 | 1 | 「r010」 | 澄清回答（W2：点轮次名＝开工） | — |
 | 2 | （cp-1 撞依赖门禁后上报） | 阻塞上报 → CR r010-01 | `cr-01.md`（超时 defaulted → 已按建议值执行） |
+| 3 | 「1 设计我都没看看完回复」 | 补充约束：Q1=①（补两份契约）；Q2=**设计批准延后**（你还没读） | 设计状态回 `draft`；界面口径卡 + 视觉契约 + 教学契约（cp-0b）；redirect-01 补 §9 批复台账但**保持 `proposed`** |
 
 ## 3. 实测证据
+
+### 3.0 cp-0b 契约补齐（2026-09-20 实测核对）
+
+- **新增令牌真的是新增**：`--speech-bar-color` / `--speech-icon-size` / `--transcribe-notice-ms` 在 `frontend/src` 命中 **0**；
+- **复用令牌真的存在**：`--panel-strong` / `--line-soft` / `--chat-body-size` / `--chat-bubble-max` / `--msg-enter` / `--t-slow` / `--ease` 均在 `global.css` 有定义；
+- **动效不是新造的**：转写气泡复用 `.chat-bubble` 的 `animation: chat-enter var(--msg-enter) var(--ease)`（`global.css:1516`）与 `@keyframes chat-enter`（`global.css:1519`）；reduced-motion 降级由既有规则 `global.css:1562` 覆盖（`.chat-bubble { animation: none }`）；
+- **口径卡七项全有值**（含"不适用 + 理由"项：外部参考物不适用）；
+- 设计小节顺序 1~7（插入位置修正过一次：初版误把 §5 插到 §4 之前，已改正）；
+- 说明：本次只落**契约文字**，样式代码一行未动（按界面类轮次规矩：视觉契约未批不动样式）。
 
 ### 3.1 cp-1（2026-09-20 实测）
 
