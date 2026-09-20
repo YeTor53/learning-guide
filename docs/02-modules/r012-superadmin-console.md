@@ -68,7 +68,24 @@ updated: 2026-09-20
 | 进程内 pub/sub | `services/events.py`：订阅者集合 + 每连接队列（上限 `SSE_SUBSCRIBER_QUEUE_MAX`，满了**丢最旧**并记日志）；订阅者总数上限 `SSE_MAX_SUBSCRIBERS`（超了 503，不静默丢） |
 | 已知限制 | **单进程**内存广播：多进程/多机部署会漏事件（ADR-0025 D4）；前端靠 `EventSource` 自动重连 + 30 秒轮询兜底 |
 
-## 6. 端点清单（当前已落地）
+## 6. 前端（cp-6）
+
+| 文件 | 要点 |
+| --- | --- |
+| `api/admin.ts` / `api/globalChat.ts` | 后台四列表 + 三动作；大屏列表（`before_id` 游标）与发言。查询参数 snake_case、出参 camelCase |
+| `hooks/useAdmin.ts` | 四个 `useQuery`（筛选与分页进 key）+ 三个 mutation（成功后失效三列表 + 审计 + 房间列表） |
+| `hooks/useGlobalChat.ts` | `['global-messages']` 查询 + 发言 mutation；**30 秒兜底轮询**（`GLOBAL_CHAT_POLL_MS`，前台才跑） |
+| `hooks/useEventStream.ts` | `EventSource('/api/events')`：`type` → `queryKey` 映射表（`global_message` → `['global-messages']`）；断线由浏览器自动重连 |
+| `components/GlobalChatDrawer.tsx` | 右侧可收起面板（Q11=2）：Esc 收起、新消息滚底、未登录只读 + 去登录、自己消息靠右 |
+| `components/admin/Admin*Table.tsx` | 四张纯展示表（房间/用户/纪要/审计）；动作回调由页面持有（行内二次确认） |
+| `pages/AdminPage.tsx` | `/admin`：四分区、搜索、只看在线、分页、动作提示；401 → 去登录（带 `returnTo=/admin`）、403 → 「只有管理员能进这里」 |
+| `App.tsx` | `/admin` 路由；全站挂 `useEventStream(true)` 与 `usePresenceBeat()`；**非交流页**挂 `GlobalChatDrawer`（交流页已有右抽屉，避免双抽屉） |
+| `NavBar.tsx` | 顶栏「大屏」开合按钮（`aria-expanded`）；管理入口**不放顶栏**（Q12=2） |
+| `SideBar.tsx` | 「管理后台」项**仅超管可见**（`user.role === 'superadmin'`） |
+| `RoomLivePage.tsx` / `DeviceBar.tsx` / `LiveStage.tsx` / `useLocalDeviceState.ts` | 超管视角：顶部提示条 + 控制坞只留「管理视角 · 隐身」标识与「离开 / 结束房间」；不自动开麦（`publishDevices=false`）；`excludeIdentity` 让超管自身不进舞台 |
+| `api/rooms.ts` | 新增 `ViewerRole = Role \| 'superadmin'`（`myRole` 的类型），`Role` 仍是成员角色 |
+
+## 7. 端点清单（当前已落地）
 
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
@@ -85,7 +102,7 @@ updated: 2026-09-20
 | POST | `/api/global-messages` | 登录 | 发言（1~500 字；超限 429 `RATE_LIMITED`） |
 | GET | `/api/events` | 任意（含未登录） | SSE 通知流（`text/event-stream`，只推通知） |
 
-## 7. 用例与实测
+## 8. 用例与实测
 
 | 项 | 命令 / 用例 | 实测 |
 | --- | --- | --- |
@@ -94,15 +111,16 @@ updated: 2026-09-20
 | 提权脚本 | `grant_superadmin.py --email host@example.com` → `--revoke`；`--email nobody@example.com` | `user → superadmin（影响 1 行）` / `superadmin → user（影响 1 行）` / 退出码 2「找不到账号」（实测原样） |
 | 前端 | `npx tsc --noEmit` | exit 0 |
 
-## 8. 本页尚缺（随增量补齐，见需求单 §9 cp 切分）
+## 9. 本页尚缺（随增量补齐，见需求单 §9 cp 切分）
 
-- cp-6：前端（`/admin` 页、右侧大屏抽屉、仅超管可见的侧栏入口、超管管理视角）。
+- cp-7：门禁复跑、2 浏览器真机取证（隐身 / 大屏实时到达）、视觉对账五组、review 定稿。
 
-## 9. 变更记录
+## 10. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1（cp-2） | 建页：身份（`users.role` + 提权脚本 + 演示超管 + 迁移 011/012 对象）与在线口径（`POST /api/presence` + 前端心跳 + 判据窗口） | 需求单 §10.1（Q1/Q14/Q15）、design §1/§2.6、ADR-0024 |
+| 2026-09-20 | v5（cp-6） | 追加 §6 前端逐文件（管理页 / 右侧大屏抽屉 / 入口 / 超管视角 / ViewerRole 类型）；补 §5 大屏与 SSE 的前端调用点 | 需求单 §10.1（Q11/Q12）、design §5 |
 | 2026-09-20 | v4（cp-5） | 追加 §5 大屏聊天与 SSE：存储与可见性、在线点、限流（库计数）、落库→通知顺序、SSE 帧协议、进程内 pub/sub 与单进程限制；ADR-0025 落地 | 需求单 §10.1（Q13/Q11/Q14）、design §4、ADR-0025 |
 | 2026-09-20 | v3（cp-4） | 追加 §4 管理后台：三列表（房间/用户/纪要 + 审计）、三动作（结束/硬删/重生纪要）、`current_superadmin` 鉴权、审计词表与删房快照、查询参数口径 | 需求单 §10.1（Q5/Q6/Q7/Q16）、design §3、ADR-0024 D6 |
 | 2026-09-20 | v2（cp-3） | 追加 §3 隐身进房与旁路治理：hidden/只读 Token、`room_visits`、两处旁路收敛、`effective_role`、离开/结束的访问收口、worker 跳过超管 | 需求单 §10.1（Q2/Q3/Q4/Q8）、design §2.2~§2.4、ADR-0024 D2~D5 |

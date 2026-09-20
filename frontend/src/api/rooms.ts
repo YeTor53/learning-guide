@@ -18,6 +18,8 @@ export type Topic =
   | 'machine-learning'
   | 'custom'
 export type Role = 'host' | 'moderator' | 'participant'
+/** r012：**看房间的人**的身份 —— 超管不是成员，但视角上需要区分（`myRole='superadmin'`）。 */
+export type ViewerRole = Role | 'superadmin'
 export type ExitReason = 'self_leave' | 'kicked' | 'room_ended'
 
 export interface Room {
@@ -34,12 +36,12 @@ export interface Room {
   hostName: string
   memberCount: number
   pendingCount: number
-  myRole: Role | null
+  myRole: ViewerRole | null
   myRequestStatus: string | null
   /** 我在这间房的待批申请 id（本人可见；撤回用——r007 修前走管理权限接口，申请人一律 403）。 */
   myRequestId: string | null
   /** 我在本房的角色（含已失效成员身份）——房间结束后 myRole 为空，但纪要等追溯动作仍要用（r008）。 */
-  myRoleAny?: Role | null
+  myRoleAny?: ViewerRole | null
   createdAt: string
   endedAt: string | null
 }
@@ -122,10 +124,11 @@ export const TOPIC_OPTIONS: { value: Topic; label: string; hint: string }[] = [
   { value: 'custom', label: '自定义', hint: '自己写一个主题名' },
 ]
 
-export const ROLE_LABEL: Record<Role, string> = {
+export const ROLE_LABEL: Record<ViewerRole, string> = {
   host: '房主',
   moderator: '协管',
   participant: '成员',
+  superadmin: '管理员',
 }
 
 export const EXIT_REASON_LABEL: Record<ExitReason, string> = {

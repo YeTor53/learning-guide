@@ -25,6 +25,7 @@ updated: 2026-09-20
 | cp-r012-5 | | 大屏聊天 + SSE 后端 + 限流 + ADR-0025 + 用例 | | E7/E8 |
 | cp-r012-5 | 本次提交 | 全服大屏聊天（`global_messages` + 服务/仓储/路由 + 限流 429`RATE_LIMITED`）+ SSE 通知通道（`GET /api/events` + 进程内 pub/sub + 6 项可调配置）+ ADR-0025 + 用例 9 条 | pytest **200 passed** / tsc 未跑（未动前端） | E7/E8 |
 | cp-r012-6 | | 前端 `/admin` + 大屏面板 + 入口 + 超管视角 + 视觉参数区 + 教学两页 + 模块功能页 | | E5/E9/E12 |
+| cp-r012-6 | 本次提交 | 前端落地：`api/{admin,globalChat}.ts`、`hooks/{useAdmin,useGlobalChat,useEventStream}.ts`、`GlobalChatDrawer`、`components/admin/` 四表、`AdminPage`、`/admin` 路由、顶栏「大屏」开关、侧栏「管理后台」（仅超管）、超管交流页视角（无设备控件 / `publishDevices=false` / `excludeIdentity`）、`ViewerRole` 类型、`global.css` r012 参数区 + 教学两页 + 功能页 + 04-style 条目 | `tsc --noEmit` exit 0；`npm run build` exit 0（2022 modules，`dist/assets/index-C8HitVdF.js` 984.19 kB / gzip 278.09 kB）；令牌扫描 0 命中 / emoji 0 / 单一图标库 0 违规 | E5/E9/E12/E13（界面侧） |
 | cp-r012-7 | | 门禁复跑 + 真机取证 + 视觉对账 + 文档回填 + review 定稿 | | E11/E12 |
 
 ## 2. 用户消息台账（vibecoding 8.1 判据：每条用户消息一行回执）
@@ -71,4 +72,6 @@ updated: 2026-09-20
 | 2026-09-20 | cp-3 | 超管隐身进房（hidden/只读 Token + `room_visits`）+ 两处旁路收敛 + `effective_role` + worker 跳过超管；用例 182 passed | 需求单 §9 cp-3、§10.1（Q2/Q3/Q4/Q8）、ADR-0024 D2~D5 |
 | 2026-09-20 | cp-4 | 管理后台后端（三列表 + 三动作 + 审计 + 鉴权依赖）；用例 191 passed；查询参数定 snake_case（与既有 `mine=` 同口径，design §3.3 同步修正） | 需求单 §9 cp-4、§10.1（Q5/Q6/Q7/Q16）、ADR-0024 D6 |
 | 2026-09-20 | cp-5 | 大屏聊天 + SSE 通知通道 + 限流 + ADR-0025；用例 200 passed；SSE 载荷口径定案（`type`+`payload` 同帧） | 需求单 §9 cp-5、§10.1（Q11/Q13/Q14）、ADR-0025 |
+| 2026-09-20 | 交接 | 另一会话在 `NavBar.tsx` / `SideBar.tsx` 的未提交改动（邀请码入口移入侧边栏，属 r011）由本分支先落盘为独立提交，再在其上做 cp-6，避免两份改动混进同一个提交 | 用户 2026-09-20 选择「现在就一并改」 |
+| 2026-09-20 | cp-6 | 前端落地（见 cp 台账行）+ 教学两页 + 功能页 + 04-style §12.4；`tsc`/`build` 绿、令牌与 emoji 扫描 0 命中 | 需求单 §9 cp-6、§10.1（Q11/Q12/Q13/Q14）、design §5/§9 |
 | 2026-09-20 | cp-4b | **补交**：`services/presence.py::online_since()`——cp-4 提交时漏登记该文件，导致 `GET /api/admin/users?online_only=1` 在 cp-4 树里引用了不存在的函数（本地工作区有、提交里没有）。教训记在此：**冷启动核对**（提交后 `git status` 必须为空，本轮 cp-4 曾遗留一个未登记的已改文件） | cp-4 自审发现 |

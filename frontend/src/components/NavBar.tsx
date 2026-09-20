@@ -1,4 +1,4 @@
-import { Menu } from 'lucide-react'
+import { Menu, MessagesSquare } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import useHideOnScroll from '../hooks/useHideOnScroll'
@@ -6,6 +6,9 @@ import { useSession } from '../hooks/useSession'
 
 interface Props {
   onToggleCollapsed: () => void
+  /** r012：右侧「大屏」面板的开合（Q11=2：Copilot 式右侧侧栏）。 */
+  chatOpen?: boolean
+  onToggleChat?: () => void
 }
 
 const CRUMBS: { test: (path: string) => boolean; label: string }[] = [
@@ -24,7 +27,7 @@ const CRUMBS: { test: (path: string) => boolean; label: string }[] = [
  * 顶栏：折叠开关 + 品牌 + 当前区块；**右上角是登录 / 注册入口（无边框文字，第一版的位置）**。
  * 个人信息与登出在侧边栏左下角（ADR-0009）。
  */
-export default function NavBar({ onToggleCollapsed }: Props) {
+export default function NavBar({ onToggleCollapsed, chatOpen = false, onToggleChat }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, isLoading } = useSession()
@@ -48,6 +51,19 @@ export default function NavBar({ onToggleCollapsed }: Props) {
       </div>
 
       <div className="top-actions">
+        {/* r012：右侧「大屏」面板开关（常规页面常驻；交流页不挂） */}
+        {onToggleChat && (
+          <button
+            className={`link-plain top-chat-toggle${chatOpen ? ' on' : ''}`}
+            onClick={onToggleChat}
+            aria-expanded={chatOpen}
+            aria-controls="global-chat-drawer"
+            title="全服大屏：所有人的公开聊天（右侧面板）"
+          >
+            <MessagesSquare size={16} strokeWidth={1.75} />
+            大屏
+          </button>
+        )}
         {/* r011：入口按你的口径放在**侧边栏**（见 SideBar.tsx 的「邀请码加入」）—— 顶栏只留登录 / 注册 / 用户名 */}
         {isLoading ? (
           <span className="dim" style={{ fontSize: 13 }}>

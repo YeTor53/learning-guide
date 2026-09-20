@@ -21,6 +21,8 @@ updated: 2026-09-20
 | `r009.5-r008-r009-user-guide.md` | 使用者 / 演示 | r008 + r009（+ r009.5 补正） | 讨论纪要怎么出、限时邀请怎么发、焦点怎么给与退（含实测数字） |
 | `r010-transcription-user-guide.md` | 使用者 / 演示 | r010 | 说的话怎么变成文字并进纪要；演示前要起哪个进程、免费档限制 |
 | `r009.5-stage-motion-verify-dev.md` | 开发者 | r009 + r009.5 | 几何/动效两个校验脚本怎么跑、令牌改哪里、判据与三条踩坑 |
+| `r012-admin-and-global-chat.md` | 使用者 / 演示 | r012 | 管理后台怎么用（四分区 + 三动作）、大屏怎么用、隐身在两端长什么样 |
+| `r012-superadmin-dev-guide.md` | 开发者 | r012 | 加一个管理动作 / 加一类 SSE 通知各改哪几处、隐身三道拦线、四个实测坑 |
 **顺序建议**：首次跑起来 → `r002-livekit-setup.md`；做演示 → `r002-livekit-demo.md`；动手改代码 → `r002-livekit-dev-guide.md`；换机器/重装数据库 → `r001-postgres-setup.md`。
 
 **尚未覆盖（2026-09-20 r009.5 清点）**：r006（界面同步与优化）、r007（主题与首屏）两轮的**使用者 / 开发者教学页仍缺**——r009.5 只补了 r008/r009 两轮（见 `docs/00-requirements/r009.5-debt-backfill.md` §2），该缺口登记在 `docs/README.md` §5 与 roadmap §9。

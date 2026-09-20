@@ -12,10 +12,15 @@ export interface LocalDeviceState {
   toggleCam: () => Promise<void>
 }
 
-export function useLocalDeviceState(room: Room, status: string): LocalDeviceState {
-  const [micEnabled, setMicEnabled] = useState(true)
+/**
+ * @param publishDevices 是否允许发布设备（默认 true）。r012：超管的 Token 没有发布权限
+ *   （`canPublish=false`），传 false 时不自动开麦/开摄像头，也不重放记忆值——避免「界面显示已开、
+ *   实际上被服务端拒绝」的假状态（见 ADR-0024 D3）。
+ */
+export function useLocalDeviceState(room: Room, status: string, publishDevices = true): LocalDeviceState {
+  const [micEnabled, setMicEnabled] = useState(publishDevices)
   const [camEnabled, setCamEnabled] = useState(false)
-  const memory = useRef({ mic: true, cam: false })
+  const memory = useRef({ mic: publishDevices, cam: false })
 
   const toggleMic = useCallback(async () => {
     const next = !memory.current.mic
@@ -31,15 +36,16 @@ export function useLocalDeviceState(room: Room, status: string): LocalDeviceStat
     await room.localParticipant.setCameraEnabled(next)
   }, [room])
 
-  // 首次连上：按默认值发布轨道（麦克风开、摄像头关）
+  // 首次连上：按默认值发布轨道（麦克风开、摄像头关）；超管不发布（publishDevices=false）
   useEffect(() => {
-    if (status !== 'connected') return
+    if (!publishDevices || status !== 'connected') return
     void room.localParticipant.setMicrophoneEnabled(memory.current.mic)
     void room.localParticipant.setCameraEnabled(memory.current.cam)
-  }, [room, status])
+  }, [room, status, publishDevices])
 
   // 重连成功：按记忆值重放（§8.10）
   useEffect(() => {
+    if (!publishDevices) return
     const onReconnected = () => {
       void room.localParticipant.setMicrophoneEnabled(memory.current.mic)
       void room.localParticipant.setCameraEnabled(memory.current.cam)
@@ -48,7 +54,7 @@ export function useLocalDeviceState(room: Room, status: string): LocalDeviceStat
     return () => {
       room.off(RoomEvent.Reconnected, onReconnected)
     }
-  }, [room])
+  }, [room, publishDevices])
 
   return { micEnabled, camEnabled, toggleMic, toggleCam }
 }

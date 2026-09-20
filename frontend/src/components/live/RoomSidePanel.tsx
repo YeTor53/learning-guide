@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { Check, Copy, Crosshair, Hand, MoreHorizontal, ShieldCheck, ShieldOff, UserMinus, X } from 'lucide-react'
 
 import JoinRequestList from '../JoinRequestList'
-import type { JoinRequest, Member, Room, Role } from '../../api/rooms'
+import type { JoinRequest, Member, Room, Role, ViewerRole } from '../../api/rooms'
 import { EXIT_REASON_LABEL, ROLE_LABEL } from '../../api/rooms'
 import type { ChatState } from '../../hooks/useChatMessages'
 import type { SpeechLine } from '../../hooks/useTranscription'
@@ -33,7 +33,7 @@ interface Props {
 
   room: Room
   members: Member[]
-  myRole: Role | null
+  myRole: ViewerRole | null
   onlineIds: string[]
   requests: JoinRequest[]
   busyId: string | null

@@ -1947,3 +1947,119 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   .chat-bubble-speech { animation: none; }
 }
 
+/* ==========================================================================
+   r012 · 全服大屏（右侧可收起面板）与管理后台
+   规范来源：docs/02-modules/r012-superadmin-console.md、ADR-0025
+   参数区（单点可调）：面板宽度 / 列表高度 / 表格密度都在下面的 --gc-* 与 --ad-*
+   ========================================================================== */
+:root {
+  /* 右侧大屏面板（Copilot 式侧栏） */
+  --gc-w: 360px;              /* 展开宽度（建议 320~420） */
+  --gc-h: min(62vh, 560px);   /* 列表最大高度 */
+  --gc-offset: 16px;          /* 与视口右缘的距离 */
+  --gc-row-gap: var(--s-2);
+  /* 管理后台表格密度 */
+  --ad-pad-y: 10px;
+  --ad-pad-x: 12px;
+}
+
+/* ---------- 顶栏「大屏」开关 ---------- */
+.top-chat-toggle { display: inline-flex; align-items: center; gap: 6px; }
+.top-chat-toggle.on { color: var(--accent); }
+
+/* ---------- 右侧大屏面板 ---------- */
+.gc-drawer {
+  position: fixed;
+  top: calc(var(--s-6) + var(--s-4));
+  right: var(--gc-offset);
+  width: var(--gc-w);
+  max-width: calc(100vw - var(--s-5));
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--ink-800) 92%, transparent);
+  box-shadow: 0 20px 48px rgb(0 0 0 / 0.42);
+  z-index: 40;
+  opacity: 0;
+  transform: translateX(calc(100% + var(--gc-offset)));
+  pointer-events: none;
+  visibility: hidden;
+  transition: transform var(--t-base) var(--ease), opacity var(--t-base) var(--ease);
+}
+.gc-drawer.on {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+  visibility: visible;
+}
+.gc-drawer-head { display: flex; align-items: center; gap: var(--s-2); }
+.gc-title { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.gc-meta { color: var(--text-mute); font-size: 12px; flex: 1 1 auto; }
+.gc-list { max-height: var(--gc-h); row-gap: var(--gc-row-gap); }
+.gc-online-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ok); display: inline-block; margin-left: 6px;
+}
+.gc-login-hint { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.gc-login-hint p { margin: 0; }
+
+/* ---------- 交流页：超管只读标识 ---------- */
+.live-superadmin-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 10px; height: 34px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  color: var(--accent); font-size: 13px;
+}
+.live-superadmin-notice { color: var(--text-dim); }
+
+/* ---------- 管理后台 ---------- */
+.admin-page { display: flex; flex-direction: column; gap: var(--s-3); }
+.admin-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.admin-head .detail-title { margin: 4px 0; }
+.admin-tools { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.admin-search { display: inline-flex; align-items: center; gap: 6px; color: var(--text-mute); }
+.admin-search .input { min-width: 220px; }
+.admin-tabs { margin: 0; }
+.admin-notice { margin: 0; }
+.admin-guard { display: flex; flex-direction: column; gap: var(--s-2); align-items: flex-start; }
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--panel);
+}
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-table th,
+.admin-table td {
+  padding: var(--ad-pad-y) var(--ad-pad-x);
+  text-align: left;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.admin-table th { color: var(--text-mute); font-weight: 500; }
+.admin-table tbody tr:hover { background: var(--accent-soft); }
+.admin-table tbody tr:last-child td { border-bottom: none; }
+.admin-title { display: block; }
+.admin-sub { display: block; font-size: 12px; }
+.admin-actions { display: flex; align-items: center; gap: 6px; }
+.admin-confirm { display: inline-flex; align-items: center; gap: 6px; }
+.admin-pager { display: flex; align-items: center; gap: var(--s-2); justify-content: flex-end; }
+.admin-foot { margin: 0; font-size: 12px; }
+
+@media (max-width: 900px) {
+  .gc-drawer {
+    right: 0; left: 0; top: 0; bottom: 0;
+    width: auto; max-width: none;
+    border-radius: 0;
+    --gc-h: none;
+  }
+  .gc-list { max-height: none; flex: 1 1 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gc-drawer { transition: none; }
+}

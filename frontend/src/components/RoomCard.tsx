@@ -4,16 +4,17 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { ApiError } from '../api/http'
-import { ROLE_LABEL, roomsApi, type Room } from '../api/rooms'
+import { ROLE_LABEL, roomsApi, type Room, type ViewerRole } from '../api/rooms'
 import { useSession } from '../hooks/useSession'
 
 const ICON = { size: 13, strokeWidth: 1.75 } as const
 
-const ROLE_ICON = {
+const ROLE_ICON: Record<ViewerRole, React.ReactNode> = {
   host: <Crown {...ICON} />,
   moderator: <ShieldCheck {...ICON} />,
   participant: <UserRound {...ICON} />,
-} as const
+  superadmin: <ShieldCheck {...ICON} />,
+}
 
 function truncate(text: string, limit = 68) {
   return text.length > limit ? `${text.slice(0, limit)}…` : text

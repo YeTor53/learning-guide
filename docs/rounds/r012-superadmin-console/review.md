@@ -23,10 +23,10 @@ updated: 2026-09-20
 | E6 | 管理后台动作 + 审计 | `services/admin.py::end_room/delete_room/regenerate_summary` + `repositories/admin.py::insert_audit/get_room_snapshot` | 用例：结束他人房间 200 且 `room.end` 审计 + 房内「房间已结束」；硬删 200（`deleted/livekitApplied`）、房间行消失、消息级联删、审计 `detail.snapshot` 保留标题与消息数；重生纪要 201 + `room.summary_regenerate` 审计；未知房间 404 且不写审计 | cp-4 通过（后台页面交互待 cp-6） |
 | E7 | 大屏聊天（500 字 / 限流 / 落库） | `backend/app/repositories/global_chat.py`、`services/global_chat.py`、`api/routers/global_chat.py`、`schemas/global_chat.py` | 用例：未登录可读/不可发（401）；正序返回 + `before_id` 游标；`authorOnline` 随心跳变化；空串/501 字 400、500 字 201；限流第 N+1 条 429 且落库条数 == 上限 | cp-5 通过（真机面板待 cp-6/7） |
 | E8 | SSE 通道与兜底 | `backend/app/services/events.py`、`api/routers/events.py` | 用例：路由在 `/api/events`；响应头 `text/event-stream`/`no-store`/`X-Accel-Buffering: no`；首帧 `retry: 3000`；publish → `event: notify` + `{"type","payload"}`；`encode_sse(None)` 为 `: ping`；订阅上限 503；发言后发布会推事件 | cp-5 通过（前端 EventSource + 30 秒轮询兜底待 cp-6/7 真机） |
-| E9 | 管理动作留痕 | 待填 | 待填 | 待填 |
+| E9 | 管理动作留痕 | 房内系统消息（`services/rooms.py::_system_message`）+ `admin_audit`（`services/admin.py::_audit`） | 用例：超管结束/踢人在房内留下「房间已结束」「被移出房间」；后台三动作各写一条审计（含删除后仍保留的快照） | cp-4/cp-5 通过；「超管平时不留痕」的真机截图待 cp-7 |
 | E10 | 超管音频不进转写 | `agents/transcriber.py::_maybe_start`（`lg-role` 跳过）+ Token 无发布权限 | 代码事实：超管 Token `canPublish=False`（无音频轨 → worker 的 `_has_audio` 已挡）+ `lg-role` 双保险；pytest 182 无回归 | 代码侧通过；真机（超管开麦 → 无转写）待 cp-7 |
-| E11 | 门禁与视觉对账 | 待填 | 待填 | 待填 |
-| E12 | 文档 = 代码 | 待填（cp-7 定稿） | 覆盖矩阵已按 cp 逐格更新（cp-2：实现页首版 / ADR-0024 landed） | 进行中 |
+| E11 | 门禁与视觉对账 | — | cp-6 实测：`tsc --noEmit` exit 0、`npm run build` exit 0（2022 modules）；令牌扫描 0 命中（本轮 17 个改动文件，排除 `global.css` 参数区）、emoji 0、单一图标库 0 违规 | **部分**：pytest/真机/五组视觉证据在 cp-7 补齐 |
+| E12 | 文档 = 代码 | 教学页 `tutorials/r012-admin-and-global-chat.md`（使用者）+ `tutorials/r012-superadmin-dev-guide.md`（开发者）；功能页 `02-modules/r012-superadmin-console-features.md`；实现页 §6 前端；`04-style` §12.4 | 教学两页与功能页已落，索引 `tutorials/README.md` 已加两行 | 进行中（cp-7 定稿并跑教学页示例） |
 | E13 | 超管只管理、不发布 | Token 侧：`services/rooms.py::issue_room_token` 超管分支；界面侧：`RoomLivePage`（cp-6） | 用例断言 `canPublish=False`/`canPublishData=False`/`roomAdmin` 非真 | 后端侧通过；界面「无设备控件」待 cp-6 + cp-7 截图 |
 | E14 | 在线心跳 | `backend/app/api/routers/presence.py`、`services/presence.py`、`config.py::presence_online_seconds`；`frontend/src/hooks/usePresenceBeat.ts`、`api/presence.ts`、`App.tsx` | 用例 `test_presence_api.py` 4 条（未登录 401 / 上报后 `last_seen_at` 前进且计入 `online_user_ids` / 600 秒前的心跳判离线 / 纯函数窗口）；`pytest` 174 passed | cp-2 通过（真机数字待 cp-7：浏览器 Network 里 60 秒一次的 `/api/presence`） |
 
@@ -48,9 +48,9 @@ updated: 2026-09-20
 | 需求单 | `docs/00-requirements/r012-superadmin-console.md` | 本轮 |
 | 设计页 | `docs/rounds/r012-superadmin-console/design.md` | 本轮 |
 | 模块·实现页 | `docs/02-modules/r012-superadmin-console.md` | 首版 landed（cp-2：身份 + 在线），其余随 cp 补齐 |
-| 模块·功能页 | `docs/02-modules/r012-superadmin-console-features.md` | planned（cp-6） |
-| 使用者教学页 | `docs/tutorials/r012-admin-and-global-chat.md` | planned |
-| 开发者教学页 | `docs/tutorials/r012-superadmin-dev-guide.md` | planned |
+| 模块·功能页 | `docs/02-modules/r012-superadmin-console-features.md` | landed（cp-6） |
+| 使用者教学页 | `docs/tutorials/r012-admin-and-global-chat.md` | landed（cp-6） |
+| 开发者教学页 | `docs/tutorials/r012-superadmin-dev-guide.md` | landed（cp-6） |
 | ADR | `docs/03-decisions/ADR-0024-superadmin-invisible-bypass.md`、`ADR-0025-global-chat-and-sse.md` | 两个都已 landed（cp-2 / cp-5） |
 
 ## 4. 视觉对账（五组，缺一不通过）

@@ -1,4 +1,4 @@
-import { Home, PanelLeftClose, PanelLeftOpen, Plus, Ticket, UserRound, Users } from 'lucide-react'
+import { Home, PanelLeftClose, PanelLeftOpen, Plus, ShieldCheck, Ticket, UserRound, Users } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import QuoteLine from './QuoteLine'
@@ -80,6 +80,16 @@ export default function SideBar({ collapsed, onToggleCollapsed, hideToggle = fal
         <Item to="/join" label="邀请码加入" icon={<Ticket {...ICON} />} collapsed={collapsed} active={isActive('/join')} />
         {/* r011：创建房间按你的口径**放最下面**（导航列表最后一项；列表页顶部还有一个同名按钮，两处都会建房） */}
         <Item to="/rooms/new" label="创建房间" icon={<Plus {...ICON} />} collapsed={collapsed} active={isActive('/rooms/new')} />
+        {/* r012：管理后台入口（Q12=2：只放侧边栏，且**仅超管可见**；服务端仍强制鉴权） */}
+        {user?.role === 'superadmin' && (
+          <Item
+            to="/admin"
+            label="管理后台"
+            icon={<ShieldCheck {...ICON} />}
+            collapsed={collapsed}
+            active={isActive('/admin')}
+          />
+        )}
       </nav>
 
       <div className="side-spacer" />
