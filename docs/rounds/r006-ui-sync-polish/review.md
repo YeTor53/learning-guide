@@ -20,7 +20,7 @@ updated: 2026-09-19
 | E4 | 同上（`['live-room-requests', id]` 同批失效） | B（协管）门牌「待批 1」清空用时 **1.46 秒**（原 5 秒轮询） | **通过** |
 | E5 | 30 秒兜底 + 聚焦/可见性触发 | 纯 API 改库（无任何端广播）：**聚焦触发 0.22 秒**；不聚焦时 **30 秒轮询 9.8 秒**（相位决定）拉平到 `4/8` | **通过** |
 | E6 | `components/SidebarUserCard.tsx` | 默认无邮箱/id（仅头像+名字，`.side-pop` 不存在、`aria-expanded=false`）；点击展开（`role=dialog`）；键盘 `Shift+Tab` 聚焦自动展开；`Esc`、点外部关闭；窄屏 900×1000 浮窗 `popTop=150/popBottom=399/vh=1000` 在视口内 | **通过** |
-| E7 | `content/philosophy.ts` | 12 条真实语录；刷新后同日同句；`cite` = 作者（如「—— 加缪」） | **通过**（+ 人工看文案） |
+| E7 | `content/philosophy.ts` | 12 条真实语录（**cp-3 当时口径**；cp-7 起扩到 46 条 / 7 组，见 E11）；刷新后同日同句；`cite` = 作者（如「—— 加缪」） | **通过**（+ 人工看文案） |
 | E8 | `styles/global.css`（`.hero` 的 `--thinker-top`） | 页顶 `scrollY=0`：图版上沿 **60 → 110px（下移 50px ≈ 图版高 10%）**；竖屏 194 → 240（46px） | **通过** |
 | E9 | 静态扫描 + 量测 | 全仓 `alert/confirm` **0 处**；筛选条仍由 r004 cp-3 保证在首屏（本轮未动该区域） | **通过** |
 | E10 | 四条门禁 | `pytest` **111 passed** / `smoke` **PASS 40/40** / `tsc --noEmit` exit 0 / `npm run build` exit 0 | **通过** |
@@ -90,7 +90,7 @@ updated: 2026-09-19
 | 2 | 「共享中有人说话不夺焦点」 | 仍未单独实测（r004 欠账） |
 | 3 | r004 E18b（本地 livekit-server 停 8 秒） | 未做；E18c 等你跑 `reconnect-drill.bat` |
 | 4 | 演示库数据量 | 房间数已超列表默认页长（20）→ 用例已修；是否 `db_init --reset --seed` 还原仍等你一句话 |
-| 5 | 语录池 12 条 | 想加/换只改 `content/philosophy.ts` |
+| 5 | 语录池（cp-3 建 12 条 → cp-7 扩到 46 条 / 7 组，两处数字已在 E7/E11 注明口径） | 想加/换只改 `content/philosophy.ts` |
 
 ## 7. 合并指引（由人执行）
 

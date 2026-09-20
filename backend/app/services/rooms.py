@@ -174,6 +174,21 @@ def post_system_message(conn: Connection, room_id: str, actor_id: str, body: str
     _system_message(conn, room_id, actor_id, body)
 
 
+def _auto_reject_pending(conn: Connection, room: RoomRow, actor: UserVO) -> int:
+    """满员时清空该房待批申请（r011，你 2026-09-20 拍板「在等待的自动拒绝」）。
+
+    批量置 `rejected` + 一条**汇总**系统消息（0 条时不写消息）。调用点必须在房间行锁内：
+    `request_join`（满员分支）与 `approve_join_request`（满员分支）。
+    """
+    rejected = repo.reject_pending_requests(conn, room.id, actor.id, _now())
+    if rejected:
+        _system_message(
+            conn, room.id, actor.id,
+            f"房间已满（上限 {room.capacity} 人），{rejected} 条待批申请已自动拒绝",
+        )
+    return rejected
+
+
 def assert_room_active(room: Optional[RoomRow]) -> RoomRow:
     """存在否则 `NOT_FOUND`；`active` 否则 `ROOM_ENDED`（前置拦截按此顺序）。"""
     if room is None:
@@ -364,6 +379,8 @@ def request_join(conn: Connection, actor: UserVO, room_id: str, message: str) ->
         if repo.count_active_members(conn, room_id) >= room.capacity:
             # 满员：留痕（Q3「留一个消息」）+ 返回拒绝标记；事务正常提交，留痕不会被回滚
             _system_message(conn, room_id, actor.id, f"房间已满（上限 {room.capacity} 人），本次申请未通过")
+            # r011：满员时同时清空该房待批申请（「在等待的自动拒绝」），本条事务正常提交
+            _auto_reject_pending(conn, room, actor)
             return RoomFullNotice(capacity=room.capacity)
         try:
             repo.insert_join_request(conn, repo.NewJoinRequest(id=request_id, room_id=room_id, user_id=actor.id, message=message))
@@ -408,6 +425,8 @@ def approve_join_request(conn: Connection, actor: UserVO, request_id: str) -> Ap
     request = repo.get_join_request(conn, request_id)
     if request is None:
         raise AppError(ERR_NOT_FOUND, "申请不存在", status=404)
+    full_capacity: Optional[int] = None
+    member_id: Optional[str] = None
     with conn.transaction():
         room_row = repo.lock_room(conn, request.room_id)
         room = assert_room_active(room_row)
@@ -419,16 +438,22 @@ def approve_join_request(conn: Connection, actor: UserVO, request_id: str) -> Ap
             raise AppError(ERR_ALREADY_MEMBER, "该用户已在房间中", status=409)
         # r005（ADR-0016）：批准前再按在册数核一次，保证不变量「在册 ≤ capacity」（并发时由房间行锁串行）。
         if repo.count_active_members(conn, request.room_id) >= room.capacity:
-            raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {room.capacity} 人）", status=409)
-        member_id = new_id("mem")
-        repo.insert_member(
-            conn, repo.NewMember(id=member_id, room_id=request.room_id, user_id=request.user_id, role="participant")
-        )
-        repo.decide_join_request(conn, request_id, "approved", actor.id, _now())
-        _system_message(
-            conn, request.room_id, actor.id,
-            f"{repo.get_display_name(conn, request.user_id) or '有人'} 加入了房间",
-        )
+            # r011：满员 → 清空待批申请。**不在此处 raise**（raise 会让事务回滚、清理作废）：
+            # 先把清理提交，出了事务再抛 409 —— 拒绝是独立事实，不该因批准失败被撤销。
+            _auto_reject_pending(conn, room, actor)
+            full_capacity = room.capacity
+        else:
+            member_id = new_id("mem")
+            repo.insert_member(
+                conn, repo.NewMember(id=member_id, room_id=request.room_id, user_id=request.user_id, role="participant")
+            )
+            repo.decide_join_request(conn, request_id, "approved", actor.id, _now())
+            _system_message(
+                conn, request.room_id, actor.id,
+                f"{repo.get_display_name(conn, request.user_id) or '有人'} 加入了房间",
+            )
+    if full_capacity is not None:
+        raise AppError(ERR_ROOM_FULL, f"房间已满（上限 {full_capacity} 人）", status=409)
     approved = repo.get_join_request(conn, request_id)
     members = repo.list_members(conn, request.room_id, include_inactive=True)
     new_member = next((m for m in members if m.member.id == member_id), None)

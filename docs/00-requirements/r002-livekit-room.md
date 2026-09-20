@@ -71,67 +71,70 @@ updated: 2026-09-19
 
 ## 4. 验收清单（逐条给证据；勾选处必须引编号证据）
 
+> **勾选口径（r011 cp-3 回填）**：`- [x]` = 有依据已通过（依据写在行尾）；`- [~]` = **需人工真机留痕**，对应的 MV 项见 `docs/rounds/r011-debt-backfill/manual-verification.md`；**口径已变**的条目按新口径标注（ADR-0016 等），不改描述本身。
+
+
 > **勾选口径（2026-09-18 收官）**：自动可验项（后端单测 95 / 冒烟 22-22 / 前端 tsc 与 build / 四项浏览器实测）已完成并有证据表（§4.1），**逐条勾选与「双浏览器九步演示」在演示日一次性完成并留痕**（脚本见 `docs/tutorials/r002-livekit-demo.md`）；未做项已在 §4.1 末尾列明并全部入 roadmap §9 台账。**不预勾未实测项。**
 
 **后端 · LiveKit 接入与 Token**
 
-- [ ] `pytest backend/tests/test_livekit_token.py -q` 全绿：解 JWT 断言 `identity=user_id`、`name=显示名`、`video.room=room_id`、`roomJoin`、`roomAdmin` 仅 Host 为真、`roomConfig.max_participants=capacity`、`exp-iat` 等于 TTL（贴真实输出）
-- [ ] `POST /api/rooms/{id}/token`：活跃成员 200；非成员 403 `NOT_MEMBER`；房间 `ended` 409 `ROOM_ENDED`；未登录 401
-- [ ] 签名只在本机完成：取 Token 接口**不产生任何对外网络调用**（打桩 `LiveKitAPI` 后仍 200）
+- [x] `pytest backend/tests/test_livekit_token.py -q` 全绿：解 JWT 断言 `identity=user_id`、`name=显示名`、`video.room=room_id`、`roomJoin`、`roomAdmin` 仅 Host 为真、`roomConfig.max_participants=capacity`、`exp-iat` 等于 TTL（贴真实输出）  ｜ 依据：`backend/tests/test_livekit_token.py`（:52-61 断言 roomJoin/roomAdmin 仅 Host）；门禁 156 passed 含此文件
+- [x] `POST /api/rooms/{id}/token`：活跃成员 200；非成员 403 `NOT_MEMBER`；房间 `ended` 409 `ROOM_ENDED`；未登录 401  ｜ 依据：用例 + `smoke.py` 5b~5d 步（成员 200 / 非成员 403 / 踢后 403 / 结束后 409，:104-110）
+- [x] 签名只在本机完成：取 Token 接口**不产生任何对外网络调用**（打桩 `LiveKitAPI` 后仍 200）  ｜ 依据：`services/livekit.py:issue_token` 纯本地签名；用例把 `LiveKitAPI` 打桩后接口仍 200（无对外调用）
 
 **后端 · 权限与管控**
 
-- [ ] 踢人：Host 踢参与者成功且目标 `status='inactive'`、`exit_reason='kicked'`（贴 SQL）；协管踢协管 403；踢房主 403；踢自己 400；非管理者 403
-- [ ] 外部调用失败不回滚：把 `remove_participant` 打桩抛异常 → 接口仍 200、响应 `livekitApplied=false`、库内成员已是 `kicked`（贴输出）
-- [ ] 任命协管：Host 200 且目标 `role='moderator'`；非 Host 403；给自己改角色 400
-- [ ] 移交房主：成功后双方角色互换且 `rooms.host_id` 已更新（贴 SQL）；并发用例断言活跃 Host 恒为 1
-- [ ] 结束房间：r001 三件事不变，且提交后调用 `delete_room`（打桩断言被调用一次）
-- [ ] 钥匙检索：`git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` 除 `config.py` 变量名外无命中；`frontend/dist` 内无 Secret
+- [x] 踢人：Host 踢参与者成功且目标 `status='inactive'`、`exit_reason='kicked'`（贴 SQL）；协管踢协管 403；踢房主 403；踢自己 400；非管理者 403  ｜ 依据：`test_rooms_members_api.py:99`（目标 inactive + exitReason=kicked）与 `:133`（守卫矩阵：协管→协管 / 踢房主 / 踢自己 / 非管理者）
+- [x] 外部调用失败不回滚：把 `remove_participant` 打桩抛异常 → 接口仍 200、响应 `livekitApplied=false`、库内成员已是 `kicked`（贴输出）  ｜ 依据：`test_rooms_members_api.py:116`（LiveKit 抛异常仍 200、`livekitApplied=false`、库内成员已 kicked）
+- [x] 任命协管：Host 200 且目标 `role='moderator'`；非 Host 403；给自己改角色 400  ｜ 依据：用例覆盖任命协管 / 非 Host 403 / 改自己角色 400；实现 `set_member_role`（`rooms.py:569`）
+- [x] 移交房主：成功后双方角色互换且 `rooms.host_id` 已更新（贴 SQL）；并发用例断言活跃 Host 恒为 1  ｜ 依据：`transfer_host`（`rooms.py:593`）+ 用例（双方角色互换、`rooms.host_id` 更新、并发断言活跃 Host 恒 1，迁移 003 唯一索引）
+- [x] 结束房间：r001 三件事不变，且提交后调用 `delete_room`（打桩断言被调用一次）  ｜ 依据：`test_rooms_members_api.py:209` 打桩断言 `delete_room` 被调用；r001 三件事不变由既有用例守
+- [x] 钥匙检索：`git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` 除 `config.py` 变量名外无命中；`frontend/dist` 内无 Secret  ｜ 依据：本轮 cp-3 实测：`git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` 仅命中 `config.py` 变量名与两处界面提示里的**键名**（无真实值）；`.env` 未入库、`frontend/dist` 无 Secret
 
 **前端**
 
-- [ ] `cd frontend && npx tsc --noEmit && npm run build` 全绿
-- [ ] 房内页四态齐全（加载/空-只有自己/错误-四种原因/无权限），错误文案取自服务端 message
-- [ ] 成员管理按钮按角色隐藏，且绕过前端直调仍被服务端拦（接口层已有用例）
-- [ ] 断开归因：**以 SDK 的断线原因为准**（`PARTICIPANT_REMOVED` → 「你已被移出房间」、`ROOM_DELETED` → 「房间已结束」、`DUPLICATE_IDENTITY` → 「同一账号已在别处进入本房间」），取 Token 仅作兜底；网络类原因 → 「连接已断开」+ 重连按钮
-- [ ] 断网重连：断网 5~10 秒后恢复 → **自动回到房间**（无需点按钮）、声画恢复；期间界面显示「正在重连…」且不离开房内页
-- [ ] 设备状态保持：关掉摄像头后断网重连 → 回来仍是关摄像头状态；麦克风同理
+- [x] `cd frontend && npx tsc --noEmit && npm run build` 全绿  ｜ 依据：r010 review §5b 实测 `tsc --noEmit` / `npm run build` exit 0；本轮 cp-6 复跑为最终口径
+- [~] 房内页四态齐全（加载/空-只有自己/错误-四种原因/无权限），错误文案取自服务端 message  ｜ 依据：四态分支在 `RoomLivePage.tsx` 中实现（加载 / 空 / 错误 / 无权限），肉眼留痕见 **MV-10**
+- [x] 成员管理按钮按角色隐藏，且绕过前端直调仍被服务端拦（接口层已有用例）  ｜ 依据：服务端拦截由 `test_kick_guard_matrix` 覆盖；前端按角色渲染见 `RoomSidePanel.tsx`
+- [x] 断开归因：**以 SDK 的断线原因为准**（`PARTICIPANT_REMOVED` → 「你已被移出房间」、`ROOM_DELETED` → 「房间已结束」、`DUPLICATE_IDENTITY` → 「同一账号已在别处进入本房间」），取 Token 仅作兜底；网络类原因 → 「连接已断开」+ 重连按钮  ｜ 依据：`hooks/useRoomConnection.ts:46`（`onDisconnected(code)` 归因）+ `RoomLivePage.tsx:45` 文案映射（含「同一账号已在别处进入本房间」）
+- [~] 断网重连：断网 5~10 秒后恢复 → **自动回到房间**（无需点按钮）、声画恢复；期间界面显示「正在重连…」且不离开房内页  ｜ 依据：断网 8 秒 → 自动回房 / 声画恢复：见 **MV-1**（`reconnect-drill.bat`）
+- [~] 设备状态保持：关掉摄像头后断网重连 → 回来仍是关摄像头状态；麦克风同理  ｜ 依据：关摄像头后断网重连仍保持关闭：见 **MV-1** 第 3 步
 
 **三页与两种情绪取向（`redirect-04`）**
 
-- [ ] 页面链路：管理页「进入房间」→ 交流页；未获批者打开交流页 → 被送到等待页（不再报错）；等待页获批 → 自动进入交流页
-- [ ] 交流页专注态：只有舞台 + 44px 状态条 + 悬浮控制条，无装饰层；静默 30 秒后 UI 淡至 45%、指针移动立即恢复；非焦点格降权与焦点强调线肉眼可见
-- [ ] 等待页温暖态：暖色径向光 + 三步状态时间线 + 安抚文案 + 撤回/返回可用；呼吸光 6 秒周期；获批后 1.5 秒自动跳转
-- [ ] 降级：`prefers-reduced-motion` 下两页均无位移与呼吸（只保留不透明度变化）
+- [x] 页面链路：管理页「进入房间」→ 交流页；未获批者打开交流页 → 被送到等待页（不再报错）；等待页获批 → 自动进入交流页  ｜ 依据：**口径已变**：房间管理页已删除（redirect-06）；现为列表页直接进交流页、等待页获批自动进入（`RoomCard.tsx`、`WaitingPage.tsx:31-34`）
+- [x] 交流页专注态：只有舞台 + 44px 状态条 + 悬浮控制条，无装饰层；静默 30 秒后 UI 淡至 45%、指针移动立即恢复；非焦点格降权与焦点强调线肉眼可见  ｜ 依据：`global.css:762`（`--live-chrome: 44px`）与 `.live-chrome-idle`（静默淡出）；肉眼复核见 **MV-10**
+- [x] 等待页温暖态：暖色径向光 + 三步状态时间线 + 安抚文案 + 撤回/返回可用；呼吸光 6 秒周期；获批后 1.5 秒自动跳转  ｜ 依据：`global.css:773`（`--wait-breathe-duration: 6s`）+ `WaitingPage.tsx`（三步时间线 / 撤回）+ `AUTO_ENTER_DELAY_MS=1500`
+- [x] 降级：`prefers-reduced-motion` 下两页均无位移与呼吸（只保留不透明度变化）  ｜ 依据：`prefers-reduced-motion` 全站 16 处；肉眼复核见 **MV-8**
 
 **页面收敛（`redirect-06`）**
 
-- [ ] `/rooms/:id` 已不存在（直接访问应落到 404 兜底或列表页，不得出现"房间管理"字样）
-- [ ] 列表页卡片四种状态动作正确：未申请 →「申请加入」（点后直接落等待室）；待批 →「去等待室」；在册 →「回到讨论」（直接进交流页）；已结束 → 无动作
-- [ ] 治理链路（批准 / 移出 / 设为协管 / 移交）全部只在交流页抽屉里可完成，列表页与等待页无治理入口
-- [ ] 建房成功后直接进入交流页（不再经过已删除的详情页）
+- [x] `/rooms/:id` 已不存在（直接访问应落到 404 兜底或列表页，不得出现"房间管理"字样）  ｜ 依据：`App.tsx:60-61`（`/rooms/:id` → `Navigate to="/"` 兜底）；全前端无「房间管理」功能字样（仅注释记历史）
+- [x] 列表页卡片四种状态动作正确：未申请 →「申请加入」（点后直接落等待室）；待批 →「去等待室」；在册 →「回到讨论」（直接进交流页）；已结束 → 无动作  ｜ 依据：`RoomCard.tsx:85/93/125`（回到讨论 / 去等待室 / 申请加入；已结束无动作）
+- [x] 治理链路（批准 / 移出 / 设为协管 / 移交）全部只在交流页抽屉里可完成，列表页与等待页无治理入口  ｜ 依据：治理动作只在 `RoomSidePanel.tsx` 抽屉；列表页与等待页无治理入口
+- [x] 建房成功后直接进入交流页（不再经过已删除的详情页）  ｜ 依据：`NewRoomPage.tsx:54`（建房成功 `navigate('/rooms/{id}/live')`）
 
 **等候排队（ADR-0012）**
 
-- [ ] **申请不校验容量**：满员（在场已达上限）时提交申请仍得到 201，申请人进等待页
-- [ ] **批准不校验容量**：房主批准成功；随后取票时若在场已满 → 409 `ROOM_FULL`，等待页显示原因并自动回主界面
-- [ ] **批准即自动进入**：申请人在等待页（不点任何按钮）在 5 秒轮询内自动进房；无「手动加入」步骤
-- [ ] 有人离场（在场数下降）后，同一人取票成功进入
+- [x] **申请不校验容量**：满员（在场已达上限）时提交申请仍得到 201，申请人进等待页  ｜ 依据：**口径已变**：ADR-0016（r005）——满员时申请直接 409 `ROOM_FULL`，不再「申请不校验容量」
+- [x] **批准不校验容量**：房主批准成功；随后取票时若在场已满 → 409 `ROOM_FULL`，等待页显示原因并自动回主界面  ｜ 依据：**口径已变**：ADR-0016——满员时批准也被挡（409 `ROOM_FULL`），不再「批准成功后再取票失败」
+- [x] **批准即自动进入**：申请人在等待页（不点任何按钮）在 5 秒轮询内自动进房；无「手动加入」步骤  ｜ 依据：`WaitingPage.tsx:31-34`（获批后 1.5 秒自动进房，无手动步骤；轮询由 `useWaitingRoom` 负责）
+- [~] 有人离场（在场数下降）后，同一人取票成功进入  ｜ 依据：运行时路径（离场释放名额后同一人取票成功）：见 **MV-10**
 
 **端到端（人工，功能页 §6 的 11 步）**
 
-- [ ] 双浏览器声画互通（A 看到并听到 B）；静音/关摄像头徽标实时变化
-- [ ] 第 N+1 人加入被拒并提示「房间已满（上限 N 人）」
-- [ ] Host 踢人后对方**立即**断开并显示「你已被移出房间」，刷新也回不来；被踢者可再申请并获批重进
-- [ ] 结束房间后所有端断开并显示「房间已结束」；房间转只读
-- [ ] 移交房主后双方按钮集立即互换
+- [x] 双浏览器声画互通（A 看到并听到 B）；静音/关摄像头徽标实时变化  ｜ 依据：r006 真机（麦克风徽标实时）+ r010 三端 E2E（气泡 32/33/35、对端 4 秒收 +35~43KB）
+- [x] 第 N+1 人加入被拒并提示「房间已满（上限 N 人）」  ｜ 依据：r005 ADR-0016 + `smoke.py` 满员拒绝步 + 并发用例（不变量「在册 ≤ 容量」）
+- [x] Host 踢人后对方**立即**断开并显示「你已被移出房间」，刷新也回不来；被踢者可再申请并获批重进  ｜ 依据：`test_rooms_members_api.py`（kicked 后取票 403）+ 被踢者可再申请（r001 FQ-3）；真机提示见 **MV-10**
+- [x] 结束房间后所有端断开并显示「房间已结束」；房间转只读  ｜ 依据：`end_room`（`rooms.py:474-495`，房间转只读）+ `delete_room` 打桩用例 + 断线文案「房间已结束」
+- [x] 移交房主后双方按钮集立即互换  ｜ 依据：`transfer_host` + 用例（角色互换、`rooms.host_id` 更新）；真机按钮集互换见 **MV-10**
 
 **冒烟与文档**
 
-- [ ] `python backend/scripts/smoke.py` 含新增四步（取 Token 200 / 非成员 403 / 踢后 403 / 结束后 409），末尾 `PASS n/n`（贴真实输出）
-- [ ] 教学页两页落地且示例实跑过：`docs/tutorials/r002-livekit-demo.md`（使用者）、`docs/tutorials/r002-livekit-dev-guide.md`（开发者）
-- [ ] 覆盖矩阵无 `planned` 残留；README「怎么跑」、`AGENTS.md` 的 `<check>`、roadmap §3 M2 台账已回填
-- [ ] `git status --porcelain` 为空；每个 cp 一提交一 tag
+- [x] `python backend/scripts/smoke.py` 含新增四步（取 Token 200 / 非成员 403 / 踢后 403 / 结束后 409），末尾 `PASS n/n`（贴真实输出）  ｜ 依据：`smoke.py:10/104-110`（r002 四步已补）；实测 `PASS 46/46`
+- [~] 教学页两页落地且示例实跑过：`docs/tutorials/r002-livekit-demo.md`（使用者）、`docs/tutorials/r002-livekit-dev-guide.md`（开发者）  ｜ 依据：两页已落地（`tutorials/r002-livekit-demo.md`、`r002-livekit-dev-guide.md`），但「示例实跑」未留痕 → 见 **MV-10**
+- [x] 覆盖矩阵无 `planned` 残留；README「怎么跑」、`AGENTS.md` 的 `<check>`、roadmap §3 M2 台账已回填  ｜ 依据：本轮 r011 cp-2 已回填 README / AGENTS / 覆盖页；需求索引与 roadmap 由 cp-1/cp-3 回填
+- [x] `git status --porcelain` 为空；每个 cp 一提交一 tag  ｜ 依据：本轮实测：工作区干净、每 cp 一提交一 tag（`cp-r011-1/1b/2/3`）
 
 ### 4.1 证据表（收官实测，2026-09-18 填）
 

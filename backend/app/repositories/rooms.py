@@ -411,6 +411,20 @@ def withdraw_join_request(conn: Connection, request_id: str, at: datetime, by: s
     )
 
 
+def reject_pending_requests(conn: Connection, room_id: str, decided_by: Optional[str], at: datetime) -> int:
+    """满员时清理待批申请（r011）：批量置 `rejected`，返回受影响行数。
+
+    与 `cancel_pending_requests` 的区别：这里的语义是**被拒**（而不是房间结束的连带取消），
+    `decided_by` 记触发者（满员时是发起申请/批准的那一方），供等待页显示原因。
+    """
+    cur = conn.execute(
+        """UPDATE join_requests SET status = 'rejected', decided_at = %s, decided_by = %s
+           WHERE room_id = %s AND status = 'pending'""",
+        (at, decided_by, room_id),
+    )
+    return cur.rowcount
+
+
 def cancel_pending_requests(conn: Connection, room_id: str, at: datetime) -> int:
     """房间结束时的连带动作：待批申请置 `cancelled`（`decided_by=NULL` 表示系统）。"""
     cur = conn.execute(

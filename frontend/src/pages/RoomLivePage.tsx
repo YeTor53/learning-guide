@@ -169,12 +169,13 @@ export default function RoomLivePage() {
   }, [screen.requestedBy])
 
   const isManager = myRole === 'host' || myRole === 'moderator'
-  // 申请列表（真源）：只有管理者需要，5 秒轮询——门口有人等时要能立刻看到（修：原来误读了 messages，抽屉永远显示空）
+  // 申请列表（真源）：只有管理者需要。r011 redirect-03 把兜底轮询从 5 秒收到 3 秒
+  // （正常路径是别端动作经 `lg.roster` 广播触发 invalidate，秒级；轮询只是广播丢了时的兜底）
   const requestsQuery = useQuery({
     queryKey: ['live-room-requests', id],
     queryFn: () => roomsApi.listRequests(id),
     enabled: isManager && Boolean(room),
-    refetchInterval: 5_000,
+    refetchInterval: 3_000,
     retry: false,
   })
   const pendingRequests = (requestsQuery.data ?? []).filter((item) => item.status === 'pending')
@@ -610,7 +611,7 @@ export default function RoomLivePage() {
           sharing={screen.sharing}
           onToggleHand={onHandControl}
           onToggleShare={() => void (screen.sharing ? screen.stop() : screen.start())}
-          transcribe={{ on: transcribe.agentPresent }}
+          transcribe={{ on: transcribe.agentPresent || transcribe.heartbeatFresh, lastHeartbeatAt: transcribe.heartbeatAt }}
         />
       </div>
     </LiveKitRoom>

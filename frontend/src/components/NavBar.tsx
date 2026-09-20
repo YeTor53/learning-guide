@@ -48,6 +48,10 @@ export default function NavBar({ onToggleCollapsed }: Props) {
       </div>
 
       <div className="top-actions">
+        {/* r011：常驻入口 —— 作业必做的「邀请」项此前只有房主复制的链接能到，手上有码的人无处输入 */}
+        <Link className="link-plain" to="/join">
+          邀请码加入
+        </Link>
         {isLoading ? (
           <span className="dim" style={{ fontSize: 13 }}>
             ·

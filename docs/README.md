@@ -31,9 +31,9 @@ updated: 2026-09-20
 | 你的目的 | 打开 |
 | --- | --- |
 | 现在做到哪、下一步是什么 | `00-project/global-roadmap.md` §3、§7；`00-requirements/README.md` |
-| **当前轮（r010 转写）**要做什么、怎么算做完 | `00-requirements/r010-transcription.md` §4（E1~E14）；实现完成，**待合并** |
-| 当前轮怎么实现（逐文件改动清单） | `rounds/r010-transcription/design.md` §9（换轨后口径）；模块事实源 `02-modules/r010-transcription.md` |
-| 说话怎么变成文字、演示前起什么 | `tutorials/r010-transcription-user-guide.md` |
+| **当前轮（r011 欠账补正）**要做什么、怎么算做完 | `00-requirements/r011-debt-backfill.md` §4（E1~E11）；实现完成、**待合并**（`req/r011-debt-backfill`，cp-1~cp-7） |
+| 当前轮怎么实现（逐文件改动清单） | `rounds/r011-debt-backfill/design.md`（A/B/C/D 四组逐文件）；口径变更见 `rounds/r011-debt-backfill/redirect-02.md`（说话不获焦点） |
+| 说话怎么变成文字、演示前起什么 | `tutorials/r010-transcription-user-guide.md`；邀请码怎么进房 / 满员会怎样见 `tutorials/r011-invite-entry-and-capacity.md` |
 | 房间/实时模块的当前实现事实 | `02-modules/r002-livekit.md`（实现）+ `r002-livekit-features.md`（功能）；**M3 能力（群聊/举手/焦点/共享）见 `02-modules/r004-room-extras.md`（实现）+ `r004-room-extras-features.md`（功能）；**语音转写见 `02-modules/r010-transcription.md`（实现）+ `r010-transcription-features.md`（功能）；人数上限与房间事件见 `r005-fix-capacity{,-features}.md`；界面同步与优化见 `r006-ui-sync-polish{,-features}.md`；主题与首屏引导见 `r007-topic-and-scrollhint{,-features}.md`** |
 | 账号/首页模块 | `02-modules/r001-accounts.md` + `r001-accounts-features.md` |
 | 为什么这么决定 | `03-decisions/` 下对应 ADR（跨轮的以 `global-` 开头） |
@@ -92,6 +92,16 @@ updated: 2026-09-20
 **目录分布**（合计 137）：`rounds/` **56** · `03-decisions/` 24（+ADR-0023） · `02-modules/` 21 · `00-requirements/` 12 · `tutorials/` 10（+r010 使用者页） · `99-archive/` 5 · `00-project/` 3 · `01-architecture/` 3 · 根 2 · `04-style/` 1。
 
 **断链检查**：真死链 **1** 处——`rounds/r002-livekit/redirect-03.md` 里的 `](alert｜confirm｜prompt)`（正文竖线被当成链接目标，r002 遗留，非 r010 引入，见 r010 review 未闭合 ⑩）；其余 136 页 0 死链。
+
+### r011 收官快照（2026-09-20，145 个 .md）
+
+> 口径同上（`docs/**/*.md`）。相比 r010 快照（137 页）：+8 = r011 轮次页 5（需求单 1 + `rounds/r011-debt-backfill/` 5：design / redirect-02 / manual-verification / changes / review）+ `tutorials/r011-invite-entry-and-capacity.md` + `rounds/r012-superadmin-console/redirect-01.md`。
+
+**目录分布**（合计 145）：`rounds/` **63** · `03-decisions/` 24 · `02-modules/` 21 · `00-requirements/` 13 · `tutorials/` 11 · `99-archive/` 5 · `00-project/` 3 · `01-architecture/` 3 · 根 2 · `04-style/` 1。
+
+**断链检查**：真死链 **1** 处（`docs/README.md` 自身的 `](*.md)` 通配符，扫描器假阳性，r009.5 已注）；本轮新增 8 页 0 死链。
+
+**端点快照**：`/openapi.json` 端点 **34** 个（r010 时 32；+2 = `POST /api/stt/heartbeat`、`GET /api/rooms/{room_id}/stt-status`）。
 
 **已知不一致（2026-09-20 复核；上一条清单里的 1/3/6 已闭合）**
 

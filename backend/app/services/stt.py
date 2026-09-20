@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable, Optional
 
 import aiohttp
@@ -113,3 +114,43 @@ def call_stt(
     # 只记规模，不记内容（隐私：转写文本不入日志）
     logger.info("STT 段完成：%d 字节 → %d 字", len(audio), len(text))
     return SttResult(text=text, language=language or "zh", provider=s.stt_base_url, model=s.stt_model)
+
+
+# ---------------- r011：worker 健康上报（内存态，零迁移） ----------------
+
+_HEARTBEATS: dict[str, dict] = {}
+"""room_id → {workerId, sessions, lastSeenAt}。进程内存：后端重启即清空，**不伪装**「一直在跑」。"""
+
+HEARTBEAT_FRESH_SECONDS = 15
+"""心跳新鲜窗口（秒）：前端把这个窗口内的心跳也算「转写开启」。"""
+
+
+def record_heartbeat(room_id: str, worker_id: str, sessions: int = 0) -> None:
+    """记一次 worker 心跳（由 `POST /api/stt/heartbeat` 调用）。"""
+    _HEARTBEATS[room_id] = {
+        "workerId": worker_id,
+        "sessions": int(sessions),
+        "lastSeenAt": datetime.now(timezone.utc),
+    }
+
+
+def last_heartbeat(room_id: str) -> Optional[dict]:
+    """该房最近一次心跳（无记录返回 None）。"""
+    return _HEARTBEATS.get(room_id)
+
+
+def heartbeat_age_seconds(room_id: str) -> Optional[float]:
+    """距最近一次心跳的秒数（无记录返回 None）。"""
+    item = _HEARTBEATS.get(room_id)
+    if item is None:
+        return None
+    return (datetime.now(timezone.utc) - item["lastSeenAt"]).total_seconds()
+
+
+def latest_heartbeat() -> Optional[dict]:
+    """全局最近一次心跳（给 `/api/stt/status` 用；含 roomId）。"""
+    if not _HEARTBEATS:
+        return None
+    room_id, item = max(_HEARTBEATS.items(), key=lambda kv: kv[1]["lastSeenAt"])
+    return {"roomId": room_id, **item}
+

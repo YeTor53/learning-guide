@@ -57,3 +57,12 @@ class SegmentIn(CamelModel):
     duration_ms: int = Field(default=0, ge=0)
     language: str = Field(default="zh", max_length=16)
     final: bool = True
+
+
+class SttHeartbeatIn(CamelModel):
+    """转写 worker 心跳（r011）：worker 每 5 秒上报一次自己的活动（内存态记录，不落库）。"""
+
+    room_id: str = Field(min_length=1, max_length=64)
+    worker_id: str = Field(min_length=1, max_length=128)
+    sessions: int = Field(default=0, ge=0, le=50)
+
