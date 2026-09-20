@@ -19,13 +19,13 @@ updated: 2026-09-20
 | E2 | r009 台账无「进行中」残留；cp-4 写明无独立提交 | `rounds/r009-focus-system/changes.md`：cp-0 → 完成 + `1c4af8e`；cp-1b → 完成 + `2819bd7 / e3571be`；cp-4 → **未完成（无独立提交）+ 原因**（复用 r002 的 `.live-level`，`04b6903`） | **通过** |
 | E3 | r009 审查无 planned 残留、E0~E12 全覆盖、含合并顺序 | `rounds/r009-focus-system/review.md`：E0~E12 逐条结论（E0 = 部分 3/4、E11 = 部分、其余通过）；「未闭合」5 条；合并指引含前置顺序 | **通过**（E0 第 4 项、E11 数值按实标未取证） |
 | E4 | r008 审查四处纠错 | `rounds/r008-assignment-gaps/review.md`：overview「骨架」→「已定稿（`b52f91f`）」；E5 补「未配密钥提示子项：未取证」；§5 轮次号 → **r010**；§6 顺序补 **r005** 起点 | **通过** |
-| E5 | 死链 0 命中（本轮文档引用错误路径作示例者除外） | `git grep -n "r009-transcription"` 仅剩 3 行 = r009.5 三份文档**描述该错误**的引用；`docs/rounds/r009-transcription/` 目录不存在；`grep "移至 r009"` 0 命中。**另新查出并修掉 5 处真死链**：`r006-fix-mic-badge` ×2（roadmap §9）、`tutorials/r004-room-extras.md` ×3（实际带 `-demo`）→ 全仓断链重扫 = **真死链 0** | **通过（超额）** |
+| E5 | 死链 0 命中（本轮文档引用错误路径作示例者除外） | `git grep -n "r009-transcription"` 仅剩 3 行 = r009.5 三份文档**描述该错误**的引用；`docs/rounds/r009-transcription/` 目录不存在；`grep "移至 r009"` 的命中同样只剩本轮文档（**首轮复验抓到漏网 1 处：r008 `review.md` E11 行，cp-5b 已修**）。**另新查出并修掉 5 处真死链**：`r006-fix-mic-badge` ×2（roadmap §9）、`tutorials/r004-room-extras.md` ×3（实际带 `-demo`）→ 全仓断链重扫 = **真死链 0** | **通过（超额）** |
 | E6 | `.env.example` 含 `STT_*` 三键、无真值 | `.env.example` 新增 `STT_BASE_URL=` / `STT_API_KEY=` / `STT_MODEL=whisper-1` + 注释（r010 起用，空 = 功能禁用）；本机 `.env` **未动** | **通过** |
 | E7 | `stageLayout` 0 命中 + tsc/build 绿 | `git grep -n stageLayout -- frontend/src` 仅剩 `stageGeometry.ts` 注释中「旧 `stageLayout.ts`…已删除」一句；删除后 `tsc --noEmit` **exit 0**、`npm run build` **exit 0**（`✓ 2006 modules transformed`） | **通过** |
 | E8 | 索引 / docs README / roadmap 回填 | 需求索引表重排 + r004 转 `closed` + 补 r010/r009.5 行 + 合并顺序注；`docs/README.md` §2 指路、§4 表 11 行、§5 追加登记、§6 重扫（128 页 / 真死链 0）；roadmap §3 新增 M3・M4 回填注、§7 补第 6~11 条、§9 修去向列并增补 4 行 | **通过** |
 | E9 | E0 动效真机量测 | 入场重排 1→2（418 帧/7.0s）：位移 344.5px、单帧最大 99.92px（比值 **0.290**）、时长 **240ms** = 令牌、**终点误差 0.0px**、重叠 0 对；焦点切换期间重排（283 帧/4.8s）：25.53px、比值 **0.351**、终点误差 0.0px。**第 4 项未取证**（需真人语音） | **部分（3/4）** |
 | E10 | E11 声波证据 + 截图 | `.live-level` = 容器 + 3 个 `<i>`（6px 竖条）、令牌 `--mic-pulse-ms` = 320ms、`on` 计数 0（未发布麦克风）；`%TEMP%\\lg_r009.5\\mic-wave.png` 已落盘（其余 4 张截图同目录） | **通过（数值序列如实标未取证）** |
-| E11 | 门禁四项全绿 | `pytest` **128 passed** / `smoke` **PASS 46/46**（纪要 `ready` 680 字）/ `tsc` exit 0 / `build` exit 0 | **通过** |
+| E11 | 门禁四项全绿 | `pytest` **128 passed**（cp-5 后再复跑 **128 passed / 31.40s**）/ `smoke` **PASS 46/46**（纪要 `ready` 680 字；运行于同一份代码，其后仅文档与新增取证脚本变更，未触及后端）/ `tsc` exit 0 / `build` exit 0（复跑 `✓ 2006 modules transformed` / 3.81s） | **通过** |
 | E12 | 两页教学页 + 使用者页实跑 | `tutorials/r009.5-r008-r009-user-guide.md`（使用者，步骤全部实跑：邀请码 6 位 + 倒计时、凭码进房、举手→给焦点、结束→纪要 9.1 秒）与 `tutorials/r009.5-stage-motion-verify-dev.md`（开发者，含脚本用法/令牌/判据/三条踩坑）；`tutorials/README.md` 索引已加两行 | **通过** |
 
 ## 2. 规则核对（AGENTS.md + 本轮铁律）
@@ -47,7 +47,7 @@ updated: 2026-09-20
 | 项 | 结论 |
 | --- | --- |
 | 覆盖矩阵（需求单 §6） | **无 planned 残留**：需求单/设计/台账/审查已落地；C 使用者教学页 + D 开发者教学页 + 模块轴 5 页 + 索引轴 3 处均在 cp-5 转 landed；ADR 列明「不适用」及理由（无口径/契约变更，L2 内部结构已记 design §8） |
-| 轮次轴 | `docs/rounds/r009.5-debt-backfill/{design,changes,review}.md` 齐（无 CR 单：无 L3） |
+| 轮次轴 | `docs/rounds/r009.5-debt-backfill/{design,changes,review}.md` 齐（无 CR 单：无 L3）；收官后复验补正以 **cp-5b** 追加（漏网死链 + 概览页数），未 amend 历史 |
 | 模块轴 | r005~r009 五页**新增「变更记录」小节**各一行（此前这 5 页无该小节，r001/r002/r004 有 → 本轮按既有先例补齐，未新立规约）；r009 实现页「遗留」第 1 条按 r009.5 证据更新 |
 | 索引轴 | `00-requirements/README.md`（表重排 + r010/r009.5 行 + 合并顺序注）、`docs/README.md`（§2/§4/§5/§6）、`docs/tutorials/README.md`（两行 + 缺口段） |
 | 教学页实跑 | 使用者页 5 条流程全部真机复跑（邀请面板文案、凭码落点 URL、举手→给焦点三端状态、结束→纪要 9.1 秒、`summary_ok=true`），数字均来自本轮报告 JSON |
