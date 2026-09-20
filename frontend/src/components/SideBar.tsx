@@ -90,6 +90,7 @@ export default function SideBar({ collapsed, onToggleCollapsed, hideToggle = fal
           <SidebarUserCard
             user={user}
             collapsed={collapsed}
+            onExpand={onToggleCollapsed}
             logoutPending={logout.isPending}
             onLogout={() => logout.mutate(undefined, { onSuccess: () => navigate('/') })}
           />

@@ -20,11 +20,13 @@ interface Props {
   collapsed: boolean
   logoutPending: boolean
   onLogout: () => void
+  /** 收起态下点击用户按钮时先展开侧边栏（否则浮窗无处可放，点了像没反应）。 */
+  onExpand?: () => void
 }
 
 const ICON = { size: 18, strokeWidth: 1.75 } as const
 
-export default function SidebarUserCard({ user, collapsed, logoutPending, onLogout }: Props) {
+export default function SidebarUserCard({ user, collapsed, logoutPending, onLogout, onExpand }: Props) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [quote] = useState(() => pickQuote('self'))
@@ -45,19 +47,30 @@ export default function SidebarUserCard({ user, collapsed, logoutPending, onLogo
     }
   }, [open])
 
+  /** 点击用户按钮：展开态切换浮窗；**收起态先展开侧边栏**再打开浮窗（否则点击无任何可见效果）。 */
+  const activate = () => {
+    if (collapsed) {
+      onExpand?.()
+      setOpen(true)
+      return
+    }
+    setOpen((value) => !value)
+  }
+
   return (
     <div className="side-user-card" ref={rootRef}>
       <button
         type="button"
         className="side-user-btn"
         aria-haspopup="dialog"
-        aria-expanded={open}
+        aria-expanded={open && !collapsed}
         title={`${user.displayName} · ${user.email}`}
-        onClick={() => setOpen((value) => !value)}
+        onClick={activate}
         onFocus={(event) => {
-          // 鼠标点击也会触发 focus；只在「键盘 focus」（`:focus-visible`）时顺势展开，
-          // 否则 onFocus 打开、onClick 立刻取反 → 点了反而打不开（cp-3 实测踩到）。
-          if (event.currentTarget.matches(':focus-visible')) setOpen(true)
+          // 鼠标点击也会触发 focus；只在「键盘 focus」（`:focus-visible`）且**展开态**时顺势打开，
+          // 否则 onFocus 打开、onClick 立刻取反 → 点了反而打不开（cp-3 实测踩到）；
+          // 收起态不在 focus 时自动展开（Tab 经过不该突然改变布局），交给 Enter/Space。
+          if (!collapsed && event.currentTarget.matches(':focus-visible')) setOpen(true)
         }}
       >
         <span className="side-avatar" aria-hidden>

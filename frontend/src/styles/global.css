@@ -129,6 +129,20 @@ a:hover { color: var(--accent); }
   background: rgba(8, 9, 12, 0.72);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line-soft);
+  /* r007 追加：往下划时顶栏向上滑走（向上划 / 回顶部回来） */
+  transition: transform var(--t-base) var(--ease);
+  will-change: transform;
+}
+
+.topbar-hidden {
+  transform: translateY(-100%);
+  box-shadow: none;
+}
+.topbar-hidden .top-actions,
+.topbar-hidden .brand,
+.topbar-hidden .crumb {
+  /* 滑走时不接受命中，避免"摸到看不见的按钮" */
+  pointer-events: none;
 }
 .topbar .brand {
   font-family: var(--font-display);
@@ -463,6 +477,44 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 .meter > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width var(--t-slow) var(--ease); }
 
 /* ---------- Hero ---------- */
+/* r007（Q1=1/Q2=2，追加：更大 + 两支）：hero 底缘居中的向下提示
+   纯装饰、不可点；两支箭头错峰浮动（第二支延迟四分之一周期），形成方向感 */
+.scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--scroll-hint-bottom);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 负 gap 在 flex 里非法（会退回 normal）→ 用负 margin 让两支略微叠压 */
+  gap: 0;
+  color: var(--text-mute);
+  opacity: 0.8;
+  pointer-events: none;      /* 不可点：不承载任何交互 */
+  user-select: none;
+}
+
+.scroll-hint svg {
+  width: var(--scroll-hint-size);
+  height: var(--scroll-hint-size);
+  animation: scroll-hint-bob var(--scroll-hint-duration) var(--ease) infinite;
+}
+
+.scroll-hint svg + svg {
+  margin-top: var(--scroll-hint-gap);   /* 两支之间的叠压量（负值） */
+}
+.scroll-hint svg:nth-child(2) {
+  /* 错峰：第二支延后半周期，看起来是一次接一次的"往下" */
+  animation-delay: calc(var(--scroll-hint-duration) / 2 * -1);
+  opacity: 0.55;
+}
+
+@keyframes scroll-hint-bob {
+  0%, 100% { transform: translateY(calc(var(--scroll-hint-travel) * -1)); opacity: 0.45; }
+  50%      { transform: translateY(var(--scroll-hint-travel)); opacity: 1; }
+}
+
 .hero { position: relative; margin-bottom: var(--s-6); padding: var(--s-4) 0 var(--s-5); }
 .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.85; }
 
@@ -481,6 +533,12 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
   --thinker-ratio: 1.4;
   /* r006（ADR-0017 D4）：初始位置下移 ≈ 容器高的 10%（约 50px）；原值 -110px（容器顶略高于页面顶）。 */
   --thinker-top: -60px;
+  /* r007：hero 底缘的向下提示（单点可调；2026-09-19 追加：更大 + 两支） */
+  --scroll-hint-bottom: 6px;
+  --scroll-hint-size: 45px;      /* 单支箭头尺寸（30px × 150% = 45px） */
+  --scroll-hint-gap: -9px;       /* 两支的间距（负值＝叠压；随尺寸等比放大） */
+  --scroll-hint-travel: 14px;    /* 浮动幅度（随尺寸等比放大） */
+  --scroll-hint-duration: 2s;    /* 浮动周期 */
   --thinker-gap: 20px;     /* 容器底停在「创建房间」那行上方 20px */
   --hero-min-h: min(88vh, 700px);
   min-height: var(--hero-min-h);
@@ -1497,7 +1555,110 @@ button.side-item:hover:not(:disabled) { background: var(--panel-strong); color: 
 
 /* ---------- 降级：减少动效（含 r004 新增）---------- */
 @media (prefers-reduced-motion: reduce) {
+  .scroll-hint svg { animation: none; opacity: 0.8; }
+  .scroll-hint svg:nth-child(2) { opacity: 0.55; }
   .side-pop { animation: none; }
   .live-focus-slot, .live-rail, .live-tile-focus { transition: none; }
   .live-tile-focus::before, .live-focus-badge, .chat-bubble, .live-ctrl-hand-on { animation: none; }
+}
+
+/* ==========================================================================
+   r007 · 主题控件风格化（自绘下拉 + 创建房间卡片）
+   设计事实源：docs/rounds/r007-topic-and-scrollhint/design.md §4/§5
+   令牌：沿用以色与间距；折叠动效 `--t-fast`；面板与既有下拉同材质。
+   ========================================================================== */
+.topic-select { position: relative; }
+
+.topic-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 160px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.topic-select-btn:hover { border-color: var(--line-soft); background: var(--panel-strong); }
+.topic-select-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.topic-select-label { flex: 1 1 auto; text-align: left; white-space: nowrap; }
+.topic-select-caret { color: var(--text-mute); transition: transform var(--t-base) var(--ease); }
+.topic-select-caret.on { transform: rotate(180deg); }
+
+.topic-select-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 240px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--ink-800);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+  animation: topic-select-in var(--t-fast) var(--ease);
+}
+@keyframes topic-select-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+.topic-select-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.topic-select-item.active { background: var(--panel-strong); color: var(--text); }
+.topic-select-item.on { background: var(--accent-soft); color: var(--accent); }
+.topic-select-item-icon { display: inline-flex; width: 18px; color: currentColor; opacity: 0.9; }
+
+.topic-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: var(--s-2);
+}
+.topic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.topic-card:hover { border-color: var(--line-soft); background: var(--panel-strong); transform: translateY(-1px); }
+.topic-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.topic-card.on { border-color: var(--accent); background: var(--accent-soft); }
+.topic-card-top { display: flex; align-items: center; justify-content: space-between; }
+.topic-card-icon { display: inline-flex; color: var(--text-dim); }
+.topic-card.on .topic-card-icon { color: var(--accent); }
+.topic-card-check { display: inline-flex; color: var(--accent); }
+.topic-card-label { font-size: 14px; font-weight: 600; }
+.topic-card-hint { font-size: 11.5px; color: var(--text-mute); line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .topic-select-panel { animation: none; }
+  .topic-card { transition: none; }
+  .topic-card:hover { transform: none; }
 }

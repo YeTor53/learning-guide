@@ -6,6 +6,8 @@ import { ApiError } from '../api/http'
 import { TOPIC_OPTIONS, type RoomStatus, type Topic } from '../api/rooms'
 import FlowField from '../components/FlowField'
 import QuoteLine from '../components/QuoteLine'
+import ScrollHint from '../components/ScrollHint'
+import TopicSelect from '../components/TopicSelect'
 import ThinkerStatue from '../components/ThinkerStatue'
 import RoomCard from '../components/RoomCard'
 import { useSession } from '../hooks/useSession'
@@ -28,6 +30,8 @@ export default function RoomsPage() {
   const [status, setStatus] = useState<RoomStatus | 'all'>('active')
   const [topic, setTopic] = useState<Topic | ''>('')
   const [page, setPage] = useState(0)
+  // 刷新反馈（r007 追加）：数据变没变都让列表重放一次入场动画，点「刷新」必有可见反应
+  const [refreshTick, setRefreshTick] = useState(0)
 
   const mine = params.get('mine') === '1'  // 与侧边栏「我的房间」同源，可直接分享 /?mine=1
   const { data, isLoading, isError, error, refetch, isFetching } = useRooms({
@@ -63,58 +67,6 @@ export default function RoomsPage() {
 
   return (
     <div>
-      <div className="toolbar">
-        <div className="chipset">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              className={status === tab.value ? 'on' : ''}
-              onClick={() => {
-                setStatus(tab.value)
-                setPage(0)
-              }}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <select
-          className="select"
-          style={{ width: 180 }}
-          value={topic}
-          onChange={(e) => {
-            setTopic(e.target.value as Topic | '')
-            setPage(0)
-          }}
-        >
-          <option value="">全部主题</option>
-          {TOPIC_OPTIONS.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-
-        <button className={`btn btn-sm${mine ? ' btn-primary' : ''}`} onClick={toggleMine} aria-pressed={mine}>
-          <Users {...ICON} />
-          只看我的
-        </button>
-
-        <button className="btn btn-sm" onClick={() => refetch()} disabled={isFetching}>
-          <RefreshCw {...ICON} />
-          刷新
-        </button>
-
-        <div style={{ flex: 1 }} />
-
-        <button className="btn btn-primary" onClick={() => navigate(user ? '/rooms/new' : '/login?returnTo=/rooms/new')}>
-          <Plus {...ICON} size={16} />
-          创建房间
-        </button>
-      </div>
-
       <section className="hero">
         <FlowField />
         <ThinkerStatue />
@@ -149,10 +101,62 @@ export default function RoomsPage() {
             </div>
           </div>
         </div>
+        <ScrollHint />
       </section>
 
+      <div className="toolbar">
+        <div className="chipset">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              className={status === tab.value ? 'on' : ''}
+              onClick={() => {
+                setStatus(tab.value)
+                setPage(0)
+              }}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <TopicSelect
+          value={topic}
+          options={[{ value: '', label: '全部主题' }, ...TOPIC_OPTIONS.map((item) => ({ value: item.value, label: item.label }))]}
+          onChange={(next) => {
+            setTopic(next)
+            setPage(0)
+          }}
+        />
+
+        <button className={`btn btn-sm${mine ? ' btn-primary' : ''}`} onClick={toggleMine} aria-pressed={mine}>
+          <Users {...ICON} />
+          只看我的
+        </button>
+
+        <button
+          className="btn btn-sm"
+          onClick={async () => {
+            await refetch()
+            setRefreshTick((value) => value + 1)
+          }}
+          disabled={isFetching}
+        >
+          <RefreshCw {...ICON} className={isFetching ? 'spin' : undefined} />
+          刷新
+        </button>
+
+        <div style={{ flex: 1 }} />
+
+        <button className="btn btn-primary" onClick={() => navigate(user ? '/rooms/new' : '/login?returnTo=/rooms/new')}>
+          <Plus {...ICON} size={16} />
+          创建房间
+        </button>
+      </div>
+
       {isLoading && (
-        <div className="room-grid">
+        <div className="room-grid" key={`loading-${refreshTick}`}>
           <div className="skeleton" />
           <div className="skeleton" />
           <div className="skeleton" />
@@ -227,7 +231,7 @@ export default function RoomsPage() {
       )}
 
       {rooms.length > 0 && (
-        <div className="room-grid">
+        <div className="room-grid" key={`rooms-${refreshTick}`}>
           {rooms.map((room, index) => (
             <RoomCard key={room.id} room={room} index={index} />
           ))}

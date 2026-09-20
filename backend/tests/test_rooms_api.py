@@ -251,3 +251,63 @@ def test_room_code_collision_retries_then_gives_up(client, db, monkeypatch) -> N
     resp = client.post("/api/rooms", json={"topic": "custom", "topicLabel": "自定", "title": "必失败"})
     assert resp.status_code == 500
     assert resp.json()["error"]["code"] == "INTERNAL"
+
+
+def test_new_topic_accepted_and_invalid_topic_rejected(client, db) -> None:
+    """r007：主题白名单扩容到 14 项（迁移 006）；新主题可建房，非法主题 400。
+
+    事实源：`docs/00-requirements/r007-topic-and-scrollhint.md` §3（顺序：原有 3 项在前，自定义最后）。
+    """
+    host = register_user(db, "主题房主")
+    _login_as(client, host)
+
+    created = client.post(
+        "/api/rooms",
+        json={"topic": "philosophy-history", "topicLabel": "西方哲学史", "title": "新主题房间", "description": ""},
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["data"]["topic"] == "philosophy-history"
+
+    bad = client.post(
+        "/api/rooms",
+        json={"topic": "quantum-cooking", "topicLabel": "非法", "title": "非法主题", "description": ""},
+    )
+    assert bad.status_code == 400, bad.text
+
+    # 未知主题筛选同 400（走 TOPICS 校验）
+    filtered = client.get("/api/rooms", params={"topic": "quantum-cooking"})
+    assert filtered.status_code == 400, filtered.text
+
+
+def test_detail_exposes_my_request_id_for_applicant(client, db) -> None:
+    """r007 修（撤回不了）：房间详情给**申请人本人**带上 `myRequestId`，撤回不再依赖管理权限的申请列表接口。
+
+    事实源：`docs/rounds/r007-topic-and-scrollhint/review.md` E15 追加、`docs/02-modules/r002-livekit.md` §5。
+    """
+    host = register_user(db, "撤回房主")
+    applicant = register_user(db, "撤回申请人")
+    _login_as(client, host)
+    room = client.post(
+        "/api/rooms",
+        json={"topic": "custom", "topicLabel": "撤回", "title": "撤回测试房", "description": ""},
+    ).json()["data"]
+
+    _login_as(client, applicant)
+    created = client.post(f"/api/rooms/{room['id']}/join-requests", json={"message": ""})
+    assert created.status_code == 201, created.text
+    request_id = created.json()["data"]["id"]
+
+    detail = client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]
+    assert detail["myRequestStatus"] == "pending"
+    assert detail["myRequestId"] == request_id, detail
+
+    withdrawn = client.post(f"/api/join-requests/{request_id}/withdraw")
+    assert withdrawn.status_code == 200, withdrawn.text
+
+    after = client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]
+    assert after["myRequestId"] is None, after
+
+    # 房主视角：没有自己的申请，故为空
+    _login_as(client, host)
+    host_detail = client.get(f"/api/rooms/{room['id']}").json()["data"]["room"]
+    assert host_detail["myRequestId"] is None

@@ -46,10 +46,11 @@ export default function WaitingPage() {
     setBusy(true)
     setError(null)
     try {
-      const requests = await roomsApi.listRequests(id).catch(() => [])
-      const pending = requests.find((item) => item.status === 'pending')
-      if (!pending) throw new ApiError('NOT_FOUND', '找不到待批申请，请刷新后再试', 404)
-      await roomsApi.withdraw(pending.id)
+      // r007 修：原先用 listRequests（管理权限接口）找自己的申请 id → 申请人一律 403、列表为空 → 撤回永远失败。
+      // 现改用房间详情里本人可见的 myRequestId。
+      const requestId = room?.myRequestId ?? ''
+      if (!requestId) throw new ApiError('NOT_FOUND', '找不到待批申请，请刷新后再试', 404)
+      await roomsApi.withdraw(requestId)
       queryClient.invalidateQueries({ queryKey: ['waiting-room', id] })
       refetch()
     } catch (err) {
@@ -129,6 +130,14 @@ export default function WaitingPage() {
             </span>
             {room.description && <span className="muted" style={{ fontSize: 13 }}>{room.description}</span>}
           </div>
+        )}
+
+        {/* 满员且自己还在待批：说清「为什么等不到」——房主此刻批准会被容量挡回（r005 不变量：在册 ≤ 容量）
+            （2026-09-19 追加，用户报满员时「不能申请但会进入等待间」的困惑） */}
+        {pending && room && room.memberCount >= room.capacity && (
+          <p className="wait-note" style={{ color: 'var(--warn)' }}>
+            房间已满（在册 {room.memberCount}/{room.capacity}，等于上限），房主现在无法批准；你可以撤回申请，或先去看看别的房间。
+          </p>
         )}
 
         {/* redirect-02（Q2=2）：这里的操作引导改为名言；「进度」由上方 WaitTimeline 视觉承担，
