@@ -626,7 +626,11 @@ export default function RoomLivePage() {
           sharing={screen.sharing}
           onToggleHand={onHandControl}
           onToggleShare={() => void (screen.sharing ? screen.stop() : screen.start())}
-          transcribe={{ on: transcribe.agentPresent || transcribe.heartbeatFresh, lastHeartbeatAt: transcribe.heartbeatAt }}
+          transcribe={{
+            on: transcribe.agentPresent || transcribe.heartbeatFresh,
+            lastHeartbeatAt: transcribe.heartbeatAt,
+            lastError: transcribe.lastError,           // r013：worker 侧错误（芯片 hover 可见）
+          }}
         />
       </div>
     </LiveKitRoom>

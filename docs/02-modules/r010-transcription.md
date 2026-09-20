@@ -96,6 +96,10 @@ updated: 2026-09-20
 
 ## 变更记录
 
+| 日期 | 轮次 | 变更 | 依据 |
+| --- | --- | --- | --- |
+| 2026-09-20 | r013 `cp-4` | worker 自愈与可观测：`agents/retry.py` 纯函数重试；`entrypoint` 连接段 3 次重试 + 失败退出码 2；心跳带 `lastError` 并由 `/rooms/{id}/stt-status` 透出到控制坞芯片 hover | r013 需求单 E5/E6；`test_connect_retry.py` + 真机芯片 |
+
 | 日期 | 轮次 | 改了什么 | 回链 |
 | --- | --- | --- | --- |
 | 2026-09-20 | r010 | 新建：语音转文字并入讨论流（换轨 Agents 侧识别 + 前端回传落库）的首个模块页 | `docs/rounds/r010-transcription/`；ADR-0023 |

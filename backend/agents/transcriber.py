@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import socket
+import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -50,6 +51,9 @@ from livekit import rtc
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("transcriber")
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # r013：让 `from retry import retry_async` 在「脚本方式运行」下也成立
+from retry import retry_async  # noqa: E402  （纯函数，见 agents/retry.py）
+
 AGENT_NAME = os.environ.get("AGENT_NAME", "learning-guide-transcriber")
 STT_MODE = os.environ.get("AGENT_STT", "inference")           # inference | fake
 STT_MODEL = os.environ.get("AGENT_STT_MODEL", "deepgram/nova-3")
@@ -61,6 +65,12 @@ FAKE_INTERVAL = float(os.environ.get("AGENT_FAKE_INTERVAL", "3.0"))
 BACKEND_URL = os.environ.get("AGENT_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
 HEARTBEAT_SECONDS = float(os.environ.get("AGENT_HEARTBEAT_SECONDS", "5"))
 WORKER_ID = f"{socket.gethostname()}-{os.getpid()}"
+CONNECT_ATTEMPTS = int(os.environ.get("AGENT_CONNECT_ATTEMPTS", "3"))
+CONNECT_BACKOFF = (2.0, 4.0)
+_LAST_ERROR: dict[str, str | None] = {"value": None}
+"""最近一次可上报的错误（连接失败 / 开会话失败）；心跳每次带上，前端芯片 hover 能看见。"""
+EXIT_CONNECT_FAILED = 2
+"""连接彻底失败后的退出码（交给 agents.bat 的循环/进程管理器重启，而不是裸崩）。"""
 
 
 
@@ -155,14 +165,21 @@ def _session_secret() -> str:
     return ""
 
 
-def _post_heartbeat_sync(room_id: str, sessions: int) -> None:
-    """同步 POST 一次心跳（在子线程里跑，避免阻塞事件循环）。"""
+def _post_heartbeat_sync(room_id: str, sessions: int, last_error: str | None = None) -> None:
+    """同步 POST 一次心跳（在子线程里跑，避免阻塞事件循环）。
+
+    r013：带上 `lastError`（连接失败/开会话失败的原因，截 200 字）——后端内存态保存，
+    控制坞芯片 hover 能显示「最后错误」，不再只有「未开启」三个字。
+    """
     secret = _session_secret()
     if not secret:
         logger.warning("未取到 SESSION_SECRET，跳过心跳（后端会拒；本机请确认仓库根 .env 存在）")
         return
     token = hmac.new(secret.encode(), room_id.encode(), hashlib.sha256).hexdigest()
-    body = json.dumps({"roomId": room_id, "workerId": WORKER_ID, "sessions": sessions}).encode()
+    payload: dict[str, object] = {"roomId": room_id, "workerId": WORKER_ID, "sessions": sessions}
+    if last_error:
+        payload["lastError"] = last_error[:200]
+    body = json.dumps(payload).encode()
     request = urllib.request.Request(
         f"{BACKEND_URL}/api/stt/heartbeat",
         data=body,
@@ -171,6 +188,19 @@ def _post_heartbeat_sync(room_id: str, sessions: int) -> None:
     )
     with urllib.request.urlopen(request, timeout=5):
         pass
+
+
+async def _connect_with_retry(ctx: JobContext) -> None:
+    """`ctx.connect()` 有限重试（r013）：FFI 一次性 panic（`timed out waiting for ReadyForRoomEventRequest`）
+    实测可复现，重试常能过去；全部失败由 `entrypoint` 记错并退出（不再裸崩在 FFI 里）。
+    """
+
+    async def _once() -> None:
+        await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+
+    await retry_async(_once, attempts=CONNECT_ATTEMPTS, backoff=CONNECT_BACKOFF, label="进房连接",
+                      on_error=lambda _attempt, exc: _LAST_ERROR.__setitem__(
+                          "value", f"连接失败：{type(exc).__name__}: {exc}"))
 
 
 async def _heartbeat_loop(room_id: str, pool: "TranscriberPool") -> None:
@@ -182,7 +212,7 @@ async def _heartbeat_loop(room_id: str, pool: "TranscriberPool") -> None:
     logger.info("心跳线程启动：room=%s worker=%s 后端=%s", room_id, WORKER_ID, BACKEND_URL)
     while True:
         try:
-            await asyncio.to_thread(_post_heartbeat_sync, room_id, len(pool.sessions()))
+            await asyncio.to_thread(_post_heartbeat_sync, room_id, len(pool.sessions()), _LAST_ERROR["value"])
         except Exception as exc:  # noqa: BLE001 —— 心跳失败不影响转写
             logger.debug("心跳失败（忽略）：%s", exc)
         await asyncio.sleep(HEARTBEAT_SECONDS)
@@ -256,8 +286,9 @@ class TranscriberPool:
             self._pending.discard(pid)
             try:
                 self._sessions[pid] = t.result()
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 logger.exception("开转写会话失败：%s", pid)
+                _LAST_ERROR["value"] = f"开转写会话失败：{type(exc).__name__}: {exc}"
 
         task.add_done_callback(_done)
 
@@ -294,11 +325,23 @@ server = AgentServer()
 
 @server.rtc_session(agent_name=AGENT_NAME)
 async def entrypoint(ctx: JobContext) -> None:
-    logger.info("被派单进房：room=%s agent=%s stt=%s max=%d", ctx.room.name, AGENT_NAME, STT_MODE, MAX_SESSIONS)
+    logger.info("被派单进房：room=%s agent=%s stt=%s max=%d attempts=%d",
+                ctx.room.name, AGENT_NAME, STT_MODE, MAX_SESSIONS, CONNECT_ATTEMPTS)
     pool = TranscriberPool(ctx)
     pool.start()
+    try:
+        await _connect_with_retry(ctx)
+    except Exception as exc:  # noqa: BLE001 —— 连接彻底失败：上报原因后退出，交给守护重启
+        reason = f"连接失败（{CONNECT_ATTEMPTS} 次）：{type(exc).__name__}: {exc}"
+        _LAST_ERROR["value"] = reason
+        logger.error("进房连接彻底失败，退出码 %d 交给守护重启：%s", EXIT_CONNECT_FAILED, reason)
+        try:
+            await asyncio.to_thread(_post_heartbeat_sync, ctx.room.name, 0, reason)   # 尽力上报一次
+        except Exception as beat_exc:  # noqa: BLE001
+            logger.warning("失败上报也没成功（不影响退出）：%s", beat_exc)
+        await pool.aclose()
+        raise SystemExit(EXIT_CONNECT_FAILED) from exc
     heartbeat = asyncio.create_task(_heartbeat_loop(ctx.room.name, pool))
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     for participant in ctx.room.remote_participants.values():
         pool._maybe_start(participant)
 

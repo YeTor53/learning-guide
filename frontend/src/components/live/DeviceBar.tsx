@@ -47,7 +47,7 @@ interface Props {
   onToggleShare: () => void
   /** r010：房间侧转写状态（只读展示；关掉麦克风即不参与转写）。
    *  r011：加 `lastHeartbeatAt`（毫秒）——worker 掉线时提示里能看到「最后心跳 X 秒前」。 */
-  transcribe?: { on: boolean; lastHeartbeatAt?: number | null }
+  transcribe?: { on: boolean; lastHeartbeatAt?: number | null; lastError?: string | null }
   /** r012：超管视角 —— 不发布音视频（Token 无发布权限），故**不渲染设备/举手/共享控件**，
    *  只留管理与离场（同时给「结束房间」与「离开」）。 */
   superadminMode?: boolean
@@ -138,13 +138,15 @@ export default function DeviceBar({
           <span
             className={`live-transcribe-chip${transcribe.on ? ' on' : ''}`}
             title={
-              transcribe.on
+              (transcribe.on
                 ? '房间侧转写已开启；关掉麦克风即不参与转写'
                 : `房间侧转写未开启（演示前需先启动转写进程）${
                     transcribe.lastHeartbeatAt
                       ? `；最后心跳：${Math.max(0, Math.round((Date.now() - transcribe.lastHeartbeatAt) / 1000))} 秒前`
                       : '；本房还没有心跳记录'
-                  }`
+                  }`) +
+              // r013：worker 侧错误透出（只放 title，不新增常驻文案）
+              (transcribe.lastError ? `；最后错误：${transcribe.lastError.slice(0, 80)}` : '')
             }
           >
             转写：{transcribe.on ? '开启' : '未开启'}

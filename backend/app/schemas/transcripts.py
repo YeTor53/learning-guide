@@ -65,4 +65,6 @@ class SttHeartbeatIn(CamelModel):
     room_id: str = Field(min_length=1, max_length=64)
     worker_id: str = Field(min_length=1, max_length=128)
     sessions: int = Field(default=0, ge=0, le=50)
+    # r013：worker 侧最后一次错误（连接失败/开会话失败），可选、向后兼容；截 200 字防刷屏
+    last_error: Optional[str] = Field(default=None, max_length=200)
 
