@@ -1,0 +1,73 @@
+---
+title: r010 变更台账：语音转文字并入讨论流
+description: cp 切分、每步实测数字与门禁记录、文件台账（实现期逐条追加）。
+type: reference
+status: draft
+owner: 陀梓皓
+updated: 2026-09-20
+---
+
+<!-- overview -->
+需求 `docs/00-requirements/r010-transcription.md`；设计 `design.md`；决定 ADR-0022；调研 `research-01/02.md`；CR 见 `cr-01.md`。
+数字一律标出处：`历史` = 引自既有档案；`r010 实测` = 本轮新跑。
+
+## 1. cp 台账
+
+| cp | 内容 | 状态 | 提交 | 证据 |
+| --- | --- | --- | --- | --- |
+| cp-r010-0 | 阶段 1 文档（需求单 + 函数级设计 + ADR-0022 + 调研 01/02） | **完成 2026-09-20** | `941046f`（tag `cp-r010-0` 由 r009.5 补打） | — |
+| cp-r010-1 | 迁移 009 + `services/stt.py`（唯一出口、可打桩）+ `repositories/transcripts.py` + 上传/列表路由 + 用例 | **完成 2026-09-20**（含 CR r010-01 依赖处置：装 `python-multipart==0.0.32`） | 见 cp-1 提交 | E1/E2/E3 |
+| cp-r010-2 | 三源合一：`build_conversation` + `GET /conversation` + 前端 `ConversationPanel` | planned | — | E4 |
+| cp-r010-3 | 前端采集：`useTranscription`（默认开启 / 8 秒分段 / 静音跳过 / 关闭即停）+ 告知条 + 开状态接口 | planned | — | E5 |
+| cp-r010-4 | 纪要接上转写素材 | planned | — | E7 |
+| cp-r010-5 | 收官（真机取证、门禁、文档、review） | planned | — | E8 |
+
+## 2. 用户消息台账（首行回执对账用）
+
+| # | 用户原话摘要 | 回执分类 | 单号 |
+| --- | --- | --- | --- |
+| 1 | 「r010」 | 澄清回答（W2：点轮次名＝开工） | — |
+| 2 | （cp-1 撞依赖门禁后上报） | 阻塞上报 → CR r010-01 | `cr-01.md`（超时 defaulted → 已按建议值执行） |
+
+## 3. 实测证据
+
+### 3.1 cp-1（2026-09-20 实测）
+
+- **E1 迁移**：`python backend/scripts/db_init.py`（不加 `--reset`，避免动演示数据）→ `[migrate] 本次应用版本：009_r010_transcripts`；`schema_migrations = 9`；`transcripts = 0`。
+- **E2/E3 用例**：`python -m pytest backend/tests/test_transcripts_api.py -q` → **15 passed**（3.81s）。覆盖：
+  - 权限：未登录 401 / 非成员 403 / 房间不存在 404 / 结束后上传 409 且**转写仍可读**（E2、边界）；
+  - 未配置 STT → **503 `STT_NOT_CONFIGURED` 且不落库**（E2）；
+  - STT 失败 → **502 `STT_FAILED` 且不落库**；空文本同判 502（E2）；
+  - 成功 → 201 + `text/speakerId/speakerName/segmentIndex/durationMs/final/language` 齐；**打桩记录调用字节数 = 请求体长度**（音频原样透传）；
+  - **幂等（E3）**：同段重传 → 仍 201、库里仍 1 行、**且不再调用 STT**（打桩调用次数 = 1）；换段号 → 2 行；两人同段号 → 互不冲突（幂等键含说话人）；
+  - 校验：单段时长超上限 400、音频超体积 400、`startedAt` 非法 400、`limit` 越界 400；
+  - 顺序：按 `started_at` 正序返回（后传的早时间排前）。
+- **依赖门禁（CR r010-01）**：首次跑用例 13 ERROR（`RuntimeError: Form data requires "python-multipart"`）→ 停手出单 → 超时按建议值执行 → 装 `python-multipart==0.0.32` + 追加 `backend/requirements.txt` → 用例转全绿。
+
+### 3.2 cp-2 三源合一（待填）
+
+### 3.3 cp-3 前端采集（待填）
+
+### 3.4 cp-4 纪要素材（待填）
+
+### 3.5 cp-5 收官（待填）
+
+## 4. 门禁记录
+
+| 时点 | pytest | smoke | tsc | build |
+| --- | --- | --- | --- | --- |
+| cp-0（进入本轮前，r009.5 口径） | 128 passed（历史） | 46/46（历史） | exit 0（历史） | exit 0（历史） |
+| cp-1（本轮实测 2026-09-20） | **143 passed**（35.01s；原 128 + 新增 15） | 未跑（cp-5 补） | 未跑（本轮无前端改动） | 未跑（同上） |
+
+## 5. 文件台账
+
+| 文件 | 动作 | 落点 cp |
+| --- | --- | --- |
+| `backend/app/db/sql/009_r010_transcripts.sql` | 新增（迁移 009） | cp-1 |
+| `backend/app/config.py` | 改（`STT_*` 六项 + 启动校验） | cp-1 |
+| `backend/app/db/migrate.py`、`backend/tests/test_schema.py` | 改（计数表 / 迁移清单加 `transcripts`、`009_`） | cp-1 |
+| `backend/app/repositories/transcripts.py`、`backend/app/services/stt.py`、`backend/app/services/transcripts.py`、`backend/app/schemas/transcripts.py` | 新增 | cp-1 |
+| `backend/app/api/routers/transcripts.py`、`backend/app/main.py` | 新增路由 / 注册 | cp-1（待 CR 批） |
+| `backend/tests/test_transcripts_api.py` | 新增用例 | cp-1（待 CR 批） |
+| `backend/requirements.txt` | 追加 `python-multipart==0.0.32`（CR r010-01，defaulted） | cp-1 |
+| `docs/rounds/r010-transcription/{cr-01,changes}.md` | 新增 | cp-1 |

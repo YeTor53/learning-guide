@@ -2,13 +2,14 @@
 title: r010 函数级设计：语音转文字并入讨论流（路径 B + 官方协议）
 description: 逐文件的函数签名与职责——STT 唯一出口、转写落库、三源合一对话流、前端默认开启与分段上传。
 type: reference
-status: draft
+status: approved
 owner: 陀梓皓
 updated: 2026-09-19
 ---
 
 <!-- overview -->
-需求 `docs/00-requirements/r010-transcription.md`；调研 `research-01/02.md`；决定 ADR-0022。**未批不动代码。**
+需求 `docs/00-requirements/r010-transcription.md`；调研 `research-01/02.md`；决定 ADR-0022。
+状态：**approved**（2026-09-20 起实施；你以「r010」指示开工）。实现期的依赖登记见 `cr-01.md`（L3，已按建议值执行）。
 
 ## 1. 数据层
 
@@ -56,6 +57,8 @@ def count_speakers(conn, room_id) -> int
 ```
 
 ### 2.3 `app/services/stt.py`（新增；**唯一 STT 出口**）
+
+> 依赖：后端→STT 的 multipart 由 `aiohttp.FormData` 发（`aiohttp` 已有）；**前端→后端的 multipart 解析需要 `python-multipart`**（FastAPI 官方要求），见 `cr-01.md`（2026-09-20 追加进 `backend/requirements.txt`）。
 ```python
 class SttNotConfigured(Exception)  # → 503 STT_NOT_CONFIGURED
 class SttError(Exception)          # → 502 STT_FAILED

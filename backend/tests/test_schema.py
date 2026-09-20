@@ -34,7 +34,8 @@ def _normalize(statements: list[str]) -> list[str]:
 
 def test_sql_files_are_ordered() -> None:
     """迁移按序号执行；新增迁移必须追加在末尾（003_ = R-6 活跃 Host 唯一索引；004_ = r004 举手与焦点；
-    005_ = r005 时间戳默认改语句级；006_ = r007 主题扩容；007_ = r008 纪要；008_ = r009 焦点申请）。"""
+    005_ = r005 时间戳默认改语句级；006_ = r007 主题扩容；007_ = r008 纪要；008_ = r009 焦点申请；
+    009_ = r010 转写段）。"""
     names = [p.stem for p in sql_files()]
     assert names == [
         "001_schema",
@@ -45,6 +46,7 @@ def test_sql_files_are_ordered() -> None:
         "006_r007_topic_taxonomy",
         "007_r008_session_summaries",
         "008_r009_focus_requests",
+        "009_r010_transcripts",
     ], names
 
 
@@ -84,6 +86,7 @@ def test_counted_tables_cover_business_tables() -> None:
         "room_hand_raises",
         "room_focus",
     "session_summaries",
+    "transcripts",
     )
 
 

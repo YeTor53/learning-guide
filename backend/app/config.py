@@ -28,6 +28,11 @@ MIN_SESSION_SECRET_LEN = 32
 
 # LiveKit（r002）：TTL 与超时由模式派生（单点可调，见 docs/02-modules/r002-livekit.md §6.1）
 VALID_LIVEKIT_MODES = ("cloud", "self")
+# LiveKit 之外的外部能力默认值（r010：Whisper 兼容 STT；空 key = 未配置）
+DEFAULT_STT_MODEL = "whisper-1"
+DEFAULT_STT_SEGMENT_SECONDS = 8          # 前端建议分段（回给前端，改一处即生效）
+DEFAULT_STT_MAX_SECONDS = 30             # 单段时长上限（秒）
+DEFAULT_STT_MAX_BYTES = 10 * 1024 * 1024  # 单段体积上限
 LIVEKIT_TOKEN_TTL_SECONDS = {"cloud": 3600, "self": 300}
 DEFAULT_LIVEKIT_TIMEOUT_SECONDS = 10
 
@@ -50,6 +55,13 @@ class Settings:
     llm_base_url: str = ""
     llm_api_key: str = ""
     llm_model: str = ""
+    # r010：语音转文字（Whisper 兼容 /audio/transcriptions；空 = 前端禁用并提示）
+    stt_base_url: str = ""
+    stt_api_key: str = ""
+    stt_model: str = DEFAULT_STT_MODEL
+    stt_segment_seconds: int = DEFAULT_STT_SEGMENT_SECONDS
+    stt_max_seconds: int = DEFAULT_STT_MAX_SECONDS
+    stt_max_bytes: int = DEFAULT_STT_MAX_BYTES
 
     @property
     def is_demo(self) -> bool:
@@ -112,6 +124,13 @@ def validate_startup(s: Settings) -> None:
             raise AppError(ERR_CONFIG_MISSING, f"缺少环境变量 {_key}（见 .env.example）", status=500)
     if not (s.livekit_url.startswith("wss://") or s.livekit_url.startswith("ws://")):
         raise AppError(ERR_CONFIG_MISSING, "LIVEKIT_URL 必须是 ws:// 或 wss:// 地址", status=500)
+    # r010：分段/上限这三项有默认值，改动越界时启动即失败（键可留空，不留空也要合法）
+    if not (1 <= s.stt_segment_seconds <= 30):
+        raise AppError(ERR_CONFIG_MISSING, "STT_SEGMENT_SECONDS 必须在 1~30 秒之间", status=500)
+    if not (1 <= s.stt_max_seconds <= 120):
+        raise AppError(ERR_CONFIG_MISSING, "STT_MAX_SECONDS 必须在 1~120 秒之间", status=500)
+    if s.stt_max_bytes < 1024:
+        raise AppError(ERR_CONFIG_MISSING, "STT_MAX_BYTES 至少 1024 字节", status=500)
 
 
 @lru_cache(maxsize=1)
@@ -136,6 +155,12 @@ def load_settings() -> Settings:
         llm_base_url=_optional_env("LLM_BASE_URL"),
         llm_api_key=_optional_env("LLM_API_KEY"),
         llm_model=_optional_env("LLM_MODEL"),
+        stt_base_url=_optional_env("STT_BASE_URL"),
+        stt_api_key=_optional_env("STT_API_KEY"),
+        stt_model=_optional_env("STT_MODEL", DEFAULT_STT_MODEL),
+        stt_segment_seconds=int(require_env("STT_SEGMENT_SECONDS", str(DEFAULT_STT_SEGMENT_SECONDS))),
+        stt_max_seconds=int(require_env("STT_MAX_SECONDS", str(DEFAULT_STT_MAX_SECONDS))),
+        stt_max_bytes=int(require_env("STT_MAX_BYTES", str(DEFAULT_STT_MAX_BYTES))),
     )
     validate_startup(settings)
     return settings

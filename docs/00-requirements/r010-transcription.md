@@ -65,3 +65,33 @@ updated: 2026-09-19
 | cp-3 | 前端采集：`useTranscription`（默认开启 / 8 秒分段 / 静音跳过 / 关闭即停）+ 告知条 + 开状态接口 |
 | cp-4 | 纪要接上转写素材 |
 | cp-5 | 收官（真机取证：说一句话 → 8 秒后气泡出现 → 生成纪要含该句 + 门禁 + 文档 + review） |
+
+## 5.1 依赖登记（2026-09-20，实现期）
+
+| 依赖 | 用途 | 处置 | 出处 |
+| --- | --- | --- | --- |
+| `python-multipart==0.0.32` | FastAPI 解析前端上传音频的 multipart 表单（`File(...)` / `Form(...)`） | **已装**（conda `learningguide`）+ 追加进 `backend/requirements.txt`；按 `cr-01.md` 的建议值执行（超时 defaulted，你可否掉） | `docs/rounds/r010-transcription/cr-01.md` |
+
+## 6. 文档产出清单（覆盖矩阵）
+
+| 件套 | 页 | 路径 | 状态 |
+| --- | --- | --- | --- |
+| 需求单 | 本页 | `docs/00-requirements/r010-transcription.md` | landed |
+| A 设计页 | 函数级设计 | `docs/rounds/r010-transcription/design.md` | landed |
+| B 实现同步页 | 轮次台账 | `docs/rounds/r010-transcription/changes.md` | landed（逐 cp 追加） |
+| B 实现同步页 | 审查报告 | `docs/rounds/r010-transcription/review.md` | planned（cp-5） |
+| 决策 | ADR-0022（路径 B + 官方协议迁移点） | `docs/03-decisions/ADR-0022-transcription-path.md` | landed |
+| 调研 | 两条调研（客户端转写事件 / Agents 侧与 Jitsi 对照） | `docs/rounds/r010-transcription/research-01/02.md` | landed |
+| CR | 依赖登记（L3） | `docs/rounds/r010-transcription/cr-01.md` | landed |
+| 模块轴 | 实现页 + 功能页（转写 / 三源合一） | `docs/02-modules/r010-transcription{,-features}.md` | planned（cp-5） |
+| C 使用者教学页 | 「说的话变成文字、进纪要」怎么用 | `docs/tutorials/r010-transcription-user-guide.md` | planned（cp-5） |
+| 索引轴 | 需求索引 / `docs/README.md` / roadmap / 模块 README 回填 | 四处 | planned（cp-5） |
+| D 开发者教学页 | **不适用**：本轮的扩展点已在 design §2.3（STT 唯一出口、可换供应商）写清，且 `r002-livekit-dev-guide` 已覆盖「自助加能力五步」；如需单独页，请在收官时点名 | — | 不适用（理由如上） |
+| README / `.env.example` | 三键说明 + 演示路径第 10 步（说话 → 气泡） | 两处 | planned（cp-5） |
+
+## 7. 变更记录
+
+| 日期 | 版本 | 改了什么 | 依据 |
+| --- | --- | --- | --- |
+| 2026-09-19 | v1 | 建页：R1~R6 + 口径与边界 + E1~E8 + STT 方案 + cp 切分 | 澄清单 Q1~Q12（你 2026-09-19） |
+| 2026-09-20 | v2 | 补 **§5.1 依赖登记**（`python-multipart`，CR r010-01）与 **§6 覆盖矩阵**；`STT_*` 三键状态改为「已进 `.env.example`，值待填」 | 本轮 cp-1 实现期实测 + 铁律 6（覆盖矩阵） |
