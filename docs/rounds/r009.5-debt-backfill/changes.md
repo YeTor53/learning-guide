@@ -17,7 +17,7 @@ updated: 2026-09-20
 | cp-r009.5-1 | 阶段 1 文档（需求单 + design + 台账/审查骨架 + 索引登记行） | **完成 2026-09-20** | `59ef799` | E3/E11 |
 | cp-r009.5-2 | 台账与 tag 补正（r009 changes 回填 + 4 tag + r008/r009 review 修正回填） | **完成 2026-09-20** | 见 cp-2 提交 | E1~E4 |
 | cp-r009.5-3 | 文档纠错与索引回填（轮次号 / 路径 / 旧文件名 / 合并顺序 / docs README §2·§4·§5 / roadmap §3·§7·§9） | **完成 2026-09-20** | 见 cp-3 提交 | E5/E8 |
-| cp-r009.5-4 | 配置与死代码（`.env.example` 三键 + 删 `stageLayout.ts` + 注释同步） | planned | — | E6/E7 |
+| cp-r009.5-4 | 配置与死代码（`.env.example` 三键 + 删 `stageLayout.ts` + 注释同步） | **完成 2026-09-20** | 见 cp-4 提交 | E6/E7 |
 | cp-r009.5-5 | 门禁与取证收官（pytest/smoke/tsc/build + E0 实测 + E11 截图 + 两页教学页 + review 定稿 + 模块页变更记录 + 索引最终回填） | planned | — | E9~E12 |
 
 ## 2. 用户消息台账（首行回执对账用）
@@ -64,7 +64,14 @@ updated: 2026-09-20
 - **`docs/README.md`**：§2 指路行改指当前轮 r009.5 与下一轮 r010；§4 表按轮次重排并补 r009/r010/r009.5 三行，去掉 r004 行「待合并」尾巴；§5 backlog 追加两行登记（r006/r007 教学页缺口、`cancel_pending` 已备未接）。**§6 实测清点**的重扫**改到 cp-5**（等两页教学页落地后一次扫准，避免同轮两次扫描）——属实现细节调整（L1）。
 - **`docs/00-project/global-roadmap.md`**：§3 新增 **M3 / M4 状态回填注**（M3 已完成并合 `daf7696`；M4 部分提前落地 = r008 纪要，其余未做）与 M5 实况；§7 What's next 追加第 6~11 条（r006~r010 + r009.5）并把 r004 备查段标注为已合并；§9 台账把「语音转文字」行去向由 r011 改为 **r010**、**增补三行**（r008/r009 欠账已还、`stageLayout.ts` 已删、r006/r007 教学页缺口登记）。
 
-### 3.4 cp-4 配置与死代码（待填）
+### 3.4 cp-4 配置与死代码（2026-09-20 实测）
+
+- `.env.example` 追加三键（空值 + 注释）：
+  `STT_BASE_URL=` / `STT_API_KEY=` / `STT_MODEL=whisper-1`（注释写明「r010 起；空 = 前端功能禁用并提示 503」）。**本机 `.env` 未改**（钥匙仍只在 owner 手里）。
+- 删除 `frontend/src/components/live/stageLayout.ts`（`git rm`）；`stageGeometry.ts` 头部注释改写为「旧文件已于 r009.5 删除，历史见 git（删除前最后版本 `e3571be`）」。
+- **删除后门禁复跑（E7）**：`cd frontend && npx tsc --noEmit` → **无输出（通过）**；`npm run build` → **`✓ 2006 modules transformed` / `✓ built in 3.92s` / exit 0**（仅既有 chunk >500kB 警告，r007 起既有）。
+- 引用核查：`git grep -n stageLayout -- frontend/src` 实测**仅剩本轮改写后的注释**中「旧 `stageLayout.ts`」一处（描述被删对象），无 import/调用。
+- 顺带：roadmap frontmatter `updated` 由 2026-09-18 更正为 **2026-09-20**。
 
 ### 3.5 cp-5 门禁与取证（待填）
 
