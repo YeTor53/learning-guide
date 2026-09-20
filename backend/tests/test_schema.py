@@ -43,6 +43,7 @@ def test_sql_files_are_ordered() -> None:
         "004_r004_realtime_extras",
         "005_r005_statement_timestamps",
         "006_r007_topic_taxonomy",
+        "007_r008_session_summaries",
     ], names
 
 
@@ -81,6 +82,7 @@ def test_counted_tables_cover_business_tables() -> None:
         "chat_messages",
         "room_hand_raises",
         "room_focus",
+    "session_summaries",
     )
 
 

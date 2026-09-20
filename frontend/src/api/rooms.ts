@@ -38,6 +38,8 @@ export interface Room {
   myRequestStatus: string | null
   /** 我在这间房的待批申请 id（本人可见；撤回用——r007 修前走管理权限接口，申请人一律 403）。 */
   myRequestId: string | null
+  /** 我在本房的角色（含已失效成员身份）——房间结束后 myRole 为空，但纪要等追溯动作仍要用（r008）。 */
+  myRoleAny?: Role | null
   createdAt: string
   endedAt: string | null
 }

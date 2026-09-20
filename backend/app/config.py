@@ -41,6 +41,8 @@ class Settings:
     app_env: str = DEFAULT_APP_ENV
     cors_origins: tuple[str, ...] = field(default_factory=tuple)
     room_capacity: int = DEFAULT_ROOM_CAPACITY
+    # r008：限时邀请的有效期上限（秒）——用户口径「最长 1 分钟」，改这里一个数即可
+    invite_ttl_max_seconds: int = 60
     livekit_url: str = ""
     livekit_api_key: str = ""
     livekit_api_secret: str = ""
@@ -98,6 +100,8 @@ def validate_startup(s: Settings) -> None:
         )
     if not (2 <= s.room_capacity <= DEFAULT_ROOM_CAPACITY):
         raise AppError(ERR_CONFIG_MISSING, f"ROOM_CAPACITY 必须在 2~{DEFAULT_ROOM_CAPACITY} 之间", status=500)
+    if not (10 <= s.invite_ttl_max_seconds <= 86400):
+        raise AppError(ERR_CONFIG_MISSING, "INVITE_TTL_MAX_SECONDS 必须在 10~86400 秒之间", status=500)
     if not s.database_url.startswith("postgresql://"):
         raise AppError(ERR_CONFIG_MISSING, "DATABASE_URL 必须是 postgresql:// 连接串", status=500)
     # r002 起：实时房间是核心能力，LiveKit 三项必填（只报键名，不回显值）
@@ -124,6 +128,7 @@ def load_settings() -> Settings:
         app_env=require_env("APP_ENV", DEFAULT_APP_ENV),
         cors_origins=_cors_origins(),
         room_capacity=capacity,
+        invite_ttl_max_seconds=int(require_env("INVITE_TTL_MAX_SECONDS", "60")),
         livekit_url=_optional_env("LIVEKIT_URL"),
         livekit_api_key=_optional_env("LIVEKIT_API_KEY"),
         livekit_api_secret=_optional_env("LIVEKIT_API_SECRET"),

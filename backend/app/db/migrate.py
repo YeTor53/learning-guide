@@ -24,6 +24,7 @@ BUSINESS_TABLES = (
     "chat_messages",
     "room_hand_raises",
     "room_focus",
+    "session_summaries",
 )
 COUNTED_TABLES = (VERSION_TABLE,) + BUSINESS_TABLES
 

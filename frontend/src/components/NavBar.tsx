@@ -13,6 +13,8 @@ const CRUMBS: { test: (path: string) => boolean; label: string }[] = [
   { test: (path) => path.startsWith('/rooms/new'), label: '创建房间' },
   { test: (path) => /^\/rooms\/[^/]+\/live$/.test(path), label: '房间交流' },
   { test: (path) => /^\/rooms\/[^/]+\/wait$/.test(path), label: '房间等待室' },
+  { test: (path) => /^\/rooms\/[^/]+\/summary$/.test(path), label: '讨论纪要' },
+  { test: (path) => path.startsWith('/join'), label: '邀请码加入' },
   { test: (path) => path.startsWith('/rooms/'), label: '房间' },
   { test: (path) => path.startsWith('/login'), label: '登录' },
   { test: (path) => path.startsWith('/register'), label: '注册' },
