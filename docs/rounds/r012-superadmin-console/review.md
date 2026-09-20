@@ -119,6 +119,7 @@ python backend/scripts/verify_r012_superadmin_invisible.py --skip-media --keep-c
 | ③ | 大屏面板在**交流页不挂** | 设计决定（交流页已有右抽屉，避免双抽屉）；需求单 §10.1 已写明「要的话说一声」 | 若要，改成既有抽屉的第四个 tab（小增量，走 L1/L2） |
 | ④ | 演示库残留 | 你 2026-09-20 口径「开发结束后统一清」 | 收工后执行一次 `db_init --reset --seed`（会重建 `admin@example.com` 超管） |
 | ⑤ | SSE 单进程限制（多进程会漏事件） | ADR-0025 D4 已如实登记 | 上 Docker/多副本前先换 Redis pub/sub（登记为后续轮次候选） |
+| ⑨ | ~~系统消息不实时进房内讨论流~~ | **已闭合（cp-8c）**：真机实测「批准/邀请码加入/移出后系统消息已入库但抽屉 20 秒不出现，只有 F5 才出现」→ 根因是系统消息无人广播（发送方广播只覆盖聊天消息）。修法：`useChatMessages.refresh()` 对近 30 秒新出现的系统消息补广播 + 治理动作后连带 `chat.refresh()`；`verify-runbook-flow.py` 16/18 → **PASS 18/18** | 台本逐项自检发现（台本 S3/S7/S8 判据原本不成立） |
 | ⑧ | ~~SSE 订阅占满数据库连接池~~ | **已闭合（cp-8b）**：真机复现「9 条流 → 普通接口 30 秒后 500（`PoolTimeout`）」，修掉 SSE 路由的 DB 依赖；修复后 12 条流挂着仍 200 / 0.02s。守卫：`test_events_route_must_not_depend_on_db` + smoke 一步 | 台本逐项自检时发现（后端日志 46 次 500） |
 | ⑦ | ~~交流页顶栏「大屏」按钮点了没反应~~ | **已闭合（cp-8）**：交流页按设计不挂大屏面板，但按钮照渲染 → 有反馈无动作。修法：`App.tsx` 在交流页不传 `onToggleChat`；CDP 真机复核（交流页 `hasChatBtn=false`、列表页 `true`） | 台本 S11 写这段时发现；`tsc`/`build` 绿 |
 | ⑥ | ~~跨线程广播卡死事件循环~~ | **已在 cp-7 修复**（真机踩到：订阅者挂起时同步端点直接 `put_nowait` → 8000 整机无响应） | 修法见 ADR-0025 D6 + 实现页 §5.1；回归用例 `test_publish_from_sync_endpoint_thread_wakes_waiting_subscriber`；真机复验通过 |

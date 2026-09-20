@@ -258,6 +258,9 @@ export default function RoomLivePage() {
   const refreshRoster = () => {
     void queryClient.invalidateQueries({ queryKey: ['live-room', id] })
     void queryClient.invalidateQueries({ queryKey: ['live-room-requests', id] })
+    // 治理动作（批准 / 移出 / 离开 / 结束）会由服务端写入系统消息；连带拉一次聊天流，
+    // 由 `useChatMessages` 把新出现的系统消息补广播给在场所有人（cp-8c）。
+    void chat.refresh()
   }
   /** 本端做完房间动作后广播一次：让别端秒级跟上（收端在 useRosterSync 里）。 */
   const broadcastRoster = useRosterSync(connection.room, liveReady, refreshRoster)
