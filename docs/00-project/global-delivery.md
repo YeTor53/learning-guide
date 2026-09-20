@@ -45,7 +45,7 @@ rounds: [global]
 - **总制作时间 ≈ 12 小时**（4 个自然日窗口内的实际专注投入；口径 = 需求与设计文档 + 后端与数据库 + 前端 + 测试与文档回填的合计）。若面试要分项细目，可按本仓 git 提交时间线逐条核算。
 - **演示录屏（加分⑤）没做：时间来不及。** 完整版 6.5 分钟分镜、按钮逐条脚本、兜底话术、现场道具都已备好（`docs/00-project/demo-runbook.md` §5「录屏分镜」），缺的只是录制与剪辑那一段单独时间；演示本身可直接现场跑（§3）。
 - **录制功能（加分②后半）**：转写链路已完成，**录制是主动取舍不做**（同 `assignment-a-coverage.md` §3）。
-- **Docker Compose / 公网部署（加分③）**：未做，本机 `dev.bat` 起服务已足够评审复现。
+- **Docker Compose / 公网部署（加分③）：未做，且交付里没有 Docker 相关内容**（如实声明）：本机**未安装 Docker**、WSL 无已安装发行版，仓库内也**没有** `Dockerfile` / `docker-compose.yml`（实测：`git ls-files` 无 docker 命中的文件、`docker --version` 命令不存在）。起服务走本机两进程 `dev.bat`（uvicorn `127.0.0.1:8000` + Vite `localhost:5173`）；**交付/演示形态** = 单进程同源（`.env` 的 `APP_ENV=demo` + `npm run build` 后由 uvicorn 托管 `frontend/dist`，只开 8000 一个端口），评审复现只需 PostgreSQL + conda 环境 + Node，不需要容器。
 - 三项取舍都**不影响必做 15 条闭环**：必做项 15/15 完成，逐条实现位置与证据见 `docs/00-project/assignment-a-coverage.md` §2。
 
 ## 3. 本机起服务与演示
@@ -94,7 +94,7 @@ rounds: [global]
 | --- | --- | --- |
 | 加分① 断线重连后举手 / 焦点恢复 | **已做且有真机取证**：防火墙真断 12 秒 → 断中两端 1.0 / 3.0 秒进「正在重连…」，恢复后 5~6 秒自回「已连接」，举手保持、地址栏不变；界面口径为「非用户主动的中断一律按正在重连处理、不显示已断开」 | `docs/00-requirements/r013-demo-readiness.md` §10.6 / §10.8 / §10.9 |
 | 加分② 房间录制 / 旁路转写 | 转写链路**已完成**；**录制经本人决定不做** | `docs/00-project/assignment-a-coverage.md` §3 |
-| 加分③ Docker Compose / 公网部署 | **未做**（本机 `dev.bat` 起服务） | 同上 |
+| 加分③ Docker Compose / 公网部署 | **未做，也未使用 Docker**（本机未装 Docker、WSL 无发行版、仓库无 `Dockerfile`/`compose` 文件）；起服务 = `dev.bat` 两进程，交付形态 = uvicorn 托管 `dist` 单进程同源 | §2.1；`README.md`「④ 演示形态」 |
 | 加分④ 简单管理后台 | **已完成**（r012：房间 / 用户 / 纪要 / 审计四分区 + 结束 / 重生纪要 / 删除三动作；超管隐身进房） | `docs/rounds/r012-superadmin-console/` |
 | 加分⑤ 演示录屏 3–5 分钟 | **未做：时间来不及**（分镜 / 逐步脚本 / 道具都已备，缺录制与剪辑；现场可直接演示） | §2.1；`docs/00-project/demo-runbook.md` §5 |
 | 转写 worker 的 FFI panic 根因 | 未修（需升级 `livekit-agents`）；现为**自愈 + 可观测**（有限重试、失败以退出码交守护重启、错误透出到界面芯片） | `docs/rounds/r013-demo-readiness/review.md` §6 ① |
@@ -107,6 +107,7 @@ rounds: [global]
 - [ ] 补 `docs/00-project/ai-tools-and-models.md` §1 工具行（除 Hermes Agent 外还有没有别的；没有就写「无其它」）
 - [ ] 决定 GitHub 仓库公开性并建远端推送（当前仓库**无 remote**）
 - [ ] 演示录屏（加分⑤）：**本次因时间来不及不做**（§2.1），若补做按 `docs/00-project/demo-runbook.md` §5「录屏分镜」
+- [x] 部署声明已写明：**未使用 Docker、未做公网部署**，起服务与交付形态见 §2.1 / §3
 - [ ] 打 zip（命名见 §2），核对包内无 `.env` / `node_modules` / 测试残留
 - [ ] 合并需求分支并打 `round-rNNN-done`（由本人执行，顺序见 `docs/00-project/global-roadmap.md`）
 
@@ -115,4 +116,5 @@ rounds: [global]
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1 | 建页：交付物四项对照、提交口径、起服务与演示、设计说明导读、验证证据索引、已知边界、提交前 checklist | 本人 2026-09-20「写交付文档（用来交付面试作业，题目一）」 |
+| 2026-09-20 | v3 | §2.1 与 §6 补**部署声明**：未使用 Docker（本机未装、WSL 无发行版、仓库无 Dockerfile/compose）、未做公网部署；起服务与交付形态写明（`dev.bat` 两进程 / uvicorn 托管 dist 单进程同源） | 本人 2026-09-20「声明部署或 docker 也没做」 |
 | 2026-09-20 | v2 | 补 §2.1「时间投入与取舍」：总制作 ≈ 12 小时；**演示录屏因时间来不及未做**（分镜/脚本/道具齐备，仅缺录制剪辑）；交付物④与 checklist 同步（小时数已填、录屏移出待办） | 本人 2026-09-20「加入解释：演示视频时间来不及没做，总制作时间约 12 小时」 |
