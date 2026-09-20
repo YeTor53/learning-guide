@@ -105,11 +105,11 @@ updated: 2026-09-20
 | A 设计页 | 逐文件函数级设计（含契约面清单、视觉契约、教学契约） | `docs/rounds/r012-superadmin-console/design.md` | 本轮（cp-1） |
 | B 台账 | cp 台账 + 门禁数字 + 实测 | `docs/rounds/r012-superadmin-console/changes.md` | 骨架（cp-1），cp-2 起逐格填 |
 | B 审查 | 验收对账 + 两栏清单 + 视觉对账 + 重定向对账 | `docs/rounds/r012-superadmin-console/review.md` | 骨架（cp-1），cp-7 定稿 |
-| 模块·实现页 | 超管 / 管理后台 / 大屏聊天 的实现事实（含迁移 DDL、端点表、SSE 协议） | `docs/02-modules/r012-superadmin-console.md` | planned（cp-2 起） |
+| 模块·实现页 | 超管 / 管理后台 / 大屏聊天 的实现事实（含迁移 DDL、端点表、SSE 协议） | `docs/02-modules/r012-superadmin-console.md` | 首版 landed（cp-2：身份 + 在线口径），其余 cp 补齐 |
 | 模块·功能页 | 人可见行为：超管能看到/能做什么、后台三列表、大屏聊天（含权限矩阵） | `docs/02-modules/r012-superadmin-console-features.md` | planned（cp-6） |
 | C 使用者教学页 | 「怎么用管理后台 / 怎么用大屏聊天」（截图 + 实跑输出） | `docs/tutorials/r012-admin-and-global-chat.md` | planned（cp-6） |
 | D 开发者教学页 | 「怎么加一个管理动作 / 怎么加一类 SSE 事件」（扩展点 + 代码位置） | `docs/tutorials/r012-superadmin-dev-guide.md` | planned（cp-6） |
-| ADR | ① 超管隐身与旁路校验、容量口径 ② 全服聊天与 SSE 通道口径 | `docs/03-decisions/ADR-0024-superadmin-invisible-bypass.md`、`ADR-0025-global-chat-and-sse.md` | planned（cp-2 / cp-5） |
+| ADR | ① 超管隐身与旁路校验、容量口径 ② 全服聊天与 SSE 通道口径 | `docs/03-decisions/ADR-0024-superadmin-invisible-bypass.md`（landed，cp-2）、`ADR-0025-global-chat-and-sse.md`（planned，cp-5） | 见左 |
 | 索引 | 轮次索引表加 r012 一行 | `docs/00-requirements/README.md` | 本轮（cp-1） |
 
 ## 9. cp 切分（计划）

@@ -17,7 +17,7 @@ updated: 2026-09-20
 | --- | --- | --- | --- | --- |
 | cp-r012-1 | 本次提交 | 阶段 1 文档：需求单 + design + changes/review 骨架 + 轮次索引行 + `redirect-01` 指针 | 不适用（纯文档，未跑门禁；代码门禁从 cp-2 起） | 需求单 §9 |
 | cp-r012-1b | 本次提交 | 阶段 1 批复登记：Q1~Q18 落地（需求单 §10.1）+ 按批改写 design（只管理不发布音视频 / 右侧 Copilot 式面板 / 前端短轮询心跳）+ 把 r011 收尾提交 `cp-8`/`cp-8b` merge 进本分支（`e0c6598`） | 不适用（纯文档） | 需求单 §10.1 |
-| cp-r012-2 | | 迁移 011 + 身份（`role`/`last_seen_at`）+ 在线心跳（`POST /api/presence` + `usePresenceBeat`）+ 提权脚本/seed 超管 + ADR-0024 + 模块实现页首版 | | E1/E14 |
+| cp-r012-2 | 本次提交 | 迁移 011（身份/旁路/大屏/审计五对象）+ 012（演示超管）+ 身份（`users.role` + `UserVO.role` + `roles.py`）+ 在线心跳（`POST /api/presence` + `presence.py` + `usePresenceBeat` + `PRESENCE_ONLINE_SECONDS`）+ 提权脚本 `grant_superadmin.py` + ADR-0024 + 模块实现页首版 | pytest **174 passed**（+10）/ smoke 未跑（本轮 cp-7 统一跑）/ `tsc --noEmit` exit 0 | E1/E14 |
 | cp-r012-3 | | 超管隐身进房（hidden Token + `room_visits` + 旁路校验收敛）+ 用例 | | E2/E3/E4/E10 |
 | cp-r012-4 | | 管理后台后端（三列表 + 三动作 + 审计）+ 用例 | | E5/E6 |
 | cp-r012-5 | | 大屏聊天 + SSE 后端 + 限流 + ADR-0025 + 用例 | | E7/E8 |
@@ -36,7 +36,14 @@ updated: 2026-09-20
 | 项 | 命令 / 做法 | 实测 | 时间 |
 | --- | --- | --- | --- |
 | 阶段 1 文档落盘 | `ls docs/rounds/r012-superadmin-console` | 4 个文件：`design.md` / `changes.md` / `review.md` / `redirect-01.md`（+ 需求单 1 个）；cp-1 `0192e25`、cp-1b（本次） | 2026-09-20 |
-| 迁移 011 后表/列 | `python backend/scripts/db_init.py --reset --seed` 输出行数 | 待填（cp-2） | |
+| 迁移应用 | `python backend/scripts/db_init.py --seed`（**不 reset**，沿用 r011 口径「演示库开发结束后统一清」） | `[migrate] 本次应用版本：011_r012_superadmin_global_chat, 012_r012_seed_superadmin`；`schema_migrations 12`；新表 `room_visits / global_messages / admin_audit` 各 0 行 | 2026-09-20 |
+| 演示超管 | `db_init.py --seed` 后查库 | `usr_demo_admin / admin@example.com / 平台管理员 / role=superadmin`（last_seen_at 初始 NULL） | 2026-09-20 |
+| 提权脚本 | `python backend/scripts/grant_superadmin.py --email host@example.com` → `--revoke`；再试不存在的邮箱 | `user → superadmin（影响 1 行；id=usr_demo_host）` / `superadmin → user（影响 1 行；id=usr_demo_host）` / 退出码 2 `找不到账号：nobody@example.com` | 2026-09-20 |
+| 用例 | `pytest backend/tests -q` | **174 passed**（r011 基线 164；新增 10 条：`test_presence_api.py` 4 + `test_superadmin_identity.py` 6）42.83s | 2026-09-20 |
+| 前端类型 | `cd frontend && npx tsc --noEmit` | exit 0 | 2026-09-20 |
+| 前端构建 | `cd frontend && npm run build` | exit 0（`tsc --noEmit && vite build`；2011 modules，`dist/assets/index-DB_GFgTm.js` 962.81 kB / gzip 272.75 kB） | 2026-09-20 |
+| 密钥扫描 | `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` | 命中 8 行，**全部为键名/变量名**（`config.py` 6 处变量名 + `stt.py:82`、`summary.py:103` 报错文案 + `RoomSummaryPage.tsx:96` 提示文案），**本轮新增命中 0**、无任何密钥值 | 2026-09-20 |
+| 未新增依赖 | `git diff --stat -- frontend/package.json backend/requirements*.txt` | 空 | 2026-09-20 |
 | 门禁四项 | `pytest backend/tests -q` / `smoke.py` / `tsc --noEmit` / `npm run build` | 待填（cp-7；基线 r011：pytest 164 / smoke 47-47 / tsc·build exit 0） | |
 | 隐身真机 | 2 浏览器：成员列表 / 舞台 / 人数 | 待填（cp-3） | |
 | SSE 真机 | `curl -N http://127.0.0.1:8000/api/events` + 另一客户端发大屏消息 | 待填（cp-5） | |
@@ -47,3 +54,4 @@ updated: 2026-09-20
 | --- | --- | --- | --- |
 | 2026-09-20 | 骨架（cp-1） | 建页：cp 台账骨架 + 用户消息台账 + 实测留痕位 | 需求单 §9；vibecoding 8.1 判据 |
 | 2026-09-20 | cp-1b | 登记阶段 1 批复（Q1~Q18）与两条补充口径；cp 台账加 cp-1b 行、台账加用户消息 #2；并入 r011 `cp-8`/`cp-8b` | 用户 2026-09-20 批复 |
+| 2026-09-20 | cp-2 | 迁移 011/012 + 身份 + 在线心跳 + 提权脚本 + ADR-0024 + 模块实现页首版；用例 174 passed、tsc 0；`roles.py`「角色判据唯一入口」随本 cp 提前落地（提权脚本要用，属 cp-3 计划的同一模块） | 需求单 §9 cp-2、§10.1（Q1/Q14/Q15）；ADR-0024 |

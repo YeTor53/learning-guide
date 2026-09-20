@@ -40,6 +40,8 @@ DEFAULT_STT_AGENT_NAME = "learning-guide-transcriber"
 DEFAULT_STT_MAX_SESSIONS = 5            # 免费档 Inference STT 并发上限（worker 侧护栏）
 LIVEKIT_TOKEN_TTL_SECONDS = {"cloud": 3600, "self": 300}
 DEFAULT_LIVEKIT_TIMEOUT_SECONDS = 10
+# r012：在线判据窗口（秒）= 2× 前端 60 秒心跳周期（容一次丢包不掉线）；改这里一个数即可
+DEFAULT_PRESENCE_ONLINE_SECONDS = 120
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,8 @@ class Settings:
     stt_mode: str = DEFAULT_STT_MODE
     stt_agent_name: str = DEFAULT_STT_AGENT_NAME
     stt_max_sessions: int = DEFAULT_STT_MAX_SESSIONS
+    # r012：在线口径（前端 POST /api/presence 心跳 → users.last_seen_at，判据窗口见下）
+    presence_online_seconds: int = DEFAULT_PRESENCE_ONLINE_SECONDS
 
     @property
     def is_demo(self) -> bool:
@@ -143,6 +147,9 @@ def validate_startup(s: Settings) -> None:
         raise AppError(ERR_CONFIG_MISSING, f"STT_MODE 只能是 {'/'.join(VALID_STT_MODES)}", status=500)
     if not (1 <= s.stt_max_sessions <= 50):
         raise AppError(ERR_CONFIG_MISSING, "STT_MAX_SESSIONS 必须在 1~50 之间", status=500)
+    # r012：判据窗口必须 ≥ 前端心跳周期（60 秒），否则一丢包就「不在线」
+    if not (60 <= s.presence_online_seconds <= 3600):
+        raise AppError(ERR_CONFIG_MISSING, "PRESENCE_ONLINE_SECONDS 必须在 60~3600 秒之间", status=500)
 
 
 @lru_cache(maxsize=1)
@@ -176,6 +183,9 @@ def load_settings() -> Settings:
         stt_mode=_optional_env("STT_MODE", DEFAULT_STT_MODE),
         stt_agent_name=_optional_env("STT_AGENT_NAME", DEFAULT_STT_AGENT_NAME),
         stt_max_sessions=int(require_env("STT_MAX_SESSIONS", str(DEFAULT_STT_MAX_SESSIONS))),
+        presence_online_seconds=int(
+            require_env("PRESENCE_ONLINE_SECONDS", str(DEFAULT_PRESENCE_ONLINE_SECONDS))
+        ),
     )
     validate_startup(settings)
     return settings

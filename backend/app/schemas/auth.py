@@ -45,9 +45,14 @@ class LoginIn(CamelModel):
 
 
 class UserVO(CamelModel):
-    """对外暴露的用户视图（不含任何口令材料）。"""
+    """对外暴露的用户视图（不含任何口令材料）。
+
+    r012：新增 `role`（`'user'` / `'superadmin'`）——前端据此显示「管理后台」入口；
+    超管的隐身/旁路校验一律在服务端强制执行，前端可见性只是体验（不做安全边界）。
+    """
 
     id: str
     email: str
     display_name: str
+    role: str = "user"
     created_at: datetime

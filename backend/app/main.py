@@ -18,6 +18,7 @@ from app.api.errors import register_error_handlers
 from app.api.routers.auth import router as auth_router
 from app.api.routers.room_extras import router as room_extras_router
 from app.api.routers.invites import router as invites_router
+from app.api.routers.presence import router as presence_router
 from app.api.routers.rooms import router as rooms_router
 from app.api.routers.summary import router as summary_router
 from app.api.routers.transcripts import router as transcripts_router
@@ -47,6 +48,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(summary_router, prefix="/api")
     app.include_router(invites_router, prefix="/api")
     app.include_router(transcripts_router, prefix="/api")
+    app.include_router(presence_router, prefix="/api")   # r012：在线心跳
 
 
 def mount_spa(app: FastAPI, dist_dir: Path = FRONTEND_DIST) -> None:

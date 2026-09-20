@@ -15,7 +15,7 @@ updated: 2026-09-20
 
 | # | 条目 | 实现位置 | 证据（命令输出 / 用例名 / 截图） | 结论 |
 | --- | --- | --- | --- | --- |
-| E1 | 超管身份落地 | 待填 | 待填 | 待填 |
+| E1 | 超管身份落地 | `backend/app/db/sql/011_*.sql`、`012_*.sql`；`services/roles.py`；`repositories/users.py`；`schemas/auth.py::UserVO.role`；`scripts/grant_superadmin.py` | `db_init.py --seed` → `schema_migrations 12` + `room_visits/global_messages/admin_audit`；`grant_superadmin --email host@example.com` → `user → superadmin（影响 1 行）`、`--revoke` → 反向；`/api/auth/me` 返回 `role`（用例 `test_superadmin_identity.py` 6 条） | cp-2 通过（cp-3 起进入隐身与旁路，届时复核） |
 | E2 | 隐身进房 | 待填 | 待填 | 待填 |
 | E3 | 房主能力 | 待填 | 待填 | 待填 |
 | E4 | 不计入人数 | 待填 | 待填 | 待填 |
@@ -26,17 +26,19 @@ updated: 2026-09-20
 | E9 | 管理动作留痕 | 待填 | 待填 | 待填 |
 | E10 | 超管音频不进转写 | 待填 | 待填 | 待填 |
 | E11 | 门禁与视觉对账 | 待填 | 待填 | 待填 |
-| E12 | 文档 = 代码 | 待填 | 待填 | 待填 |
+| E12 | 文档 = 代码 | 待填（cp-7 定稿） | 覆盖矩阵已按 cp 逐格更新（cp-2：实现页首版 / ADR-0024 landed） | 进行中 |
+| E13 | 超管只管理、不发布 | 待填（cp-3：Token grants + 界面无设备控件） | 待填 | 未开始 |
+| E14 | 在线心跳 | `backend/app/api/routers/presence.py`、`services/presence.py`、`config.py::presence_online_seconds`；`frontend/src/hooks/usePresenceBeat.ts`、`api/presence.ts`、`App.tsx` | 用例 `test_presence_api.py` 4 条（未登录 401 / 上报后 `last_seen_at` 前进且计入 `online_user_ids` / 600 秒前的心跳判离线 / 纯函数窗口）；`pytest` 174 passed | cp-2 通过（真机数字待 cp-7：浏览器 Network 里 60 秒一次的 `/api/presence`） |
 
 ## 2. 规则核对（AGENTS.md / docs/04-style/）
 
 | 项 | 结论 | 证据 |
 | --- | --- | --- |
-| 未获批准的规划不做实现 | 待填 | 本页 cp-1 至用户批准前无代码提交 |
-| 一次提交 = 一个逻辑增量、`[Req: r012]` | 待填 | git log |
+| 未获批准的规划不做实现 | 通过 | cp-1/cp-1b/cp-1c 全是文档；第一处代码在用户 2026-09-20 回「开始」之后的 cp-2 |
+| 一次提交 = 一个逻辑增量、`[Req: r012]` | 通过（cp-2） | `git log --oneline` 每行带 `[Req: r012]`；cp-2 = 身份 + 在线口径一个增量 |
 | `git add` 只写具体路径 | 待填 | — |
-| 密钥不入库 / Secret 不进前端产物 | 待填 | `git grep -nE "API_SECRET|API_KEY" -- backend/app frontend/src` |
-| 未新增依赖 | 待填 | `git diff --stat package.json requirements*.txt` |
+| 密钥不入库 / Secret 不进前端产物 | 待填（cp-7 复跑扫描） | cp-2 未引入任何密钥字面量；提权脚本只打印邮箱/角色/行数（不打印任何凭据） |
+| 未新增依赖 | 通过（cp-2） | `git diff --stat -- frontend/package.json backend/requirements.txt backend/requirements-dev.txt backend/requirements-agents.txt` = 空 |
 | 界面硬条款（单一图标库 / 零 emoji / 禁内部词） | 待填 | 令牌与 emoji 扫描命令输出 |
 
 ## 3. 覆盖矩阵对账（无 `planned` 残留）
@@ -45,11 +47,11 @@ updated: 2026-09-20
 | --- | --- | --- |
 | 需求单 | `docs/00-requirements/r012-superadmin-console.md` | 本轮 |
 | 设计页 | `docs/rounds/r012-superadmin-console/design.md` | 本轮 |
-| 模块·实现页 | `docs/02-modules/r012-superadmin-console.md` | planned |
-| 模块·功能页 | `docs/02-modules/r012-superadmin-console-features.md` | planned |
+| 模块·实现页 | `docs/02-modules/r012-superadmin-console.md` | 首版 landed（cp-2：身份 + 在线），其余随 cp 补齐 |
+| 模块·功能页 | `docs/02-modules/r012-superadmin-console-features.md` | planned（cp-6） |
 | 使用者教学页 | `docs/tutorials/r012-admin-and-global-chat.md` | planned |
 | 开发者教学页 | `docs/tutorials/r012-superadmin-dev-guide.md` | planned |
-| ADR | `docs/03-decisions/ADR-0024-superadmin-invisible-bypass.md`、`ADR-0025-global-chat-and-sse.md` | planned |
+| ADR | `docs/03-decisions/ADR-0024-superadmin-invisible-bypass.md`（landed，cp-2）；`ADR-0025-global-chat-and-sse.md` | 见左（ADR-0025 planned，cp-5） |
 
 ## 4. 视觉对账（五组，缺一不通过）
 

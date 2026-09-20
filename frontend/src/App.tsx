@@ -5,6 +5,7 @@ import QuoteLine from './components/QuoteLine'
 import NavBar from './components/NavBar'
 import SideBar from './components/SideBar'
 import useNarrowStrip from './hooks/useNarrowStrip'
+import usePresenceBeat from './hooks/usePresenceBeat'
 import LoginPage from './pages/LoginPage'
 import NewRoomPage from './pages/NewRoomPage'
 import RegisterPage from './pages/RegisterPage'
@@ -45,6 +46,8 @@ export default function App() {
   }
   // 窄屏（≤900px）侧边栏是顶部横向条：折叠既无意义又会被 React 去掉标签，故强制按展开渲染
   const narrowStrip = useNarrowStrip()
+  // r012：在线心跳（60 秒一次；仅已登录且页面可见时上报，见 hooks/usePresenceBeat.ts）
+  usePresenceBeat()
 
   const isLive = /^\/rooms\/[^/]+\/live$/.test(location.pathname)
   const routes = (

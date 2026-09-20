@@ -4,6 +4,8 @@ export interface User {
   id: string
   email: string
   displayName: string
+  /** r012：'user' | 'superadmin'；前端据此显示「管理后台」入口（服务端仍强制校验）。 */
+  role: string
   createdAt: string
 }
 
