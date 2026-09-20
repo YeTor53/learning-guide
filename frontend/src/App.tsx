@@ -106,7 +106,9 @@ export default function App() {
 
   return (
     <div className="app">
-      <NavBar onToggleCollapsed={toggle} chatOpen={chatOpen} onToggleChat={toggleChat} />
+      {/* r012：交流页不挂右侧大屏面板（那里已有讨论/成员抽屉），所以**顶栏也不给开合按钮**——
+          否则就是一个点了没反应的控件（界面口径禁「有反馈无动作」）。 */}
+      <NavBar onToggleCollapsed={toggle} chatOpen={chatOpen} onToggleChat={isLive ? undefined : toggleChat} />
       {isLive ? (
         <main className="content route-fade" key={location.pathname}>
           {routes}

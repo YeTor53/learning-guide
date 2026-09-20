@@ -79,7 +79,7 @@ updated: 2026-09-20
 | `components/GlobalChatDrawer.tsx` | 右侧可收起面板（Q11=2）：Esc 收起、新消息滚底、未登录只读 + 去登录、自己消息靠右 |
 | `components/admin/Admin*Table.tsx` | 四张纯展示表（房间/用户/纪要/审计）；动作回调由页面持有（行内二次确认） |
 | `pages/AdminPage.tsx` | `/admin`：四分区、搜索、只看在线、分页、动作提示；401 → 去登录（带 `returnTo=/admin`）、403 → 「只有管理员能进这里」 |
-| `App.tsx` | `/admin` 路由；全站挂 `useEventStream(true)` 与 `usePresenceBeat()`；**非交流页**挂 `GlobalChatDrawer`（交流页已有右抽屉，避免双抽屉） |
+| `App.tsx` | `/admin` 路由；全站挂 `useEventStream(true)` 与 `usePresenceBeat()`；**非交流页**挂 `GlobalChatDrawer`（交流页已有右抽屉，避免双抽屉）；**交流页也不传 `onToggleChat`** → 顶栏不渲染「大屏」按钮（cp-8 修：曾出现「点了没反应」的控件，界面口径禁「有反馈无动作」） |
 | `NavBar.tsx` | 顶栏「大屏」开合按钮（`aria-expanded`）；管理入口**不放顶栏**（Q12=2） |
 | `SideBar.tsx` | 「管理后台」项**仅超管可见**（`user.role === 'superadmin'`） |
 | `RoomLivePage.tsx` / `DeviceBar.tsx` / `LiveStage.tsx` / `useLocalDeviceState.ts` | 超管视角：顶部提示条 + 控制坞只留「管理视角 · 隐身」标识与「离开 / 结束房间」；不自动开麦（`publishDevices=false`）；`excludeIdentity` 让超管自身不进舞台 |

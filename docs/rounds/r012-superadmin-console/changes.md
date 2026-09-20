@@ -49,6 +49,7 @@ updated: 2026-09-20
 | 真机 · 管理后台 | 浏览器打 `http://localhost:5173/admin`（超管登录） | 房间分区「共 136 条」、8 列表头、四分区 tab、动作按钮与分页正常；截图 `%TEMP%\lg_r012\cp7-admin-rooms.png` | 2026-09-20 |
 | 真机 · 右侧大屏面板 | 顶栏「大屏」开合 + `getComputedStyle` | 展开态 `transform: matrix(1,0,0,1,0,0)`、宽 **360px**（= `--gc-w`）、`left=867/1243`；收起态 `matrix(1,0,0,1,376,0)`（= 360 + `--gc-offset` 16）与 `transition-duration: 0.24s`；收起时 `aria-hidden=true` + `visibility:hidden`；页面 `scrollWidth == clientWidth == 1243`（无横向溢出） | 2026-09-20 |
 | 真机 · 跨客户端 SSE | host@example.com 经 HTTP 发一条 → 浏览器面板**未刷新**即出现 | 面板行：`林泽宇 17:04 来自另一个客户端（host）的消息`；面板标题「1 人在线」+ 1 个绿点 | 2026-09-20 |
+| 缺陷 · 交流页「大屏」按钮无动作（cp-8） | 交流页设计上不挂大屏面板，但顶栏按钮照渲染 → 点了没反应（界面口径禁「有反馈无动作」） | 修：`App.tsx` 在交流页不传 `onToggleChat`；CDP 真机复核：交流页 `hasChatBtn=false / drawerMounted=false`，列表页 `true`；`tsc`/`build` 仍绿 | 2026-09-20 |
 | 真机 · 超管只读视角 | 超管进**他人房间**（非成员）`/rooms/room_beb67510a8d00b64/live` | 顶部提示「管理视角：你以隐身方式在场…不发布音视频，只做管理。」；控制坞仅 `管理视角 · 隐身` + `离开` + `结束房间`，**无**麦克风/摄像头/共享/举手控件；舞台 0 格；截图 `%TEMP%\lg_r012\cp7-superadmin-room.png` | 2026-09-20 |
 | 真机 · 应用内取票 claims | 浏览器内 `POST /api/rooms/{id}/token` | `status 200`；JWT：`hidden=true`、`canPublish=false`、`canPublishData=false`、`roomAdmin` 非真、`attributes={'lg-role':'superadmin'}`、`room` = 目标房、`url` = 项目 LiveKit Cloud 地址 | 2026-09-20 |
 | 已知环境限制 | 工具浏览器内 LiveKit 媒体连接未建立（徽标「未连接」，控制台 0 个 JS 错误） | 已由 cp-7b 用 CDP 起真 Chrome 绕过（真 Chrome 里徽标=已连接）；原登记在 review §6 未闭合 ①/② | 2026-09-20 |
@@ -87,6 +88,7 @@ updated: 2026-09-20
 | 2026-09-20 | cp-5 | 大屏聊天 + SSE 通知通道 + 限流 + ADR-0025；用例 200 passed；SSE 载荷口径定案（`type`+`payload` 同帧） | 需求单 §9 cp-5、§10.1（Q11/Q13/Q14）、ADR-0025 |
 | 2026-09-20 | 交接 | 另一会话在 `NavBar.tsx` / `SideBar.tsx` 的未提交改动（邀请码入口移入侧边栏，属 r011）由本分支先落盘为独立提交，再在其上做 cp-6，避免两份改动混进同一个提交 | 用户 2026-09-20 选择「现在就一并改」 |
 | 2026-09-20 | cp-6 | 前端落地（见 cp 台账行）+ 教学两页 + 功能页 + 04-style §12.4；`tsc`/`build` 绿、令牌与 emoji 扫描 0 命中 | 需求单 §9 cp-6、§10.1（Q11/Q12/Q13/Q14）、design §5/§9 |
+| 2026-09-20 | cp-8 | 演示台本并入 r012（`docs/00-project/demo-runbook.md` v3：时间轴 6 分 35 秒 + §1.1 三分钟取舍表 + S10 管理后台 + S11 超管隐身/大屏 + 按钮速查 8 行 + 兜底 5 行 + 录屏分镜 3 行 + 附录数字 201 / 58 / 17）＋ 修「交流页『大屏』按钮点了没反应」 | 你 2026-09-20「设计台本」+「3 1 1」；台本 v3；CDP 真机复核 | E11/E12（交付物） |
 | 2026-09-20 | cp-7b | 未闭合 ①② 闭合：新增可复跑真机交叉验证脚本 + 两隔离 Chrome（CDP）取证 + LiveKit 服务端权限证据 + reduced-motion 强制模拟；review §1/§4/§4.1/§6 更新 | `verify_r012_superadmin_invisible.py` → **PASS 17/17**（Chrome 152 / CDP 1.3） | E2/E13/E11 |
 | 2026-09-20 | cp-7 | 门禁复跑（pytest 200）+ 真机取证（后台 136 条 / 面板开合实测 / 跨客户端 SSE / 超管只读视角 / 应用内取票 claims）+ 三张截图 + 视觉五组 + review 定稿 + 索引与 roadmap 回填 | 需求单 §9 cp-7；review §1/§4 |
 | 2026-09-20 | cp-4b | **补交**：`services/presence.py::online_since()`——cp-4 提交时漏登记该文件，导致 `GET /api/admin/users?online_only=1` 在 cp-4 树里引用了不存在的函数（本地工作区有、提交里没有）。教训记在此：**冷启动核对**（提交后 `git status` 必须为空，本轮 cp-4 曾遗留一个未登记的已改文件） | cp-4 自审发现 |
