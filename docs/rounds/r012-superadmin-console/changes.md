@@ -23,6 +23,7 @@ updated: 2026-09-20
 | cp-r012-4 | | 管理后台后端（三列表 + 三动作 + 审计）+ 用例 | | E5/E6 |
 | cp-r012-4 | 本次提交 | 管理后台后端：`repositories/admin.py` + `services/admin.py` + `schemas/admin.py` + `routers/admin.py` + `deps.current_superadmin` + 三列表/三动作/审计 + 用例 9 条 | pytest **191 passed** / tsc 未跑（未动前端） | E5/E6 |
 | cp-r012-5 | | 大屏聊天 + SSE 后端 + 限流 + ADR-0025 + 用例 | | E7/E8 |
+| cp-r012-5 | 本次提交 | 全服大屏聊天（`global_messages` + 服务/仓储/路由 + 限流 429`RATE_LIMITED`）+ SSE 通知通道（`GET /api/events` + 进程内 pub/sub + 6 项可调配置）+ ADR-0025 + 用例 9 条 | pytest **200 passed** / tsc 未跑（未动前端） | E7/E8 |
 | cp-r012-6 | | 前端 `/admin` + 大屏面板 + 入口 + 超管视角 + 视觉参数区 + 教学两页 + 模块功能页 | | E5/E9/E12 |
 | cp-r012-7 | | 门禁复跑 + 真机取证 + 视觉对账 + 文档回填 + review 定稿 | | E11/E12 |
 
@@ -44,6 +45,10 @@ updated: 2026-09-20
 | 用例（cp-2） | `pytest backend/tests -q` | **174 passed**（r011 基线 164；新增 10 条：`test_presence_api.py` 4 + `test_superadmin_identity.py` 6）42.83s | 2026-09-20 |
 | 用例（cp-3） | `pytest backend/tests -q` | **182 passed**（新增 8 条：`test_superadmin_room_access.py`）45.03s | 2026-09-20 |
 | 用例（cp-4） | `pytest backend/tests -q` | **191 passed**（新增 9 条：`test_admin_api.py`）48.57s | 2026-09-20 |
+| 用例（cp-5） | `pytest backend/tests -q` | **200 passed**（新增 9 条：`test_global_chat.py`）49.30s | 2026-09-20 |
+| SSE 帧 | 直接驱动响应生成器断言 | 首帧 `retry: 3000`；事件帧 `id: 1` / `event: notify` / `data: {"type":"global_message","payload":{"id":"gmsg_test"}}`；保活帧 `: ping`；响应头含 `X-Accel-Buffering: no` | 2026-09-20 |
+| 限流 | 用例：窗口内连发至上限 + 1 条 | 第 N+1 条 429 `RATE_LIMITED`；窗口内落库条数 == 上限（限流不落库） | 2026-09-20 |
+| 卡壳与修正 | 首版 SSE 用例走 `TestClient.stream()`：流永不结束 → 用例挂死、pytest 280 秒超时 | 改为**直接驱动 `StreamingResponse.body_iterator`**（订阅后再 publish），1.37s 通过；教训：**永不结束的流不许走 TestClient 收尾** | 2026-09-20 |
 | 鉴权矩阵 | 用例：房主与游客打四读三写 | 四读 403 / 三写 403 / 未登录清理 Cookie 后 401 | 2026-09-20 |
 | 删房 | 用例：删前插一条消息，删后查库 | `{deleted: true, livekitApplied: true}`（LiveKit 打桩）；`rooms` 行消失、`get /api/rooms/{id}` 404、该房 `chat_messages` 计数 0、审计里 `detail.snapshot.title/messageCount` 仍在 | 2026-09-20 |
 | 超管 Token claims | 用例解 JWT 断言 | `hidden=True` / `canPublish=False` / `canPublishData=False` / `roomAdmin` 非真 / `attributes={'lg-role':'superadmin'}` / `maxParticipants=房间容量` | 2026-09-20 |
@@ -65,4 +70,5 @@ updated: 2026-09-20
 | 2026-09-20 | cp-2 | 迁移 011/012 + 身份 + 在线心跳 + 提权脚本 + ADR-0024 + 模块实现页首版；用例 174 passed、tsc 0；`roles.py`「角色判据唯一入口」随本 cp 提前落地（提权脚本要用，属 cp-3 计划的同一模块） | 需求单 §9 cp-2、§10.1（Q1/Q14/Q15）；ADR-0024 |
 | 2026-09-20 | cp-3 | 超管隐身进房（hidden/只读 Token + `room_visits`）+ 两处旁路收敛 + `effective_role` + worker 跳过超管；用例 182 passed | 需求单 §9 cp-3、§10.1（Q2/Q3/Q4/Q8）、ADR-0024 D2~D5 |
 | 2026-09-20 | cp-4 | 管理后台后端（三列表 + 三动作 + 审计 + 鉴权依赖）；用例 191 passed；查询参数定 snake_case（与既有 `mine=` 同口径，design §3.3 同步修正） | 需求单 §9 cp-4、§10.1（Q5/Q6/Q7/Q16）、ADR-0024 D6 |
+| 2026-09-20 | cp-5 | 大屏聊天 + SSE 通知通道 + 限流 + ADR-0025；用例 200 passed；SSE 载荷口径定案（`type`+`payload` 同帧） | 需求单 §9 cp-5、§10.1（Q11/Q13/Q14）、ADR-0025 |
 | 2026-09-20 | cp-4b | **补交**：`services/presence.py::online_since()`——cp-4 提交时漏登记该文件，导致 `GET /api/admin/users?online_only=1` 在 cp-4 树里引用了不存在的函数（本地工作区有、提交里没有）。教训记在此：**冷启动核对**（提交后 `git status` 必须为空，本轮 cp-4 曾遗留一个未登记的已改文件） | cp-4 自审发现 |

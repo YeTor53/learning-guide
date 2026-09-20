@@ -17,6 +17,8 @@ from fastapi.staticfiles import StaticFiles
 from app.api.errors import register_error_handlers
 from app.api.routers.admin import router as admin_router
 from app.api.routers.auth import router as auth_router
+from app.api.routers.events import router as events_router
+from app.api.routers.global_chat import router as global_chat_router
 from app.api.routers.room_extras import router as room_extras_router
 from app.api.routers.invites import router as invites_router
 from app.api.routers.presence import router as presence_router
@@ -51,6 +53,8 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(invites_router, prefix="/api")
     app.include_router(transcripts_router, prefix="/api")
     app.include_router(presence_router, prefix="/api")   # r012：在线心跳
+    app.include_router(global_chat_router, prefix="/api")  # r012：全服大屏聊天
+    app.include_router(events_router, prefix="/api")       # r012：SSE 通知通道
 
 
 def mount_spa(app: FastAPI, dist_dir: Path = FRONTEND_DIST) -> None:

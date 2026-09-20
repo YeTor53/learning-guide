@@ -1,0 +1,51 @@
+---
+title: ADR-0025 全服大屏聊天 + SSE 通知通道（HTTP 落库仍是唯一真相）
+description: 公屏的存储与可见性、限流口径、SSE 只推通知型事件的协议与进程内广播的已知限制。
+type: reference
+status: accepted
+owner: 陀梓皓
+updated: 2026-09-20
+---
+
+<!-- overview -->
+背景：r012 要一个「全服大屏聊天」——所有登录用户能看到与参与的公开文字流，且新建房/管理动作等通知要能实时到达浏览器。既有架构只有两套实时机制：LiveKit DataChannel（**只在房间内**，只做加速）与 HTTP 轮询（真相源）。用户 2026-09-20 的批复：Q11=2（面板放**右侧可收起的 Copilot 式侧栏**）、Q13=1（**全部消息可见**、仅当前在线者带在线点）、Q14=2（在线靠**前端 60 秒短轮询**）。本 ADR 定 SSE 通道口径；**与 ADR-0013 的关系：DataChannel 只加速、HTTP 是唯一真相的既有口径不变**，SSE 是第三个「只加速」的通道。
+
+## 事实（实测）
+1. 迁移 011 建 `global_messages`（`body` 1~500 字 CHECK + `(created_at DESC)`/`(user_id, created_at DESC)` 双索引）。
+2. 用例实测：未登录可 `GET /api/global-messages` 200、`POST` 401；单条 501 字 400 / 500 字 201；窗口内第 N+1 条 429 `RATE_LIMITED` 且**不落库**；`authorOnline` 随 `users.last_seen_at` 变化。
+3. SSE 帧实测：首帧 `retry: 3000`；事件帧 `id: <单调递增>` / `event: notify` / `data: {"type":…,"payload":{"id":…}}`；无事件时产出 `: ping`（间隔 = `SSE_KEEPALIVE_SECONDS`）。
+4. 订阅上限实测：`SSE_MAX_SUBSCRIBERS=1` 时第二个订阅者拿到 503（不静默丢）。
+
+## 决定
+### D1 公屏是**独立一张表**，不复用 `chat_messages`
+`chat_messages.room_id` 是 `NOT NULL`，公屏没有房间归属；硬塞房间 id 会让房间统计/纪要素材/级联删除全部带上公屏噪声。代价：多一张表、多两处查询（可接受）。
+
+### D2 通道走 **SSE**（`GET /api/events`），且**事件名固定 `notify`**
+理由：单向、只推通知，浏览器原生 `EventSource` 自带重连与 `Last-Event-ID`，零新依赖（不引 WS 库）。固定事件名避免前端漏解多 `event:` 名；`data` 里用 `type` 分派。
+
+### D3 SSE **只推通知型事件**，载荷最小（只有 id 之类）
+收到通知后前端照旧走 HTTP 拉真相（沿用 ADR-0013）。`publish` 同步非阻塞：队列满丢最旧并记日志，**绝不阻塞发言**。`publish` 在**落库提交之后**调用——通知丢了不影响数据正确性。
+
+### D4 进程内广播，单进程有效（**已知限制**）
+订阅者表与事件计数都在进程内存：**多进程/多机部署会漏事件**。当前演示形态（单 uvicorn 进程）不触发；要横向扩展需换 Redis pub/sub（登记为后续轮次候选）。前端靠 `EventSource` 自动重连 + 30 秒轮询兜底，功能不丢。
+
+### D5 可见性：**未登录可看，登录才可发**（Q4=1 / Q13=1）
+公屏是公开面，不加房间/成员限制；发言需要登录（401 `UNAUTHORIZED`），窗口内每人 ≤ `GLOBAL_CHAT_RATE_LIMIT` 条（默认 5 条 / 10 秒，落库计数——重启不放大额度）。
+
+## 用户批复（2026-09-20）
+- 「右侧的侧栏打开窗口，像编译器里的 coplit」（Q11=2）→ 面板形态为右侧可收起抽屉（前端在 cp-6 落地）。
+- 「只 admin 可见」（Q12=2，管理后台入口；与公屏无关，记此备查）。
+
+## 备选与否决
+| 备选 | 否决理由 |
+| --- | --- |
+| WebSocket | 双向能力用不上；引库 + 心跳/重连/鉴权全自己写，与「HTTP 是唯一真相」并列成第二套实时机制 |
+| 复用 LiveKit DataChannel 做全服广播 | DataChannel 只在房间内；全服广播要么每房间发一遍、要么建一个「大厅房间」，都与「房间=一次性讨论」的口径冲突 |
+| 纯轮询（不做 SSE） | 聊天面板 30 秒才更新一次，演示观感差；且 r011 redirect-01 已批过 SSE 口径 |
+| 每事件多 `event:` 名（如 `global_message` / `room_changed`） | 前端需维护多处理器；固定 `notify` + `data.type` 更不易漏 |
+| 只显示当前在线用户的消息（把离线者历史消息隐藏） | 大屏会出现"消息凭空消失"，与聊天直觉冲突；改为**全部可见 + 在线点**（Q13=1） |
+
+## 影响面
+- 代码：`services/events.py`（新）、`services/global_chat.py`（新）、`repositories/global_chat.py`（新）、`api/routers/{global_chat,events}.py`（新）、`config.py`（6 项可调）、`api/errors.py`（+`RATE_LIMITED`）。
+- 前端（cp-6）：`api/globalChat.ts`、`hooks/useGlobalChat.ts`、`hooks/useEventStream.ts`、`components/GlobalChatDrawer.tsx`。
+- 部署：单进程限制见 D4；若上 Docker Compose 多副本需先解决广播（登记）。

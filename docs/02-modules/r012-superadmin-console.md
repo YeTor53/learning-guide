@@ -55,7 +55,20 @@ updated: 2026-09-20
 | 查询参数 | 一律 snake_case（`online_only=1`、`status=ended`、`limit/offset`），与既有 `mine=` / `status=` 同口径；出参 camelCase |
 | 分页 | 四张列表统一 `{items, total, limit, offset}`，`limit` 1~100（默认 20） |
 
-## 5. 端点清单（当前已落地）
+## 5. 全服大屏聊天与 SSE（cp-5；ADR-0025）
+
+| 面 | 要点 |
+| --- | --- |
+| 存储 | `global_messages`（迁移 011）：`body` 1~500 字 CHECK；索引 `(created_at DESC)` + `(user_id, created_at DESC)`。**不复用 `chat_messages`**（那张表 `room_id NOT NULL`） |
+| 可见性 | `GET /api/global-messages` **未登录可读**（公开面）、按时间**正序**返回、`before_id` 游标翻历史；`POST` 需登录（401） |
+| 在线点 | 每条带 `authorOnline`：该用户最近有心跳（`users.last_seen_at` 在 `PRESENCE_ONLINE_SECONDS` 内）为真（Q13=1：全部可见 + 在线点） |
+| 限流 | 窗口内每人 ≤ `GLOBAL_CHAT_RATE_LIMIT`（默认 5）/ `GLOBAL_CHAT_RATE_WINDOW_SECONDS`（默认 10 秒）；超限 429 `RATE_LIMITED` 且**不落库**；计数走**库查询**（重启不放大额度） |
+| 落库与通知顺序 | 先落库（唯一真相）→ 提交后 `events.publish("global_message", {"id": …})`；通知丢失不影响数据 |
+| SSE 协议 | `GET /api/events`（未登录也可订阅）：响应头 `text/event-stream` + `no-store` + `X-Accel-Buffering: no`；首帧 `retry: 3000`；事件名固定 `notify`；`data` = `{"type":…,"payload":{最小载荷}}`；无事件时每 `SSE_KEEPALIVE_SECONDS`（默认 15）秒一行 `: ping` |
+| 进程内 pub/sub | `services/events.py`：订阅者集合 + 每连接队列（上限 `SSE_SUBSCRIBER_QUEUE_MAX`，满了**丢最旧**并记日志）；订阅者总数上限 `SSE_MAX_SUBSCRIBERS`（超了 503，不静默丢） |
+| 已知限制 | **单进程**内存广播：多进程/多机部署会漏事件（ADR-0025 D4）；前端靠 `EventSource` 自动重连 + 30 秒轮询兜底 |
+
+## 6. 端点清单（当前已落地）
 
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
@@ -68,8 +81,11 @@ updated: 2026-09-20
 | POST | `/api/admin/rooms/{id}/end` | 超管 | 结束任意房间（+ 审计） |
 | DELETE | `/api/admin/rooms/{id}` | 超管 | 硬删房间（+ 审计；不可逆） |
 | POST | `/api/admin/rooms/{id}/summary` | 超管 | 生成 / 重生讨论纪要（+ 审计） |
+| GET | `/api/global-messages` | 任意（含未登录） | 大屏消息列表（正序；`limit=` / `before_id=`） |
+| POST | `/api/global-messages` | 登录 | 发言（1~500 字；超限 429 `RATE_LIMITED`） |
+| GET | `/api/events` | 任意（含未登录） | SSE 通知流（`text/event-stream`，只推通知） |
 
-## 6. 用例与实测
+## 7. 用例与实测
 
 | 项 | 命令 / 用例 | 实测 |
 | --- | --- | --- |
@@ -78,15 +94,15 @@ updated: 2026-09-20
 | 提权脚本 | `grant_superadmin.py --email host@example.com` → `--revoke`；`--email nobody@example.com` | `user → superadmin（影响 1 行）` / `superadmin → user（影响 1 行）` / 退出码 2「找不到账号」（实测原样） |
 | 前端 | `npx tsc --noEmit` | exit 0 |
 
-## 7. 本页尚缺（随增量补齐，见需求单 §9 cp 切分）
+## 8. 本页尚缺（随增量补齐，见需求单 §9 cp 切分）
 
-- cp-5：全服大屏聊天（`global_messages`）+ SSE（`GET /api/events`）+ 限流 + ADR-0025。
 - cp-6：前端（`/admin` 页、右侧大屏抽屉、仅超管可见的侧栏入口、超管管理视角）。
 
-## 8. 变更记录
+## 9. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1（cp-2） | 建页：身份（`users.role` + 提权脚本 + 演示超管 + 迁移 011/012 对象）与在线口径（`POST /api/presence` + 前端心跳 + 判据窗口） | 需求单 §10.1（Q1/Q14/Q15）、design §1/§2.6、ADR-0024 |
+| 2026-09-20 | v4（cp-5） | 追加 §5 大屏聊天与 SSE：存储与可见性、在线点、限流（库计数）、落库→通知顺序、SSE 帧协议、进程内 pub/sub 与单进程限制；ADR-0025 落地 | 需求单 §10.1（Q13/Q11/Q14）、design §4、ADR-0025 |
 | 2026-09-20 | v3（cp-4） | 追加 §4 管理后台：三列表（房间/用户/纪要 + 审计）、三动作（结束/硬删/重生纪要）、`current_superadmin` 鉴权、审计词表与删房快照、查询参数口径 | 需求单 §10.1（Q5/Q6/Q7/Q16）、design §3、ADR-0024 D6 |
 | 2026-09-20 | v2（cp-3） | 追加 §3 隐身进房与旁路治理：hidden/只读 Token、`room_visits`、两处旁路收敛、`effective_role`、离开/结束的访问收口、worker 跳过超管 | 需求单 §10.1（Q2/Q3/Q4/Q8）、design §2.2~§2.4、ADR-0024 D2~D5 |

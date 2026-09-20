@@ -21,8 +21,8 @@ updated: 2026-09-20
 | E4 | 不计入人数 | 超管不写 `room_members`（`room_visits` 旁路） | 用例 `test_superadmin_enters_full_room_while_stranger_cannot`：在册 8/8 时超管取票 200 且 `memberCount` 恒 8；既有满员用例（409 `ROOM_FULL`）全绿未回归 | 通过 |
 | E5 | 管理后台三列表 | `backend/app/repositories/admin.py`、`services/admin.py`、`routers/admin.py` | 用例 `test_admin_api.py` 9 条：房间列表（房主名/人数/待批/纪要状态、`q` 过滤、`status` 过滤、`limit/offset` 分页）、用户列表（角色/心跳/`online_only=1` 过滤）、纪要列表（房间标题/字数）、审计初始为空 | cp-4 通过（真机页面待 cp-6） |
 | E6 | 管理后台动作 + 审计 | `services/admin.py::end_room/delete_room/regenerate_summary` + `repositories/admin.py::insert_audit/get_room_snapshot` | 用例：结束他人房间 200 且 `room.end` 审计 + 房内「房间已结束」；硬删 200（`deleted/livekitApplied`）、房间行消失、消息级联删、审计 `detail.snapshot` 保留标题与消息数；重生纪要 201 + `room.summary_regenerate` 审计；未知房间 404 且不写审计 | cp-4 通过（后台页面交互待 cp-6） |
-| E7 | 大屏聊天（500 字 / 限流 / 落库） | 待填 | 待填 | 待填 |
-| E8 | SSE 通道与兜底 | 待填 | 待填 | 待填 |
+| E7 | 大屏聊天（500 字 / 限流 / 落库） | `backend/app/repositories/global_chat.py`、`services/global_chat.py`、`api/routers/global_chat.py`、`schemas/global_chat.py` | 用例：未登录可读/不可发（401）；正序返回 + `before_id` 游标；`authorOnline` 随心跳变化；空串/501 字 400、500 字 201；限流第 N+1 条 429 且落库条数 == 上限 | cp-5 通过（真机面板待 cp-6/7） |
+| E8 | SSE 通道与兜底 | `backend/app/services/events.py`、`api/routers/events.py` | 用例：路由在 `/api/events`；响应头 `text/event-stream`/`no-store`/`X-Accel-Buffering: no`；首帧 `retry: 3000`；publish → `event: notify` + `{"type","payload"}`；`encode_sse(None)` 为 `: ping`；订阅上限 503；发言后发布会推事件 | cp-5 通过（前端 EventSource + 30 秒轮询兜底待 cp-6/7 真机） |
 | E9 | 管理动作留痕 | 待填 | 待填 | 待填 |
 | E10 | 超管音频不进转写 | `agents/transcriber.py::_maybe_start`（`lg-role` 跳过）+ Token 无发布权限 | 代码事实：超管 Token `canPublish=False`（无音频轨 → worker 的 `_has_audio` 已挡）+ `lg-role` 双保险；pytest 182 无回归 | 代码侧通过；真机（超管开麦 → 无转写）待 cp-7 |
 | E11 | 门禁与视觉对账 | 待填 | 待填 | 待填 |
@@ -51,7 +51,7 @@ updated: 2026-09-20
 | 模块·功能页 | `docs/02-modules/r012-superadmin-console-features.md` | planned（cp-6） |
 | 使用者教学页 | `docs/tutorials/r012-admin-and-global-chat.md` | planned |
 | 开发者教学页 | `docs/tutorials/r012-superadmin-dev-guide.md` | planned |
-| ADR | `docs/03-decisions/ADR-0024-superadmin-invisible-bypass.md`（landed，cp-2）；`ADR-0025-global-chat-and-sse.md` | 见左（ADR-0025 planned，cp-5） |
+| ADR | `docs/03-decisions/ADR-0024-superadmin-invisible-bypass.md`、`ADR-0025-global-chat-and-sse.md` | 两个都已 landed（cp-2 / cp-5） |
 
 ## 4. 视觉对账（五组，缺一不通过）
 
