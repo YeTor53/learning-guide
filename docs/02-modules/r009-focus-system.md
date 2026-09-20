@@ -58,3 +58,10 @@ updated: 2026-09-19
 | 日期 | 轮次 | 改了什么 | 回链 |
 | --- | --- | --- | --- |
 | 2026-09-20 | r009.5 | 补正（无行为变更）：r009 均分铺满几何 + 焦点加权 · 焦点权限三分流（房主一键/协管申请—他人批准/自退）· 举手—给焦点闭环 · 声波接线 的台账/审查回填、轮次号与死链纠错、索引回填；实现页所述行为未改 | `docs/rounds/r009.5-debt-backfill/`；`docs/00-requirements/r009.5-debt-backfill.md` |
+
+## 变更记录
+
+| 日期 | 轮次 | 改了什么 | 依据 |
+| --- | --- | --- | --- |
+| 2026-09-20 | r011 | `LiveStage` 的焦点判定删除说话者档（连带删除 `hooks/useStableSpeaker.ts` 零引用死代码）；`stageGeometry` 与令牌未动 | `docs/rounds/r011-debt-backfill/redirect-02.md` |
+

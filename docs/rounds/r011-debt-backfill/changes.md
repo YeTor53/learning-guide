@@ -19,7 +19,8 @@ updated: 2026-09-20
 | cp-r011-3 | A 组轮次台账与验收清单回勾：r002 §4 **36 条**（[x] 32 / [~] 4 转 MV-1/MV-8/MV-10）、r005 §5 **8 条**（[x] 7 / [~] 1）、r006 语录数字口径注、r010 §6 矩阵补回归脚本、人工剧本加 MV-10 | **完成 2026-09-20** | 见 cp-3 提交 | E1/E2/E3/E9/E10 |
 | cp-r011-4 | B 组功能增量：满员自动拒待批申请（批量 `rejected` + 汇总系统消息）+ 邀请码入口（顶栏常驻）与未登录 `returnTo` 闭环 + 等待页文案 + 使用者教学页 | **完成 2026-09-20** | 见 cp-4 提交 | E4/E5 |
 | cp-r011-5 | B 组 worker 健康上报（心跳端点 + 内存态 + 芯片按房判据）+ C 组用例（`STT_MODE=off` ×2、满员自动拒 ×3、心跳 ×3）+ 既有用例按新语义更新 | **完成 2026-09-20**（pytest **164 passed**、build exit 0） | 见 cp-5 提交 | E6/E7 |
-| cp-r011-6 | 门禁与取证收官：四项门禁 + 索引/矩阵回填 + review 定稿 | 待做 | — | E8/E9 |
+| cp-r011-6 | 焦点规则收窄：说话不再获得焦点（删说话者档 + 删 `useStableSpeaker` 死代码）+ ADR-0014/模块页/教学页/剧本同步 | **完成 2026-09-20** | 见 cp-6 提交 | E11 |
+| cp-r011-7 | 门禁与取证收官：四项门禁 + 索引/矩阵回填 + review 定稿 | 待做 | — | E8/E9 |
 
 ## 2. 门禁数字
 
@@ -29,7 +30,8 @@ updated: 2026-09-20
 | cp-1/1b（纯文档） | 未跑（无代码改动） | 未跑 | 未跑 | 未跑 |
 | cp-2/3（纯文档） | 未跑（无代码改动） | 未跑 | 未跑 | 未跑 |
 | cp-5（本轮，2026-09-20） | **164 passed**（49.53s；+8：自动拒 3 / 心跳 3 / off 2） | 待 cp-6 跑 | exit 0 | exit 0（2010 modules，4.05s） |
-| cp-6（收官，待填） |  |  |  |  |
+| cp-6（焦点收窄，2026-09-20） | 164 passed（未改后端逻辑，复跑见 cp-7） | 待 cp-7 跑 | exit 0 | exit 0 |
+| cp-7（收官，待填） |  |  |  |  |
 
 ## 3. 逐处改动（现在 → 改成 → 依据）
 
@@ -74,6 +76,18 @@ updated: 2026-09-20
 ### cp-5 如实边界
 - `STT_MODE=off` 的语义 = **后端不派单 + 前端显示未开启**；后端回传端点未加「off 就拒收」的硬闸（本轮不改行为），端到端「无气泡、库内不新增」由 **MV-7** 人工核对。
 - 心跳为**进程内存态**：后端重启即清空（不伪装），前端此时按「无心跳 + LiveKit 在场」判据显示。
+
+## 3.4 cp-6 逐处改动（焦点规则收窄，L2）
+
+| 文件 | 现在 → 改成 | 依据 |
+| --- | --- | --- |
+| `frontend/src/components/live/LiveStage.tsx` | 焦点身份由 `screenOwnerId ?? 手动焦点 ?? stableSpeaker` 改为 `screenOwnerId ?? 手动焦点 ?? null`；删 `useStableSpeaker` 引用；`speaking` 视觉高亮保留 | 你 2026-09-20「说话不会获得焦点！只有举手！或房主权力！」 |
+| `frontend/src/hooks/useStableSpeaker.ts` | **删除**（改后零引用死代码；历史见 git） | r011 补正轮纪律（零引用死代码可删） |
+| `docs/03-decisions/r004-adr-0014-focus-share-priority.md` | 决策表第 3 档标废止；理由段与后果段同步；追加变更记录 | L2 需记 ADR |
+| `docs/02-modules/r009-focus-system-features.md`、`r009-focus-system.md` | 现状口径改写 + 变更记录 | 文档=代码 |
+| `docs/00-requirements/r009-focus-system.md`、`rounds/r009-focus-system/motion-design.md` | 只加**指路行**（已收官轮次不回改正文） | 复验纪律 |
+| `docs/tutorials/r009.5-r008-r009-user-guide.md` | 「规则一句话」改为新链条 | 教学页是活页 |
+| `docs/rounds/r011-debt-backfill/manual-verification.md` | 新增 **MV-11**；**MV-5 作废**（说话不再夺焦点，无对象） | 取证口径 |
 
 ## 4. 未做 / 如实说明
 

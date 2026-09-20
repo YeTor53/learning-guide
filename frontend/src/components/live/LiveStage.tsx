@@ -10,7 +10,6 @@ import { useTracks } from '@livekit/components-react'
 
 import type { Member, Role, Room } from '../../api/rooms'
 import { useFlipTransition, useLeavingIds } from '../../hooks/useFlipTransition'
-import { useStableSpeaker } from '../../hooks/useStableSpeaker'
 import FocusBadge from './FocusBadge'
 import QuoteLine from '../QuoteLine'
 import ParticipantTile from './ParticipantTile'
@@ -113,8 +112,10 @@ export default function LiveStage({
   const focusMemberActive = Boolean(
     focusUserId && members.some((member) => member.userId === focusUserId && member.status === 'active'),
   )
-  // C4：说话者自动焦点去抖 + 冷却 + 手动焦点保护（防抽播）
-  const stableSpeaker = useStableSpeaker(speakerIdentity, { manualFocusId: focusMemberActive ? focusUserId : null })
+  // r011（你 2026-09-20 口径）：**说话不再获得焦点** —— 焦点只来自「屏幕共享」或
+  // 「房主/协管手动指定（含举手→给焦点）」；说话只保留视觉高亮（声波/描边），不再改布局。
+  // 原 C4 的说话者自动焦点（去抖/冷却/保护期）整体废止，见
+  // `docs/rounds/r011-debt-backfill/redirect-02.md` 与 ADR-0014 的变更记录。
 
   /** identity → 首选轨道：共享中的那个人取屏幕共享轨，其余取摄像头/占位轨。 */
   const trackOf = useMemo(() => {
@@ -133,7 +134,7 @@ export default function LiveStage({
   // 稳定排序（motion-design C8）：本地 → 焦点 → 其余按在线顺序；避免每次重排大洗牌
   const ordered = useMemo(() => {
     const ids = Array.from(trackOf.keys())
-    const focusId = screenOwnerId ?? (focusMemberActive ? focusUserId : stableSpeaker) ?? null
+    const focusId = screenOwnerId ?? (focusMemberActive ? focusUserId : null)
     const rank = (identity: string) => {
       if (identity === localIdentity) return 0
       if (focusId && identity === focusId) return 1
@@ -144,10 +145,10 @@ export default function LiveStage({
       if (diff !== 0) return diff
       return onlineIds.indexOf(a) - onlineIds.indexOf(b)
     })
-  }, [trackOf, localIdentity, focusMemberActive, focusUserId, stableSpeaker, screenOwnerId, onlineIds])
+  }, [trackOf, localIdentity, focusMemberActive, focusUserId, screenOwnerId, onlineIds])
 
   const geometry = useMemo(() => {
-    const focusIdentity = screenOwnerId ?? (focusMemberActive ? focusUserId : stableSpeaker) ?? null
+    const focusIdentity = screenOwnerId ?? (focusMemberActive ? focusUserId : null)
     return computeStageGeometry({
       areaW: area.w,
       areaH: area.h,
@@ -155,7 +156,7 @@ export default function LiveStage({
       focusIdentity: screenOwnerId ? null : focusIdentity,
       shareIdentity: screenOwnerId,
     })
-  }, [area.w, area.h, ordered, screenOwnerId, focusMemberActive, focusUserId, stableSpeaker])
+  }, [area.w, area.h, ordered, screenOwnerId, focusMemberActive, focusUserId])
 
   const shownIds = useLeavingIds(geometry.tiles.map((tile) => tile.identity))
   const placedIds = new Set(geometry.tiles.map((tile) => tile.identity))
