@@ -76,7 +76,7 @@ updated: 2026-09-20
 | 数据库 | 迁移 `011_r012_superadmin_global_chat.sql`：`users.role` / `users.last_seen_at` / `room_visits` / `global_messages` / `admin_audit` | 前进式迁移（ADR-0005），`db_init --reset --seed` 可重建 |
 | 后端接口 | 新增 11 条（`/admin/*` 7 + `/global-messages` 2 + `/events` 1 + `/presence` 1）；改动 4 处（`/me` 与登录/注册响应加 `role`、取票加超管分支、房间列表/详情加超管视角、治理动作放行超管） | 契约面清单见 design §6 |
 | 后端服务 | 新增 `services/roles.py`、`services/admin.py`、`services/global_chat.py`、`services/events.py`；改 `services/rooms.py`（旁路 + 取票 + 视角）、`services/summary.py`（旁路）、`services/livekit.py`（hidden/attributes） | 逐函数签名见 design |
-| 前端 | 新增 `/admin` 页 + **右侧可收起大屏面板** + 4 个 hook（含 `usePresenceBeat`）+ 3 个 api 模块；改 `App.tsx` / `SideBar.tsx` / `RoomLivePage.tsx` / `global.css`（`NavBar.tsx` **不加**管理入口——Q12=2） | 不做独立投屏页 |
+| 前端 | 新增 `/admin` 页 + **右侧可收起大屏面板** + 4 个 hook（含 `usePresenceBeat`）+ 3 个 api 模块；改 `App.tsx`（挂面板与心跳）/ `NavBar.tsx`（只加大屏开合按钮）/ `SideBar.tsx`（加仅超管可见的「管理后台」）/ `RoomLivePage.tsx` / `global.css` | 不做独立投屏页 |
 | Worker | `agents/transcriber.py` 跳过超管参与者（双保险） | 见 E10 |
 | 文档 | 新增需求单（本页）+ design/changes/review + 模块两页 + 教学两页 + ADR×2 + 索引/矩阵回填 | 覆盖矩阵见 §8 |
 | 依赖 | **零新增依赖**（SSE 用 `EventSource` + FastAPI `StreamingResponse`；无 WS 库、无 UI 库） | 若实现期发现必须新增 → L3 CR |
