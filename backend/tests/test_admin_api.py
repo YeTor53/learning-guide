@@ -17,6 +17,16 @@ from helpers import register_user, session_cookie
 TOPIC = {"topic": "custom", "topicLabel": "后台", "title": "后台用例房", "description": ""}
 
 
+@pytest.fixture(autouse=True)
+def _isolated_admin_audit(db):
+    """审计表是**全站共享**的：开发库上真机做过管理动作（结束/删除/重生纪要）就会留痕，
+    而本文件多条用例断言「审计起始为空 / 某动作恰好一条」。在测试事务里先清空一次
+    （`db` 夹具是 force_rollback 事务，不 commit → 不影响真机数据），断言才可判定。
+    """
+    db.execute("DELETE FROM admin_audit")
+    yield
+
+
 def login(client, user) -> None:
     name, value = session_cookie(user.id)
     client.cookies.set(name, value)
