@@ -4,7 +4,7 @@ description: 逐文件函数级设计（迁移、仓储、服务、路由、前�
 type: reference
 status: draft
 owner: 陀梓皓
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 <!-- overview -->
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS session_summaries (
 CREATE UNIQUE INDEX IF NOT EXISTS ux_session_summaries_room ON session_summaries (room_id);
 ```
 
-### 1.2 迁移 `008_*_transcripts.sql`（**移至 r009**）
+### 1.2 迁移 `008_*_transcripts.sql`（**移至 r010**）
 
 ```sql
 CREATE TABLE IF NOT EXISTS transcripts (
@@ -116,7 +116,7 @@ def call_llm(messages, settings) -> str
        非 200 或空内容 → LlmError；不 import repositories、不做权限判断（同 livekit.py 纪律）。"""
 ```
 
-### 2.6 `app/services/transcripts.py`（**移至 r009**）
+### 2.6 `app/services/transcripts.py`（**移至 r010**）
 
 ```python
 def transcribe_chunk(conn, actor, room_id, audio: bytes, filename: str,
@@ -194,17 +194,18 @@ POST /api/invites/{code}/accept             → 凭码加入 201（幂等时 200
 | --- | --- |
 | ADR-0018 | 纪要落 `session_summaries`（一间房一份、覆盖式重生、失败留痕、外部失败不改业务事实） |
 | ADR-0019 | 邀请直接成为在册成员（跳过等候室、仍受容量上限） |
-| ADR-0020（**r009 重写**） | 你的新口径：转写默认开启 + 并入文字对话 + 含管理信息；ADR 需在 r009 重写 |
+| ADR-0020（**r010 重写**） | 你的新口径：转写默认开启 + 并入文字对话 + 含管理信息；ADR 需在 r010 重写 |
 
 ## 6. 变更记录
 
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-19 | cp-0 | 建页：三件需求的函数级设计、失败边界、ADR 分配 | 你 `Q1=1` + 「再加一个语言转文字需求」 |
+| 2026-09-20 | r009.5 | **轮次号纠错**：转写轮次 r009 → **r010**（原定 r009，焦点系统插入后顺延） | r009.5（你 2026-09-20「用一轮.5修复」） |
 
 ## 7. 2026-09-19 口径变更（你）
 
 | 项 | 新口径 | 影响 |
 | --- | --- | --- |
 | 邀请有效期 | **最长 1 分钟**（默认 60 秒、可选 30/60；上限单点可调 `INVITE_TTL_MAX_SECONDS`） | `create_invite` 参数改 `ttl_seconds`；前端给 30/60 秒选项 |
-| 语音转文字 | **整体移至 r009**：默认开启 + 说的话并入文字对话 + 连成员进出等管理信息一起构成讨论记录；并先出「STT 获取方案」设计 | r008 不含转写代码；`transcripts` 迁移编号留给 r009；ADR-0020 在 r009 重写 |
+| 语音转文字 | **整体移至 r010**：默认开启 + 说的话并入文字对话 + 连成员进出等管理信息一起构成讨论记录；并先出「STT 获取方案」设计 | r008 不含转写代码；`transcripts` 迁移编号留给 r010；ADR-0020 在 r010 重写 |

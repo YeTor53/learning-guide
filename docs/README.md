@@ -4,7 +4,7 @@ description: 本仓 docs/ 的目录地图、每类页的用途、当前真相页
 type: reference
 status: active
 owner: 陀梓皓
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 <!-- overview -->
@@ -31,8 +31,9 @@ updated: 2026-09-19
 | 你的目的 | 打开 |
 | --- | --- |
 | 现在做到哪、下一步是什么 | `00-project/global-roadmap.md` §3、§7；`00-requirements/README.md` |
-| 本轮（r004）要做什么、怎么算做完 | `00-requirements/r004-room-extras.md` |
-| 本轮怎么实现（函数级） | `rounds/r004-room-extras/design.md`（§0 有导航） |
+| **当前轮（r009.5 补正）**要做什么、怎么算做完 | `00-requirements/r009.5-debt-backfill.md` |
+| 当前轮怎么实现（逐文件改动清单） | `rounds/r009.5-debt-backfill/design.md` |
+| 下一轮（r010 转写）要做什么 | `00-requirements/r010-transcription.md` + `rounds/r010-transcription/design.md` |
 | 房间/实时模块的当前实现事实 | `02-modules/r002-livekit.md`（实现）+ `r002-livekit-features.md`（功能）；**M3 能力（群聊/举手/焦点/共享）见 `02-modules/r004-room-extras.md`（实现）+ `r004-room-extras-features.md`（功能）；人数上限与房间事件见 `r005-fix-capacity{,-features}.md`；界面同步与优化见 `r006-ui-sync-polish{,-features}.md`；主题与首屏引导见 `r007-topic-and-scrollhint{,-features}.md`** |
 | 账号/首页模块 | `02-modules/r001-accounts.md` + `r001-accounts-features.md` |
 | 为什么这么决定 | `03-decisions/` 下对应 ADR（跨轮的以 `global-` 开头） |
@@ -53,11 +54,14 @@ updated: 2026-09-19
 | r001-skeleton | `r001-skeleton-accounts-rooms.md`（closed） | ✅ | ✅ | ✅ | — | 已合并 `round-r001-done` |
 | r002-livekit | `r002-livekit-room.md`（closed） | ✅（**该页无 front matter**，见 §6） | ✅ | ✅（2026-09-19 定稿） | redirect-01~07 | 已合并 `round-r002-done` |
 | r003-end-room-entry | `r003-end-room-entry.md`（closed，2026-09-19 回填） | ✅ | ✅ | ✅ | redirect-01~02 | 已合并 `round-r003-done`（`694caeb`） |
-| r008-assignment-gaps | `r008-assignment-gaps.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r008-assignment-gaps`，cp tag `cp-r008-0..4` |
-| r007-topic-and-scrollhint | `r007-topic-and-scrollhint.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r007-topic-and-scrollhint`，cp tag `cp-r007-0..3` |
-| r006-ui-sync-polish | `r006-ui-sync-polish.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r006-ui-sync-polish`，cp tag `cp-r006-0..4` |
-| r005-fix-capacity | `r005-fix-capacity.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r005-fix-capacity`，cp tag `cp-r005-0..4` |
-| r004-room-extras | `r004-room-extras.md`（实现完成，**已合并** `daf7696` / `round-r004-done`） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r004-room-extras`，cp tag `cp-r004-1..7`；待合并打 `round-r004-done` |
+| r004-room-extras | `r004-room-extras.md`（closed，2026-09-19 回填） | ✅ | ✅ | ✅（定稿） | — | **已合并** `daf7696` / `round-r004-done`；cp tag `cp-r004-1..7` |
+| r005-fix-capacity | `r005-fix-capacity.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | — | 分支 `req/r005-fix-capacity`，cp tag `cp-r005-0..4` + `4b` |
+| r006-ui-sync-polish | `r006-ui-sync-polish.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | redirect-01~02 | 分支 `req/r006-ui-sync-polish`，cp tag `cp-r006-0..5` |
+| r007-topic-and-scrollhint | `r007-topic-and-scrollhint.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿） | redirect-01 | 分支 `req/r007-topic-and-scrollhint`，cp tag `cp-r007-0..8` |
+| r008-assignment-gaps | `r008-assignment-gaps.md`（实现完成，待合并） | ✅ | ✅ | ✅（定稿；r009.5 纠错 4 处） | — | 分支 `req/r008-assignment-gaps`，cp tag `cp-r008-0..4` |
+| r009-focus-system | `r009-focus-system.md`（实现完成，待合并） | ✅ | ✅（r009.5 回填） | ✅（定稿；r009.5 补 E0 并回填 E1/E2/E7/E12） | redirect-01 | 分支 `req/r009-focus-system`，cp tag `0/1a/1b/2a/2b/3a/3b/5`（4 无独立提交） |
+| r010-transcription | `r010-transcription.md`（实现中：阶段 1 文档已落） | ✅ | 骨架待建 | —（cp-1 起未开工） | redirect-01 + research-01/02 | 分支 `req/r010-transcription`，cp tag `cp-r010-0` |
+| r009.5-debt-backfill | `r009.5-debt-backfill.md`（进行中） | ✅ | ✅（进行中） | 骨架（cp-5 定稿） | — | 分支 `req/r009.5-debt-backfill`，cp tag `cp-r009.5-1..2` |
 
 ## 5. backlog（`99-archive/`）
 
@@ -67,6 +71,8 @@ updated: 2026-09-19
 | `r002-ahead-invites.md` | 邀请能力（未定里程碑） | backlog |
 | `r003-ahead-m4-ended-rooms-archive.md` | M4 归档页（含 A1~A9 已拍板口径） | backlog |
 | `r005-ahead-test-process.md` | r005 测试流程（全覆盖）：七层模型 / 用例编号 / 证据等级 / `verify.bat` 管线 / 8 条待拍板 | backlog |
+| （无页）r006/r007 教学页缺口 | r006 界面同步、r007 主题与首屏两轮的**使用者/开发者教学页**均未建（r009.5 只补 r008/r009 两轮，见 `00-requirements/r009.5-debt-backfill.md` §2） | 登记待排期（无页可指，r009.5 不新建 backlog 页：属文档欠账非功能构思） |
+| （无页）`cancel_pending` 已备未接 | 焦点者离开/断线时清理其待批申请：后端函数已存在但 0 调用点（r009 review 未闭合 ③） | 登记待排期（r011 接事件；r009.5 保留函数不删） |
 
 ## 6. 实测清点（2026-09-19，61 个 .md）
 

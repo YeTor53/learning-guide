@@ -16,7 +16,7 @@ updated: 2026-09-20
 | --- | --- | --- | --- | --- |
 | cp-r009.5-1 | 阶段 1 文档（需求单 + design + 台账/审查骨架 + 索引登记行） | **完成 2026-09-20** | `59ef799` | E3/E11 |
 | cp-r009.5-2 | 台账与 tag 补正（r009 changes 回填 + 4 tag + r008/r009 review 修正回填） | **完成 2026-09-20** | 见 cp-2 提交 | E1~E4 |
-| cp-r009.5-3 | 文档纠错与索引回填（轮次号 / 路径 / 旧文件名 / 合并顺序 / docs README §6 / roadmap §3·§7·§9） | planned | — | E5/E8 |
+| cp-r009.5-3 | 文档纠错与索引回填（轮次号 / 路径 / 旧文件名 / 合并顺序 / docs README §2·§4·§5 / roadmap §3·§7·§9） | **完成 2026-09-20** | 见 cp-3 提交 | E5/E8 |
 | cp-r009.5-4 | 配置与死代码（`.env.example` 三键 + 删 `stageLayout.ts` + 注释同步） | planned | — | E6/E7 |
 | cp-r009.5-5 | 门禁与取证收官（pytest/smoke/tsc/build + E0 实测 + E11 截图 + 两页教学页 + review 定稿 + 模块页变更记录 + 索引最终回填） | planned | — | E9~E12 |
 
@@ -55,7 +55,14 @@ updated: 2026-09-20
 - **r008 `review.md` 纠错 4 处**：overview「骨架（cp-5 定稿）」→「已定稿（`b52f91f`）」；E5 补「未配密钥提示：未取证」；§5 未闭合项 2 轮次号 r009 → **r010**；§6 顺序补 r005 起点。
 - **残留自检**：`docs/rounds/r008-assignment-gaps/review.md` 的 `planned`/`待测` = 0；`docs/rounds/r009-focus-system/review.md` 剩 1 处 `planned`（E0 行占位，cp-5 回填）。
 
-### 3.3 cp-3 纠错与索引（待填）
+### 3.3 cp-3 文档纠错与索引回填（2026-09-20 实测）
+
+- **轮次号纠错 r009 → r010**（转写轮次，9 处 → 全部归零）：`00-requirements/r008-assignment-gaps.md` 4 处；`rounds/r008-assignment-gaps/design.md` **7 处**（原报告按「行」计 4 处，实测按出现次数为 7 处，全部替换）；`rounds/r008-assignment-gaps/review.md` 2 处；`00-project/ai-tools-and-models.md` 1 处。两轮的「变更记录」各补一行（依据写本轮）。
+- **死链纠错**：`docs/rounds/r009-transcription/redirect-01.md`（不存在）→ `docs/rounds/r010-transcription/redirect-01.md`，共 3 处（r008 需求单 2 处、ai-tools 页 1 处）。`git grep -n "r009-transcription"` 实测仅剩本轮 r009.5 文档中**描述该错误**的 2 行（验收 E5 已按此口径改写）。
+- **旧实现文件名纠错**：r009 需求单 cp-1 行 `stageLayout.ts` → `stageGeometry.ts`（行文案同步为实测口径「铺满 + 焦点加权 1.4× + 校验脚本」）；`rounds/r009-focus-system/motion-design.md` overview 的 `computeStageLayout` → `computeStageGeometry`（并注明取代关系）。两页各补变更记录一行。
+- **索引表（`docs/00-requirements/README.md`）**：按轮次重排为 r001→…→r010→r009.5；r004 行由「待合并」改 **closed + 合并提交 `daf7696` / `round-r004-done`**；补 **r010 行**（实现中，阶段 1 文档已落）与 r009.5 行；r005~r009 行补 cp tag 实况；表下新增「合并顺序」注。
+- **`docs/README.md`**：§2 指路行改指当前轮 r009.5 与下一轮 r010；§4 表按轮次重排并补 r009/r010/r009.5 三行，去掉 r004 行「待合并」尾巴；§5 backlog 追加两行登记（r006/r007 教学页缺口、`cancel_pending` 已备未接）。**§6 实测清点**的重扫**改到 cp-5**（等两页教学页落地后一次扫准，避免同轮两次扫描）——属实现细节调整（L1）。
+- **`docs/00-project/global-roadmap.md`**：§3 新增 **M3 / M4 状态回填注**（M3 已完成并合 `daf7696`；M4 部分提前落地 = r008 纪要，其余未做）与 M5 实况；§7 What's next 追加第 6~11 条（r006~r010 + r009.5）并把 r004 备查段标注为已合并；§9 台账把「语音转文字」行去向由 r011 改为 **r010**、**增补三行**（r008/r009 欠账已还、`stageLayout.ts` 已删、r006/r007 教学页缺口登记）。
 
 ### 3.4 cp-4 配置与死代码（待填）
 
