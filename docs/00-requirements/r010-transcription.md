@@ -120,6 +120,7 @@ updated: 2026-09-19
 | 模块轴 | 实现页 + 功能页（转写 / 三源合一） | `docs/02-modules/r010-transcription{,-features}.md` | **landed**（2026-09-20 补，含 §7 扩展点与未闭合摘要） |
 | C 使用者教学页 | 「说的话变成文字、进纪要」怎么用（含演示前置与探活、免费档限制） | `docs/tutorials/r010-transcription-user-guide.md` | **landed**（cp-5） |
 | 索引轴 | 需求索引 / `docs/README.md` / roadmap / 教学页索引 回填 | 四处 | **landed**（cp-5） |
+| 回归脚本 | 离线语音回归（TTS 当麦克风 + 本端 RMS + 对端 WebRTC 收音频统计） | `frontend/scripts/verify-transcription.py` | **landed**（cp-6） |
 | D 开发者教学页 | **不适用**：本轮的扩展点已在 design §2.3（STT 唯一出口、可换供应商）写清，且 `r002-livekit-dev-guide` 已覆盖「自助加能力五步」；如需单独页，请在收官时点名 | — | 不适用（理由如上） |
 | README / `.env.example` | `.env.example` 三新键 + 演示路径（说话 → 气泡 → 纪要） | 两处 | **landed**（`.env.example` 已改；演示路径见教学页 §4） |
 
