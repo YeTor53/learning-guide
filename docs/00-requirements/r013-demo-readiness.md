@@ -105,12 +105,12 @@ updated: 2026-09-20
 | --- | --- | --- |
 | 需求单（本页） | `docs/00-requirements/r013-demo-readiness.md` | done |
 | 逐文件函数级设计 | `docs/rounds/r013-demo-readiness/design.md` | done |
-| 变更台账 | `docs/rounds/r013-demo-readiness/changes.md` | planned |
-| 审查与验收对账 | `docs/rounds/r013-demo-readiness/review.md` | planned |
-| 模块页变更记录 | `docs/02-modules/r009-focus-system.md`、`r004-room-extras.md`、`r010-transcription.md`、`r012-superadmin-console.md` | planned |
+| 变更台账 | `docs/rounds/r013-demo-readiness/changes.md` | done（cp-1~cp-7） |
+| 审查与验收对账 | `docs/rounds/r013-demo-readiness/review.md` | done（定稿） |
+| 模块页变更记录 | `docs/02-modules/r009-focus-system.md`、`r004-room-extras.md`、`r010-transcription.md`、`r012-superadmin-console.md`、`r008-assignment-gaps.md` | done |
 | 教学两页补两处 | `docs/tutorials/r012-*-guide.md`（大屏 tab）、新增回看小节 | planned |
-| 需求/模块索引行 | `docs/00-requirements/README.md`、`docs/02-modules/README.md` | planned |
-| roadmap §9 回填 | `docs/00-project/global-roadmap.md` | planned |
+| 需求/模块索引行 | `docs/00-requirements/README.md`、`docs/02-modules/README.md` | done |
+| roadmap §9 回填 | `docs/00-project/global-roadmap.md` | done（§9 两行回填） |
 
 ## 9. cp 切分（计划）
 
@@ -170,4 +170,5 @@ e) 断前若该端持有焦点或举手，恢复后是否仍在（库里 `room_f
 
 | 日期 | 版本 | 变更 | 依据 |
 | --- | --- | --- | --- |
+| 2026-09-20 | v2 | 实现完成：cp-1~cp-7 全落；E1~E12 全绿（含 212 用例 / 59 冒烟 / 五份真机脚本）；未闭合 5 条见 review §6 | 本轮实测 |
 | 2026-09-20 | v1 | 建页：五项范围 + 界面口径卡六项 + 验收 E1~E12 + 影响面 + 风险 + 覆盖矩阵 + cp 切分 + Q1~Q4 + 断线方案 §10.5 | 你 2026-09-20「把到 6 的都做了，然后这个断线的测试给我个方案」 |

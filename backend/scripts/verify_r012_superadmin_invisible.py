@@ -10,6 +10,9 @@
   python backend/scripts/verify_r012_superadmin_invisible.py --skip-media   # 只跑隐身交叉验证
   python backend/scripts/verify_r012_superadmin_invisible.py --room room_xxx --keep-chrome
 
+已知抖动（2026-09-20 实测）：与其它 headless-Chrome 套件**并发连跑**时，成员端首连可能超过等待窗口 → 出现
+「成员端已连上实时服务」等 3 条假失败；单独复跑 PASS 17/17。建议逐套串行跑（本脚本已把等待窗口放宽到 20 秒）。
+
 判据：逐条打印 `[OK]/[FAIL]`，末尾 `PASS n/n`；任一步不符即非 0 退出。
 依赖：`websockets`（learningguide 环境已有）+ 本机 Chrome；**不装任何新依赖**。
 副作用：两个临时 Chrome 的 profile 在 `%TEMP%\lg_r012_verify\`；结束时一律 `Browser.close`（不 taskkill）；
@@ -280,7 +283,8 @@ async def main(argv: list[str] | None = None) -> int:
         async with Page(args.member_port) as member:
             who = await login(member, base, MEMBER_EMAIL)
             check("成员端登录", who.get("status") == 200, f"→ {who}")
-            await member.goto(f"{base}/rooms/{room_id}/live", wait=8)
+            # 等窗口放宽到 20 秒：多套 headless Chrome 并发连跑时首次连 LiveKit 明显变慢（8 秒不够 → 会误报「成员端未连上」）
+            await member.goto(f"{base}/rooms/{room_id}/live", wait=20)
             before = json.loads(await member.js(SNAPSHOT_JS))
             drawer_before = await member.js(OPEN_MEMBERS_JS)
             check("成员端已连上实时服务", before["badge"] == "已连接", f"→ 徽标 {before['badge']!r}")
@@ -295,7 +299,7 @@ async def main(argv: list[str] | None = None) -> int:
             async with Page(args.admin_port) as admin:
                 who_admin = await login(admin, base, ADMIN_EMAIL)
                 check("超管端登录", who_admin.get("role") == "superadmin", f"→ {who_admin}")
-                await admin.goto(f"{base}/rooms/{room_id}/live", wait=10)
+                await admin.goto(f"{base}/rooms/{room_id}/live", wait=12)
                 adm = json.loads(await admin.js(SNAPSHOT_JS))
                 check("超管端：隐身标识与控制坞", adm["superadminChip"] == "管理视角 · 隐身",
                       f"→ chip={adm['superadminChip']!r} dock={adm['dock']}")

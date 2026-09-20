@@ -235,6 +235,20 @@ async def close_browser(port: int) -> None:
             pass
 
 
+def pick_ended_room() -> str:
+    """挑一间**已结束**且房主是 host@example.com 的房（回看页判据用）。"""
+    from app.config import load_settings
+    from app.db.pool import get_conn, init_pool
+
+    init_pool(load_settings().database_url)
+    with get_conn() as conn:
+        row = conn.execute(
+            """SELECT r.id FROM rooms r JOIN users u ON u.id = r.host_id
+               WHERE r.status='ended' AND u.email=%s ORDER BY r.created_at DESC LIMIT 1""",
+            (HOST_EMAIL,)).fetchone()
+    return row[0] if row else ""
+
+
 def pick_rooms() -> tuple[str, str]:
     """(房主已加入的进行中房, 参与者未加入的进行中房)"""
     from app.config import load_settings
@@ -275,8 +289,9 @@ async def main(argv: list[str] | None = None) -> int:
     shots = os.path.join(os.environ.get("TEMP", "."), "lg_runbook_shots")
     chrome: list[subprocess.Popen] = []
 
+    ended_room = pick_ended_room()
     host_room, free_room = pick_rooms()
-    print(f"目标：房主房 {host_room or '（无）'}，参与者可申请的房 {free_room or '（无）'}")
+    print(f"目标：房主房 {host_room or '（无）'}，参与者可申请的房 {free_room or '（无）'}，回看房 {ended_room or '（无）'}")
 
     try:
         chrome.append(launch(args.guest_port, "guest"))
@@ -355,8 +370,8 @@ async def main(argv: list[str] | None = None) -> int:
                 # 抽屉：讨论 / 成员 / 邀请
                 await user.js("""(async () => { const b=[...document.querySelectorAll('button')].find(x=>x.textContent.includes('讨论与成员')); if(b) b.click(); await new Promise(r=>setTimeout(r,600)); return true; })()""")
                 d1 = await probe(user)
-                check("抽屉·三个 tab（讨论 / 成员 / 邀请）",
-                      all(has(d1, t) for t in ("讨论", "成员", "邀请")),
+                check("抽屉·四个 tab（讨论 / 成员 / 邀请 / 大屏，r013 cp-6）",
+                      all(has(d1, t) for t in ("讨论", "成员", "邀请", "大屏")),
                       f"→ tabs {[b for b in d1['buttons'] if b][:10]}")
                 await set_panel_tab(user, "成员")
                 # 名册行要等名册接口/广播到位（3 秒轮询），别在加载中就断言
@@ -461,6 +476,19 @@ async def main(argv: list[str] | None = None) -> int:
                       "隐身方式在场" in s["bodyText"] and "不发布音视频" in s["bodyText"],
                       "→ 提示条文案在" if "隐身方式在场" in s["bodyText"] else "→ 未见到提示条")
                 await user.shot(os.path.join(shots, "e-admin-in-room.png"))
+
+            # ---------------- E. 结束房回看页（r013 cp-5） ----------------
+            if ended_room:
+                await user.goto(f"{base}/rooms/{ended_room}/replay", 6)
+                rp = await probe(user)
+                check("回看页·三段骨架与返回入口",
+                      has(rp, "回看（只读）") and has(rp, "讨论时间线") and has(rp, "讨论纪要")
+                      and has(rp, "成员") and has(rp, "回房间列表"),
+                      f"→ 标题 {rp['headings'][:1]}；正文片 {rp['bodyText'][:60]}")
+                check("回看页·没有写入入口（只读）",
+                      "发布" not in rp["buttons"] and not any("生成" in b for b in rp["buttons"]),
+                      f"→ 按钮 {[b for b in rp['buttons'] if b][:8]}")
+                await user.shot(os.path.join(shots, "f-replay.png"))
 
         print(f"  [i] 截图目录：{shots}")
     finally:
