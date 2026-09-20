@@ -40,7 +40,7 @@ updated: 2026-09-20
 | 怎么跑起来 / 怎么演示 | `tutorials/r002-livekit-setup.md`、`tutorials/r002-livekit-demo.md`；房内四件事（群聊/举手/焦点/共享）见 `tutorials/r004-room-extras-demo.md` |
 | 动手改代码前先读什么 | `tutorials/r002-livekit-dev-guide.md` |
 | 术语（房间码、等候室、一次性讨论…） | `glossary.md` |
-| **交付/提交给评审**（题目 A 交付物四项、提交命名与口径、复核路径、证据索引） | `00-project/global-delivery.md` |
+| **交付/提交给评审**（正文=题目 A 交付物四项：源代码/Git 链接、设计说明+README+环境变量示例、测试与冒烟运行说明、AI 工具与模型列表；附录=复核路径、提交口径） | `00-project/global-delivery.md` |
 
 ## 3. 架构页与 ADR 一览（按轮次）
 
