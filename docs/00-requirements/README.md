@@ -4,7 +4,7 @@ description: 项目各轮需求单的状态、里程碑归属与轮次档案入�
 type: reference
 status: approved
 owner: 陀梓皓
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 <!-- overview -->
@@ -20,4 +20,5 @@ updated: 2026-09-19
 | r008 | （补轮·作业必做补全）讨论纪要（LLM）+ 限时邀请（最长 1 分钟） | `r008-assignment-gaps.md` | **实现完成（cp-0~cp-5 全绿，2026-09-19）；待合并** | `docs/rounds/r008-assignment-gaps/`（review 已定稿） | 合并后由人打 `round-r008-done` |
 | r009 | （补轮）焦点系统重做：均分铺满 + 举手经管理确认得焦点 + 协管需他人批准 + 退出焦点 + 声波 | `r009-focus-system.md` | **实现完成（cp-0~cp-5，2026-09-19）；待合并** | `docs/rounds/r009-focus-system/`（review 已定稿） | 合并后由人打 `round-r009-done` |
 | r006 | （补轮）界面同步与优化：麦克风徽标 / 两端人数与待批同步 / 个人信息浮窗 + 哲学语句 / 图版初始位置 | `r006-ui-sync-polish.md` | **实现完成（cp-0~cp-6 全绿，2026-09-19）；待合并** | `docs/rounds/r006-ui-sync-polish/`（review 已定稿） | 合并后由人打 `round-r006-done`（cp tag `cp-r006-0..5`） |
-| r005 | （补轮）容量口径修正：人数上限按本库在册成员（不再以 LiveKit 为准）+ 房间事件进消息列表 + 取票提速 | `r005-fix-capacity.md` | **实现完成（cp-0~cp-5 全绿，2026-09-19）；待合并** | `docs/rounds/r005-fix-capacity/`（review 已定稿） | 合并后由人打 `round-r005-done` ||
+| r005 | （补轮）容量口径修正：人数上限按本库在册成员（不再以 LiveKit 为准）+ 房间事件进消息列表 + 取票提速 | `r005-fix-capacity.md` | **实现完成（cp-0~cp-5 全绿，2026-09-19）；待合并** | `docs/rounds/r005-fix-capacity/`（review 已定稿） | 合并后由人打 `round-r005-done`（合并顺序见 r009.5 需求单 §overview） |
+| r009.5 | （补正轮）r008/r009 欠账补正：台账 · tag · 审查回填 · 纠错 · 取证 · 教学页 | `r009.5-debt-backfill.md` | **进行中**（cp-1 文档已落，2026-09-20）；分支 `req/r009.5-debt-backfill` | `docs/rounds/r009.5-debt-backfill/` | 合并后由人打 `round-r009.5-done` |
