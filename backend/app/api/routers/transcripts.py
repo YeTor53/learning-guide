@@ -6,18 +6,21 @@
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Query, Response, UploadFile
 from psycopg import Connection
 
 from app.api.deps import current_user, db_conn
 from app.api.envelope import ok
-from app.api.errors import ERR_VALIDATION, AppError
+from app.api.errors import ERR_UNAUTHORIZED, ERR_VALIDATION, AppError
 from app.config import load_settings
 from app.schemas.auth import UserVO
-from app.schemas.transcripts import ConversationItemVO, SegmentIn
+from app.schemas.transcripts import ConversationItemVO, SegmentIn, SttHeartbeatIn
+from app.services import stt as stt_service
 from app.services import transcripts as transcripts_service
 
 router = APIRouter(tags=["transcripts"])
@@ -98,18 +101,76 @@ def ingest_segment(
     return ok({"transcript": _dump(item), "created": created}, status=201)
 
 
+def agent_heartbeat_token(room_id: str, secret: str) -> str:
+    """worker 心跳令牌（r011）：HMAC-SHA256(secret, roomId)，worker 侧用同一算法生成。"""
+    return hmac.new(secret.encode(), room_id.encode(), hashlib.sha256).hexdigest()
+
+
 @router.get("/stt/status", status_code=200)
 def read_stt_status(
     actor: UserVO = Depends(current_user),
 ):
-    """转写配置状态（前端据此显示"转写：开启/未开启"，不报错、不伪装）。"""
+    """转写配置状态（前端据此显示"转写：开启/未开启"，不报错、不伪装）。
+
+    r011 追加 `lastHeartbeatAt`（**全局**最近一次 worker 心跳，向后兼容：旧前端只读 `mode`）。
+    """
     settings = load_settings()
+    latest = stt_service.latest_heartbeat()
     return ok(
         {
             "mode": settings.stt_mode,
             "agentName": settings.stt_agent_name,
             "maxSessions": settings.stt_max_sessions,
             "segmentSeconds": settings.stt_segment_seconds,
+            "lastHeartbeatAt": latest["lastSeenAt"].isoformat() if latest else None,
+            "lastHeartbeatRoomId": latest["roomId"] if latest else None,
+        },
+        status=200,
+    )
+
+
+@router.post("/stt/heartbeat", status_code=200)
+def post_stt_heartbeat(
+    payload: SttHeartbeatIn,
+    x_agent_token: str = Header(default=""),
+):
+    """转写 worker 心跳（r011）：内存态记录「最后活动时间」，零迁移。
+
+    鉴权：`X-Agent-Token` = HMAC-SHA256(`SESSION_SECRET`, roomId)；缺失或不符 → 401。
+    worker 崩溃/退出后心跳自然中断，前端按 15 秒窗口判「未开启」并把最后活动时间显示出来。
+    """
+    settings = load_settings()
+    expected = agent_heartbeat_token(payload.room_id, settings.session_secret)
+    if not hmac.compare_digest(x_agent_token or "", expected):
+        raise AppError(ERR_UNAUTHORIZED, "心跳令牌不正确", status=401)
+    stt_service.record_heartbeat(payload.room_id, payload.worker_id, payload.sessions)
+    item = stt_service.last_heartbeat(payload.room_id) or {}
+    return ok({"recorded": True, "lastSeenAt": item.get("lastSeenAt").isoformat() if item.get("lastSeenAt") else None}, status=200)
+
+
+@router.get("/rooms/{room_id}/stt-status", status_code=200)
+def read_room_stt_status(
+    room_id: str,
+    actor: UserVO = Depends(current_user),
+):
+    """本房转写状态（r011）：模式 + 该房 worker 最近心跳。
+
+    与 `/stt/status` 的区别是按**房**给心跳（控制坞的芯片是「这个房间的转写服务在不在」）。
+    只回时间元数据，不涉内容；调用方需登录。
+    """
+    settings = load_settings()
+    item = stt_service.last_heartbeat(room_id)
+    age = stt_service.heartbeat_age_seconds(room_id)
+    return ok(
+        {
+            "mode": settings.stt_mode,
+            "agentName": settings.stt_agent_name,
+            "maxSessions": settings.stt_max_sessions,
+            "lastHeartbeatAt": item["lastSeenAt"].isoformat() if item else None,
+            "heartbeatAgeSeconds": round(age, 1) if age is not None else None,
+            "fresh": bool(age is not None and age <= stt_service.HEARTBEAT_FRESH_SECONDS),
+            "workerId": item["workerId"] if item else None,
+            "sessions": item["sessions"] if item else 0,
         },
         status=200,
     )

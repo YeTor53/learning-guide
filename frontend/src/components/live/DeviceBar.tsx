@@ -45,8 +45,9 @@ interface Props {
   sharing: boolean
   onToggleHand: () => void
   onToggleShare: () => void
-  /** r010：房间侧转写状态（只读展示；关掉麦克风即不参与转写）。 */
-  transcribe?: { on: boolean }
+  /** r010：房间侧转写状态（只读展示；关掉麦克风即不参与转写）。
+   *  r011：加 `lastHeartbeatAt`（毫秒）——worker 掉线时提示里能看到「最后心跳 X 秒前」。 */
+  transcribe?: { on: boolean; lastHeartbeatAt?: number | null }
 }
 
 const LEVEL_BARS = 3
@@ -121,7 +122,15 @@ export default function DeviceBar({
         {transcribe && (
           <span
             className={`live-transcribe-chip${transcribe.on ? ' on' : ''}`}
-            title={transcribe.on ? '房间侧转写已开启；关掉麦克风即不参与转写' : '房间侧转写未开启（演示前需先启动转写进程）'}
+            title={
+              transcribe.on
+                ? '房间侧转写已开启；关掉麦克风即不参与转写'
+                : `房间侧转写未开启（演示前需先启动转写进程）${
+                    transcribe.lastHeartbeatAt
+                      ? `；最后心跳：${Math.max(0, Math.round((Date.now() - transcribe.lastHeartbeatAt) / 1000))} 秒前`
+                      : '；本房还没有心跳记录'
+                  }`
+            }
           >
             转写：{transcribe.on ? '开启' : '未开启'}
           </span>

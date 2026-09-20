@@ -14,14 +14,23 @@
     AGENT_STT_MODEL     默认 deepgram/nova-3
     AGENT_LANGUAGE      默认 zh
     AGENT_MAX_SESSIONS  默认 5（免费档 Inference STT 并发上限；超限只告警跳过）
+    AGENT_BACKEND_URL   默认 http://127.0.0.1:8000（r011 心跳上报目标）
+    SESSION_SECRET      心跳令牌密钥；未设则从仓库根 .env 读（r011）
 
 纪律：不认识别的人、不回话、不调 LLM；只转写；关麦 = 无音频 = 自然不转写。
 """
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
+import json
 import logging
 import os
+import socket
+import urllib.error
+import urllib.request
+from pathlib import Path
 
 from livekit.agents import (
     Agent,
@@ -47,6 +56,12 @@ STT_MODEL = os.environ.get("AGENT_STT_MODEL", "deepgram/nova-3")
 LANGUAGE = os.environ.get("AGENT_LANGUAGE", "zh")
 MAX_SESSIONS = int(os.environ.get("AGENT_MAX_SESSIONS", "5"))
 FAKE_INTERVAL = float(os.environ.get("AGENT_FAKE_INTERVAL", "3.0"))
+
+# ---- r011：健康上报（心跳）----
+BACKEND_URL = os.environ.get("AGENT_BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+HEARTBEAT_SECONDS = float(os.environ.get("AGENT_HEARTBEAT_SECONDS", "5"))
+WORKER_ID = f"{socket.gethostname()}-{os.getpid()}"
+
 
 
 def _is_audio_track(obj) -> bool:
@@ -121,6 +136,58 @@ class Transcriber(Agent):
         raise StopResponse()   # 不触发 LLM/回复
 
 
+def _session_secret() -> str:
+    """心跳令牌用的密钥：优先环境变量，其次仓库根 `.env` 的 `SESSION_SECRET`（本机演示形态）。
+
+    取不到就返回空串 —— 心跳会被后端 401 拒掉（**不静默伪装成功**），日志里能看到。
+    """
+    value = os.environ.get("SESSION_SECRET", "").strip()
+    if value:
+        return value
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    try:
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("SESSION_SECRET="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return ""
+
+
+def _post_heartbeat_sync(room_id: str, sessions: int) -> None:
+    """同步 POST 一次心跳（在子线程里跑，避免阻塞事件循环）。"""
+    secret = _session_secret()
+    if not secret:
+        logger.warning("未取到 SESSION_SECRET，跳过心跳（后端会拒；本机请确认仓库根 .env 存在）")
+        return
+    token = hmac.new(secret.encode(), room_id.encode(), hashlib.sha256).hexdigest()
+    body = json.dumps({"roomId": room_id, "workerId": WORKER_ID, "sessions": sessions}).encode()
+    request = urllib.request.Request(
+        f"{BACKEND_URL}/api/stt/heartbeat",
+        data=body,
+        headers={"Content-Type": "application/json", "X-Agent-Token": token},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=5):
+        pass
+
+
+async def _heartbeat_loop(room_id: str, pool: "TranscriberPool") -> None:
+    """每 HEARTBEAT_SECONDS 秒上报一次（含当前会话数）；失败只记 debug，不影响转写。
+
+    用途：控制坞的「转写：开启/未开启」不再只看 LiveKit 侧参会者——worker 崩了也能在
+    15 秒内翻成「未开启」，并显示「最后心跳 X 秒前」（后端 `/rooms/{id}/stt-status`）。
+    """
+    logger.info("心跳线程启动：room=%s worker=%s 后端=%s", room_id, WORKER_ID, BACKEND_URL)
+    while True:
+        try:
+            await asyncio.to_thread(_post_heartbeat_sync, room_id, len(pool.sessions()))
+        except Exception as exc:  # noqa: BLE001 —— 心跳失败不影响转写
+            logger.debug("心跳失败（忽略）：%s", exc)
+        await asyncio.sleep(HEARTBEAT_SECONDS)
+
+
 class TranscriberPool:
     """每个**有音频轨的**参与者一个会话；超过 MAX_SESSIONS 只告警跳过（免费档并发护栏）。"""
 
@@ -129,6 +196,10 @@ class TranscriberPool:
         self._sessions: dict[str, AgentSession] = {}
         self._pending: set[str] = set()
         self._tasks: set[asyncio.Task] = set()
+
+    def sessions(self) -> dict[str, AgentSession]:
+        """当前已开的转写会话（心跳上报会话数用；只读）。"""
+        return dict(self._sessions)
 
     def start(self) -> None:
         self.ctx.room.on("participant_connected", self._on_participant_connected)
@@ -222,10 +293,16 @@ async def entrypoint(ctx: JobContext) -> None:
     logger.info("被派单进房：room=%s agent=%s stt=%s max=%d", ctx.room.name, AGENT_NAME, STT_MODE, MAX_SESSIONS)
     pool = TranscriberPool(ctx)
     pool.start()
+    heartbeat = asyncio.create_task(_heartbeat_loop(ctx.room.name, pool))
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     for participant in ctx.room.remote_participants.values():
         pool._maybe_start(participant)
-    ctx.add_shutdown_callback(pool.aclose)
+
+    async def _shutdown() -> None:
+        heartbeat.cancel()
+        await pool.aclose()
+
+    ctx.add_shutdown_callback(_shutdown)
 
 
 if __name__ == "__main__":

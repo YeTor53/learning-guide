@@ -31,6 +31,10 @@ export interface TranscriptionState {
   live: SpeechLine[]
   /** 房内是否有转写 agent（`agent-*`）→ 决定「转写：开启/未开启」。 */
   agentPresent: boolean
+  /** r011：本房 worker 最近一次心跳（毫秒时间戳；无则 null）。 */
+  heartbeatAt: number | null
+  /** r011：心跳是否新鲜（15 秒内）——与 `agentPresent` 取「或」，worker 崩了也能翻成未开启。 */
+  heartbeatFresh: boolean
   mode: SttMode
   error: string | null
 }
@@ -59,6 +63,7 @@ export function useTranscription(
   const [lines, setLines] = useState<SpeechLine[]>([])
   const [liveMap, setLiveMap] = useState<Record<string, SpeechLine>>({})
   const [agentPresent, setAgentPresent] = useState(false)
+  const [heartbeatAt, setHeartbeatAt] = useState<number | null>(null)
   const [mode, setMode] = useState<SttMode>('off')
   const [error, setError] = useState<string | null>(null)
 
@@ -82,6 +87,27 @@ export function useTranscription(
       alive = false
     }
   }, [enabled])
+
+  // r011：轮询本房 worker 心跳（5 秒一次，与 LiveKit 侧参会者判据取「或」）
+  useEffect(() => {
+    if (!enabled || !roomId) return
+    let alive = true
+    const poll = () => {
+      transcriptsApi
+        .roomSttStatus(roomId)
+        .then((status) => {
+          if (!alive) return
+          setHeartbeatAt(status.lastHeartbeatAt ? Date.parse(status.lastHeartbeatAt) : null)
+        })
+        .catch(() => undefined)
+    }
+    poll()
+    const timer = window.setInterval(poll, 5000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [enabled, roomId])
 
   // 库里的转写（刷新/重进与库一致；与聊天的 refresh 同口径）
   const refresh = useCallback(async () => {
@@ -181,5 +207,7 @@ export function useTranscription(
   const live = useMemo(() => Object.values(liveMap).sort((a, b) => a.at.localeCompare(b.at)), [liveMap])
   const sorted = useMemo(() => lines.slice().sort((a, b) => a.at.localeCompare(b.at)), [lines])
 
-  return { lines: sorted, live, agentPresent, mode, error }
+  const heartbeatFresh = heartbeatAt !== null && Date.now() - heartbeatAt < 15_000
+
+  return { lines: sorted, live, agentPresent, heartbeatAt, heartbeatFresh, mode, error }
 }

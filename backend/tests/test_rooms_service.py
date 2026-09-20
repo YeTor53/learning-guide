@@ -141,9 +141,10 @@ def test_approve_rejected_when_full(db) -> None:
         rooms_service.approve_join_request(db, host, waiting.id)
     assert (exc.value.code, exc.value.status) == ("ROOM_FULL", 409)
     assert repo.count_active_members(db, room.id) == 2
-    # 被拒的申请保持 pending（房主可手动拒）
+    # r011（你 2026-09-20 拍板「在等待的自动拒绝」）：满员时该房待批申请被**自动拒绝**，
+    # 不再保持 pending 让房主手动处理 —— 与 `test_room_full_auto_reject.py` 同一口径。
     kept = repo.get_join_request(db, waiting.id)
-    assert kept is not None and kept.status == "pending"
+    assert kept is not None and kept.status == "rejected"
 
 
 def test_approve_twice_returns_conflict(db) -> None:

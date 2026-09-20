@@ -18,7 +18,7 @@ updated: 2026-09-20
 | cp-r011-2 | A 组项目级活页：README 状态与数字 + 演示路径补转写/焦点步；AGENTS.md 数字与容量口径；覆盖页整页重写去重 | **完成 2026-09-20**（2 提交：`fe336e2`、`4f361eb`） | 见 cp-2 提交 | E1 |
 | cp-r011-3 | A 组轮次台账与验收清单回勾：r002 §4 **36 条**（[x] 32 / [~] 4 转 MV-1/MV-8/MV-10）、r005 §5 **8 条**（[x] 7 / [~] 1）、r006 语录数字口径注、r010 §6 矩阵补回归脚本、人工剧本加 MV-10 | **完成 2026-09-20** | 见 cp-3 提交 | E1/E2/E3/E9/E10 |
 | cp-r011-4 | B 组功能增量：满员自动拒待批申请（批量 `rejected` + 汇总系统消息）+ 邀请码入口（顶栏常驻）与未登录 `returnTo` 闭环 + 等待页文案 + 使用者教学页 | **完成 2026-09-20** | 见 cp-4 提交 | E4/E5 |
-| cp-r011-5 | B 组 worker 健康上报 + C 组用例（`STT_MODE=off`、满员自动拒） | 待做 | — | E6/E7 |
+| cp-r011-5 | B 组 worker 健康上报（心跳端点 + 内存态 + 芯片按房判据）+ C 组用例（`STT_MODE=off` ×2、满员自动拒 ×3、心跳 ×3）+ 既有用例按新语义更新 | **完成 2026-09-20**（pytest **164 passed**、build exit 0） | 见 cp-5 提交 | E6/E7 |
 | cp-r011-6 | 门禁与取证收官：四项门禁 + 索引/矩阵回填 + review 定稿 | 待做 | — | E8/E9 |
 
 ## 2. 门禁数字
@@ -28,6 +28,7 @@ updated: 2026-09-20
 | cp-0（进入本轮前，历史） | 156 passed（r010 review §5b） | 46/46（历史） | exit 0（历史） | exit 0（历史） |
 | cp-1/1b（纯文档） | 未跑（无代码改动） | 未跑 | 未跑 | 未跑 |
 | cp-2/3（纯文档） | 未跑（无代码改动） | 未跑 | 未跑 | 未跑 |
+| cp-5（本轮，2026-09-20） | **164 passed**（49.53s；+8：自动拒 3 / 心跳 3 / off 2） | 待 cp-6 跑 | exit 0 | exit 0（2010 modules，4.05s） |
 | cp-6（收官，待填） |  |  |  |  |
 
 ## 3. 逐处改动（现在 → 改成 → 依据）
@@ -51,6 +52,28 @@ updated: 2026-09-20
 | `frontend/src/components/NavBar.tsx` | `top-actions` 增常驻 `邀请码加入` → `/join`（未登录也可见） | r011 B2 |
 | `frontend/src/pages/JoinByCodePage.tsx` | 未登录时主按钮改「去登录并加入」（跳 `/login?returnTo=/join?code=…&auto=1`）；带 `auto=1` 回来在登录后**自动加入一次**（`useRef` 防重复） | r011 B2 |
 | `docs/tutorials/r011-invite-entry-and-capacity.md` | 新增使用者教学页（两条入口路径 / 未登录闭环 / 满员口径） | 覆盖矩阵 C 件套 |
+
+## 3.3 cp-5 逐处改动（本轮实测）
+
+| 文件 | 现在 → 改成 | 依据 |
+| --- | --- | --- |
+| `backend/app/services/stt.py` | 新增内存态心跳登记：`_HEARTBEATS` / `record_heartbeat` / `last_heartbeat` / `heartbeat_age_seconds` / `latest_heartbeat` / `HEARTBEAT_FRESH_SECONDS=15` | r011 B3（甲方案：零迁移） |
+| `backend/app/schemas/transcripts.py` | 新增 `SttHeartbeatIn`（roomId / workerId / sessions） | 同上 |
+| `backend/app/api/routers/transcripts.py` | 新增 `agent_heartbeat_token()`、`POST /stt/heartbeat`（HMAC 鉴权，错/缺 401）、`GET /rooms/{id}/stt-status`（按房心跳 + `fresh`）；`GET /stt/status` 追加 `lastHeartbeatAt` / `lastHeartbeatRoomId`（向后兼容） | 同上 |
+| `backend/agents/transcriber.py` | 新增 `_session_secret()`（env → 仓库根 `.env`）、`_post_heartbeat_sync()`、`_heartbeat_loop()`（每 5 秒，子线程发，失败只记 debug）；`TranscriberPool.sessions()` 只读访问器；`entrypoint` 起心跳任务并在 shutdown 取消 | 同上 |
+| `frontend/src/api/transcripts.ts` | 新增 `RoomSttStatus` 与 `roomSttStatus(roomId)` | 同上 |
+| `frontend/src/hooks/useTranscription.ts` | 5 秒轮询本房心跳 → 暴露 `heartbeatAt` / `heartbeatFresh`（15 秒窗口） | 同上 |
+| `frontend/src/components/live/DeviceBar.tsx` | 芯片提示补「最后心跳 X 秒前 / 本房还没有心跳记录」 | 同上 |
+| `frontend/src/pages/RoomLivePage.tsx` | 芯片判据改为 `agentPresent \|\| heartbeatFresh`（LiveKit 参会者事件漏刷时心跳兜底） | 同上 |
+| `backend/tests/test_stt_heartbeat.py`（新） | 3 条：缺/错令牌 401、心跳出现在本房与全局状态、无心跳时为 null | E6/E7 |
+| `backend/tests/test_room_full_auto_reject.py`（新） | 3 条：满员新申请 → 全部 pending 变 rejected + 汇总系统消息；批准被挡时清理不被回滚；`?status=pending` 清空 | E4 |
+| `backend/tests/test_transcript_segments.py` | 2 条：`STT_MODE=off` 不派单（真实 `ensure_transcriber` + 打桩 `_run`）；`/stt/status` 如实报 off | E7 |
+| `backend/tests/test_rooms_service.py` | 既有 `test_approve_rejected_when_full` 断言改为「被自动拒绝」（原断言"保持 pending"是旧语义） | 行为变更（同 E4） |
+| `.env.example` | 追加注释：`AGENT_BACKEND_URL` / `AGENT_HEARTBEAT_SECONDS`（可选键） | 同上 |
+
+### cp-5 如实边界
+- `STT_MODE=off` 的语义 = **后端不派单 + 前端显示未开启**；后端回传端点未加「off 就拒收」的硬闸（本轮不改行为），端到端「无气泡、库内不新增」由 **MV-7** 人工核对。
+- 心跳为**进程内存态**：后端重启即清空（不伪装），前端此时按「无心跳 + LiveKit 在场」判据显示。
 
 ## 4. 未做 / 如实说明
 

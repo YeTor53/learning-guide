@@ -610,7 +610,7 @@ export default function RoomLivePage() {
           sharing={screen.sharing}
           onToggleHand={onHandControl}
           onToggleShare={() => void (screen.sharing ? screen.stop() : screen.start())}
-          transcribe={{ on: transcribe.agentPresent }}
+          transcribe={{ on: transcribe.agentPresent || transcribe.heartbeatFresh, lastHeartbeatAt: transcribe.heartbeatAt }}
         />
       </div>
     </LiveKitRoom>

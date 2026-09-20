@@ -5,6 +5,8 @@
 """
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from helpers import register_user, session_cookie
@@ -171,3 +173,41 @@ def test_create_room_dispatches_transcriber(client, db, monkeypatch) -> None:
     login(client, host)
     room = create_room(client)
     assert seen == [room["id"]], seen
+
+
+# ---------------- r011：STT_MODE=off 分支 ----------------
+
+from app.services.livekit import ensure_transcriber as real_ensure_transcriber  # noqa: E402
+"""顶层绑定 = **真实实现**（conftest 的自动桩只在用例内替换模块属性，不影响这里）。"""
+
+
+def test_stt_mode_off_skips_dispatch(monkeypatch) -> None:
+    """`STT_MODE=off`：建房不派单 —— `ensure_transcriber` 在 mode != agent 时直接返回空串，零外部调用。
+
+    这条补的是 r010 review 未闭合 ②（「off 分支未验」）的**可自动化**部分；
+    「进房后确实不出现气泡、库内不新增转写行」属端到端人工项（MV-7）。
+    """
+    from app.config import load_settings
+    from app.services import livekit as livekit_service
+
+    off = dataclasses.replace(load_settings(), stt_mode="off")
+    calls: list[int] = []
+    monkeypatch.setattr(livekit_service, "_run", lambda *a, **k: calls.append(1))
+    assert real_ensure_transcriber("room_off_mode", off) == ""
+    assert calls == []
+
+
+def test_stt_status_reports_off_mode(client, db, monkeypatch) -> None:
+    """`STT_MODE=off` 如实上报给前端（不伪装成 agent）。"""
+    from app.api.routers import transcripts as transcripts_router
+    from app.config import load_settings as real_load_settings
+
+    monkeypatch.setattr(
+        transcripts_router, "load_settings",
+        lambda: dataclasses.replace(real_load_settings(), stt_mode="off"),
+    )
+    host = register_user(db, "房主")
+    login(client, host)
+    resp = client.get("/api/stt/status")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["mode"] == "off"
