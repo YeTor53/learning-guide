@@ -29,16 +29,24 @@ rounds: [global]
 | ① | 源代码或 Git 仓库链接 | 本仓（本地 git 仓库，14 个需求分支 + `main`；当前工作分支 `req/r013-demo-readiness`）。**远端尚未创建**，见 §7 | 本地齐；GitHub 链接待建 |
 | ② | 设计说明 + README + 环境变量示例（无真实密钥） | 设计说明 = `docs/01-architecture/`（架构）+ `docs/02-modules/`（模块实现与功能）+ `docs/03-decisions/`（ADR：关键决策与取舍）+ `docs/rounds/`（每轮 design / changes / review）；运行说明 = `README.md`；键名示例 = `.env.example`（只有键名与占位值） | 齐 |
 | ③ | 测试或冒烟脚本运行说明 | 命令与最近实测见 §5；脚本 = `backend/scripts/smoke.py`（真实 HTTP 全链路）与 `backend/tests/`（pytest，含 schema / 服务层 / 接口层 / 真机自检脚本） | 齐 |
-| ④ | 使用的 AI 工具与模型列表 | `docs/00-project/ai-tools-and-models.md` | **缺两格，待本人填**（§1 工具行、§3 投入小时数） |
+| ④ | 使用的 AI 工具与模型列表 | `docs/00-project/ai-tools-and-models.md` | **投入小时数已填（约 12 小时，§3）**；§1 「除 Hermes Agent 外的其它工具」一行待确认（没用别的就写「无其它」） |
 
 ## 2. 提交口径（作业 §四）
 
 | 作业要求 | 本项目口径 |
 | --- | --- |
 | 文件命名 | `AI管培生_陀梓皓_题目A_<日期>.zip` |
-| 注明所选题目与实际投入小时数 | 题目 = **A**；小时数填在 `docs/00-project/ai-tools-and-models.md` §3（**唯一一处**，不在别处重复） |
+| 注明所选题目与实际投入小时数 | 题目 = **A**；**实际投入 ≈ 12 小时**（本人 2026-09-20 确认口径，见 §2.1）；小时数填在 `docs/00-project/ai-tools-and-models.md` §3（**唯一一处**，不在别处重复） |
 | 使用开源模板须注明来源与新增/修改部分 | **未使用任何前端模板**（自写 React + Vite + 自写样式）；后端 FastAPI 自写；LiveKit 仅用官方 SDK；**未使用 LiveKit Meet 默认页面**（同 `docs/00-project/ai-tools-and-models.md` §3） |
 | 提交形态 | zip + GitHub 仓库链接（+ npm 包），细则 P11 未拍板 → `docs/00-project/global-roadmap.md` §1「外部归宿与口径」、`docs/03-decisions/r001-adr-0004-submission-artifacts.md` |
+
+### 2.1 时间投入与取舍（面试会追问，先写在这里）
+
+- **总制作时间 ≈ 12 小时**（4 个自然日窗口内的实际专注投入；口径 = 需求与设计文档 + 后端与数据库 + 前端 + 测试与文档回填的合计）。若面试要分项细目，可按本仓 git 提交时间线逐条核算。
+- **演示录屏（加分⑤）没做：时间来不及。** 完整版 6.5 分钟分镜、按钮逐条脚本、兜底话术、现场道具都已备好（`docs/00-project/demo-runbook.md` §5「录屏分镜」），缺的只是录制与剪辑那一段单独时间；演示本身可直接现场跑（§3）。
+- **录制功能（加分②后半）**：转写链路已完成，**录制是主动取舍不做**（同 `assignment-a-coverage.md` §3）。
+- **Docker Compose / 公网部署（加分③）**：未做，本机 `dev.bat` 起服务已足够评审复现。
+- 三项取舍都**不影响必做 15 条闭环**：必做项 15/15 完成，逐条实现位置与证据见 `docs/00-project/assignment-a-coverage.md` §2。
 
 ## 3. 本机起服务与演示
 
@@ -88,16 +96,17 @@ rounds: [global]
 | 加分② 房间录制 / 旁路转写 | 转写链路**已完成**；**录制经本人决定不做** | `docs/00-project/assignment-a-coverage.md` §3 |
 | 加分③ Docker Compose / 公网部署 | **未做**（本机 `dev.bat` 起服务） | 同上 |
 | 加分④ 简单管理后台 | **已完成**（r012：房间 / 用户 / 纪要 / 审计四分区 + 结束 / 重生纪要 / 删除三动作；超管隐身进房） | `docs/rounds/r012-superadmin-console/` |
-| 加分⑤ 演示录屏 3–5 分钟 | **未录**（分镜已在台本 §5「录屏分镜」） | `docs/00-project/demo-runbook.md` §5 |
+| 加分⑤ 演示录屏 3–5 分钟 | **未做：时间来不及**（分镜 / 逐步脚本 / 道具都已备，缺录制与剪辑；现场可直接演示） | §2.1；`docs/00-project/demo-runbook.md` §5 |
 | 转写 worker 的 FFI panic 根因 | 未修（需升级 `livekit-agents`）；现为**自愈 + 可观测**（有限重试、失败以退出码交守护重启、错误透出到界面芯片） | `docs/rounds/r013-demo-readiness/review.md` §6 ① |
 | 强停共享的网络级硬断形态 | 已测「共享者直接关标签」路径（0.5 秒清格）；网络层硬断只对断线重连做过，未对共享重跑 | 同上 §6 ② |
 | 自检脚本并发抖动 | 多套无头 Chrome 并发时首连偶发超时，建议**逐套串行**跑 | 同上 §6 ④ |
 
 ## 7. 提交前 checklist
 
-- [ ] 补 `docs/00-project/ai-tools-and-models.md` 两格（工具行、投入小时数）
+- [x] 投入小时数（**约 12 小时**）已填 `docs/00-project/ai-tools-and-models.md` §3
+- [ ] 补 `docs/00-project/ai-tools-and-models.md` §1 工具行（除 Hermes Agent 外还有没有别的；没有就写「无其它」）
 - [ ] 决定 GitHub 仓库公开性并建远端推送（当前仓库**无 remote**）
-- [ ] 若要加分⑤：按 `docs/00-project/demo-runbook.md` §5「录屏分镜」录 3–5 分钟
+- [ ] 演示录屏（加分⑤）：**本次因时间来不及不做**（§2.1），若补做按 `docs/00-project/demo-runbook.md` §5「录屏分镜」
 - [ ] 打 zip（命名见 §2），核对包内无 `.env` / `node_modules` / 测试残留
 - [ ] 合并需求分支并打 `round-rNNN-done`（由本人执行，顺序见 `docs/00-project/global-roadmap.md`）
 
@@ -106,3 +115,4 @@ rounds: [global]
 | 日期 | 版本 | 改了什么 | 依据 |
 | --- | --- | --- | --- |
 | 2026-09-20 | v1 | 建页：交付物四项对照、提交口径、起服务与演示、设计说明导读、验证证据索引、已知边界、提交前 checklist | 本人 2026-09-20「写交付文档（用来交付面试作业，题目一）」 |
+| 2026-09-20 | v2 | 补 §2.1「时间投入与取舍」：总制作 ≈ 12 小时；**演示录屏因时间来不及未做**（分镜/脚本/道具齐备，仅缺录制剪辑）；交付物④与 checklist 同步（小时数已填、录屏移出待办） | 本人 2026-09-20「加入解释：演示视频时间来不及没做，总制作时间约 12 小时」 |
